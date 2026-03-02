@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import Header from './components/Header';
 import PDFUpload from './components/PDFUpload';
 import QAChat from './components/QAChat';
@@ -16,57 +16,50 @@ function App() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-4">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">AI-Powered Learning</span>
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4">
+            <BookOpen className="w-8 h-8 text-white" />
           </div>
-          <h2 className="font-heading text-3xl font-bold text-text mb-3">
-            Your Smart Study Assistant
+          <h2 className="font-heading text-2xl font-semibold text-text mb-2">
+            Lecture Note Q&A System
           </h2>
-          <p className="text-secondary max-w-lg mx-auto">
-            Upload your lecture notes and ask questions. Get instant answers powered by AI.
+          <p className="text-muted max-w-md mx-auto">
+            Upload your PDF lecture notes and ask questions. Get AI-powered answers instantly.
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          <div className="bg-white rounded-3xl shadow-card p-6 lg:p-8 hover:shadow-card-hover transition-shadow duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
-                <span className="text-white font-heading font-bold">1</span>
-              </div>
-              <h3 className="font-heading font-semibold text-lg text-text">Upload Notes</h3>
-            </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-surface rounded-lg border border-slate-200 p-6">
+            <h3 className="font-heading font-semibold text-text mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 bg-primary/10 rounded text-primary text-xs flex items-center justify-center">1</span>
+              Upload PDF
+            </h3>
             <PDFUpload onUploadSuccess={handleUploadSuccess} />
           </div>
 
-          <div className="bg-white rounded-3xl shadow-card p-6 lg:p-8 hover:shadow-card-hover transition-shadow duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-br from-cta to-primary rounded-xl flex items-center justify-center">
-                <span className="text-white font-heading font-bold">2</span>
-              </div>
-              <h3 className="font-heading font-semibold text-lg text-text">Ask Questions</h3>
-            </div>
+          <div className="bg-surface rounded-lg border border-slate-200 p-6">
+            <h3 className="font-heading font-semibold text-text mb-4 flex items-center gap-2">
+              <span className="w-6 h-6 bg-cta/10 rounded text-cta text-xs flex items-center justify-center">2</span>
+              Ask Questions
+            </h3>
             <QAChat />
           </div>
         </div>
 
-        <div className="mt-10 text-center">
-          <div className="inline-flex items-center gap-6 text-sm text-secondary">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>PDF Upload</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-cta rounded-full"></div>
-              <span>Semantic Search</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-primary rounded-full"></div>
-              <span>AI Answers</span>
-            </div>
-          </div>
+        <div className="mt-8 flex justify-center gap-6 text-sm text-muted">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+            PDF Upload
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-cta rounded-full"></span>
+            Semantic Search
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 bg-primary rounded-full"></span>
+            AI Answers
+          </span>
         </div>
       </main>
 
