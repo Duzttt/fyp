@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  font-family: 'Fira Sans', sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-  color: #164E63;
-  background-color: #ECFEFF;
+  --color-primary: #7C3AED;
+  --color-secondary: #A78BFA;
+  --color-cta: #06B6D4;
+  --color-background: #FAF5FF;
+  --color-text: #1E1B4B;
 }
 
 * {
@@ -18,8 +18,15 @@
 
 body {
   margin: 0;
+  font-family: 'Comic Neue', sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
   min-width: 320px;
   min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Baloo 2', cursive;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -28,4 +35,22 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-secondary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
 }
