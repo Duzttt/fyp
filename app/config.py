@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     ALLOWED_EXTENSIONS: set = {".pdf"}
     
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-1.5-flash"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
     
     OPENROUTER_API_KEY: Optional[str] = None

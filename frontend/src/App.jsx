@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Header from './components/Header';
 import PDFUpload from './components/PDFUpload';
 import QAChat from './components/QAChat';
+import SettingsPanel from './components/SettingsPanel';
 
 function App() {
   const [hasDocument, setHasDocument] = useState(false);
@@ -47,6 +48,8 @@ function App() {
           <p className="mt-1">The system uses semantic search to find relevant passages and generates answers using AI.</p>
         </div>
       </main>
+
+      <SettingsPanel />
     </div>
   );
 }

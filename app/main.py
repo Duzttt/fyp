@@ -3,7 +3,7 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ask, upload
+from app.api import ask, upload, settings as settings_api
 from app.config import settings
 
 logging.basicConfig(
@@ -31,6 +31,7 @@ def create_app() -> FastAPI:
 
     app.include_router(upload.router, prefix="/api", tags=["upload"])
     app.include_router(ask.router, prefix="/api", tags=["ask"])
+    app.include_router(settings_api.router, prefix="/api", tags=["settings"])
 
     @app.get("/")
     async def root():

@@ -42,3 +42,28 @@ export const checkHealth = async () => {
     return false;
   }
 };
+
+export const getSettings = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/settings`);
+  if (!response.ok) {
+    throw new Error('Failed to get settings');
+  }
+  return response.json();
+};
+
+export const updateSettings = async (settings) => {
+  const response = await fetch(`${API_BASE_URL}/api/settings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(settings),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update settings');
+  }
+
+  return response.json();
+};
