@@ -4,18 +4,23 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from django.http import HttpRequest, JsonResponse
+import requests
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from app.config import settings
-from app.services.embedding import EmbeddingService
+from app.services.local_rag import (
+    LocalRAGError,
+    build_context_from_sources,
+    generate_with_local_qwen,
+    retrieve_with_faiss,
+)
 from app.services.pdf_loader import PDFLoader
 from app.services.pdf_indexing import PDFIndexingError, index_pdf_file
-from app.services.rag_pipeline import LLMError, RAGPipeline
-from app.services.vector_store import VectorStore
 
 SETTINGS_FILE = Path(__file__).resolve().parents[1] / "data" / "settings.json"
+CHAT_DEMO_FILE = Path(__file__).resolve().parent / "chat_demo.html"
 VALID_PROVIDERS = {"gemini", "openrouter"}
 
 
@@ -87,6 +92,19 @@ def root(request: HttpRequest) -> JsonResponse:
     )
 
 
+@require_http_methods(["GET"])
+def chat_demo_page(request: HttpRequest) -> HttpResponse:
+    try:
+        html = CHAT_DEMO_FILE.read_text(encoding="utf-8")
+    except OSError:
+        return HttpResponse(
+            "Failed to load chat demo page.",
+            status=500,
+            content_type="text/plain; charset=utf-8",
+        )
+    return HttpResponse(html, content_type="text/html; charset=utf-8")
+
+
 def health_check(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"status": "healthy"})
 
@@ -151,39 +169,47 @@ def ask_question(request: HttpRequest) -> JsonResponse:
     except ValueError as exc:
         return _error_response(str(exc), status=400)
 
-    question = str(payload.get("question", "")).strip()
-    if not question:
-        return _error_response("Question cannot be empty", status=400)
-
-    embedding_service = EmbeddingService(model_name=settings.EMBEDDING_MODEL)
-    vector_store = VectorStore(
-        index_path=settings.FAISS_INDEX_PATH,
-        embedding_dim=settings.EMBEDDING_DIM,
-    )
-
-    llm_settings = _build_runtime_llm_settings()
-    rag_pipeline = RAGPipeline(
-        embedding_service=embedding_service,
-        vector_store=vector_store,
-        provider=llm_settings["provider"] or settings.LLM_PROVIDER,
-        model=llm_settings["model"],
-        api_key=llm_settings["api_key"],
-    )
+    query = str(payload.get("query") or payload.get("question") or "").strip()
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
 
     try:
-        result = rag_pipeline.query(question, top_k=3)
-    except LLMError as exc:
+        retrieved_sources = retrieve_with_faiss(query=query, top_k=3)
+        context = build_context_from_sources(retrieved_sources)
+        answer = generate_with_local_qwen(query=query, context=context)
+    except requests.exceptions.Timeout:
+        return _error_response(
+            (
+                "Local Qwen model request timed out "
+                f"(timeout={settings.LOCAL_QWEN_TIMEOUT_SECONDS}s)"
+            ),
+            status=504,
+        )
+    except requests.exceptions.RequestException as exc:
+        return _error_response(
+            f"Failed to call local Qwen model: {str(exc)}",
+            status=503,
+        )
+    except LocalRAGError as exc:
         return _error_response(str(exc), status=503)
     except Exception as exc:  # noqa: BLE001
         return _error_response(
-            f"Failed to process question: {str(exc)}",
+            f"Failed to process query: {str(exc)}",
             status=500,
         )
 
+    source_files = sorted(
+        {
+            str(source.get("source", "unknown"))
+            for source in retrieved_sources
+            if source.get("source")
+        }
+    )
+
     return JsonResponse(
         {
-            "answer": result["answer"],
-            "sources": result["sources"],
+            "answer": answer,
+            "sources": source_files,
         }
     )
 

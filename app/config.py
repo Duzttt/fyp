@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_PROVIDER: str = "gemini"
 
+    LOCAL_QWEN_MODEL: str = "qwen2.5:3b"
+    LOCAL_QWEN_BASE_URL: str = "http://localhost:11434"
+    LOCAL_QWEN_TIMEOUT_SECONDS: int = 300
+    LOCAL_QWEN_KEEP_ALIVE: str = "30m"
+
     @field_validator("DEBUG", mode="before")
     @classmethod
     def parse_debug_flag(cls, value):

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAG Chat Demo</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(120deg, #f8fbff 0%, #eef4ff 100%);
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .app {
+        width: min(880px, 96vw);
+        background: #ffffff;
+        border: 1px solid #dbe4ff;
+        border-radius: 14px;
+        box-shadow: 0 12px 36px rgba(23, 33, 89, 0.08);
+        overflow: hidden;
+      }
+      .top {
+        padding: 16px 18px;
+        border-bottom: 1px solid #e7ecff;
+        background: #f6f9ff;
+      }
+      .top h1 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+      }
+      .top .row {
+        display: flex;
+        gap: 8px;
+      }
+      .top input {
+        flex: 1;
+        border: 1px solid #cfd9ff;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+      }
+      #chat-box {
+        height: 430px;
+        overflow-y: auto;
+        padding: 16px;
+        background: #fcfdff;
+      }
+      .msg {
+        margin-bottom: 12px;
+        max-width: 80%;
+        border-radius: 10px;
+        padding: 10px 12px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+      .msg.user {
+        margin-left: auto;
+        background: #1d4ed8;
+        color: #fff;
+      }
+      .msg.assistant {
+        margin-right: auto;
+        background: #eef2ff;
+        color: #1e293b;
+        border: 1px solid #dbe4ff;
+      }
+      .msg.error {
+        background: #ffeaea;
+        border-color: #ffc0c0;
+        color: #a61b1b;
+      }
+      .sources {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #3c4f7a;
+      }
+      .sources ul {
+        margin: 4px 0 0 18px;
+      }
+      form {
+        display: flex;
+        gap: 8px;
+        padding: 14px 16px;
+        border-top: 1px solid #e7ecff;
+      }
+      form input {
+        flex: 1;
+        border: 1px solid #cfd9ff;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      form button {
+        border: 0;
+        border-radius: 10px;
+        background: #1d4ed8;
+        color: #fff;
+        padding: 10px 16px;
+        font-size: 14px;
+        cursor: pointer;
+      }
+      form button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="top">
+        <h1>Django RAG Chat</h1>
+        <div class="row">
+          <input
+            id="api-url"
+            type="text"
+            value="/api/ask"
+            aria-label="Ask API URL"
+          />
+        </div>
+      </div>
+
+      <div id="chat-box">
+        <div class="msg assistant">
+          Ask a question and this page will call your Django API with
+          <code>{ "query": "..." }</code>.
+        </div>
+      </div>
+
+      <form id="chat-form">
+        <input
+          id="query-input"
+          type="text"
+          placeholder="Type your question..."
+          autocomplete="off"
+          required
+        />
+        <button id="send-btn" type="submit">Send</button>
+      </form>
+    </div>
+
+    <script>
+      const chatBox = document.getElementById("chat-box");
+      const form = document.getElementById("chat-form");
+      const queryInput = document.getElementById("query-input");
+      const apiInput = document.getElementById("api-url");
+      const sendBtn = document.getElementById("send-btn");
+
+      let isSending = false;
+
+      function scrollToBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }
+
+      function appendMessage(role, text, isError = false) {
+        const node = document.createElement("div");
+        node.className = "msg " + role + (isError ? " error" : "");
+        node.textContent = text;
+        chatBox.appendChild(node);
+        scrollToBottom();
+        return node;
+      }
+
+      function appendSources(parent, sources) {
+        if (!Array.isArray(sources) || sources.length === 0) {
+          return;
+        }
+
+        const wrap = document.createElement("div");
+        wrap.className = "sources";
+        const title = document.createElement("strong");
+        title.textContent = "Sources:";
+        const list = document.createElement("ul");
+
+        sources.forEach((source) => {
+          const li = document.createElement("li");
+          li.textContent = String(source);
+          list.appendChild(li);
+        });
+
+        wrap.appendChild(title);
+        wrap.appendChild(list);
+        parent.appendChild(wrap);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const query = queryInput.value.trim();
+        const apiUrl = apiInput.value.trim() || "/api/ask";
+
+        if (!query || isSending) {
+          return;
+        }
+
+        appendMessage("user", query);
+        queryInput.value = "";
+
+        isSending = true;
+        sendBtn.disabled = true;
+        const pendingNode = appendMessage("assistant", "Thinking...");
+
+        try {
+          const response = await fetch(apiUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ query }),
+          });
+
+          let data = {};
+          try {
+            data = await response.json();
+          } catch (_ignore) {
+            data = {};
+          }
+
+          if (!response.ok) {
+            const detail = data.detail || "Request failed";
+            throw new Error(detail + " (HTTP " + response.status + ")");
+          }
+
+          pendingNode.textContent = data.answer || "(empty answer)";
+          appendSources(pendingNode, data.sources || []);
+        } catch (error) {
+          pendingNode.classList.add("error");
+          pendingNode.textContent =
+            "Error: " + (error && error.message ? error.message : "unknown");
+        } finally {
+          isSending = false;
+          sendBtn.disabled = false;
+          queryInput.focus();
+          scrollToBottom();
+        }
+      });
+    </script>
+  </body>
+</html>
