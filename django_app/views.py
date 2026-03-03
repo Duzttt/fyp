@@ -4,10 +4,12 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+import httpx
 import requests
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from ollama import Client as OllamaClient
 
 from app.config import settings
 from app.services.local_rag import (
@@ -212,6 +214,72 @@ def ask_question(request: HttpRequest) -> JsonResponse:
             "sources": source_files,
         }
     )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ask_qwen(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    query = str(payload.get("query") or "").strip()
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
+
+    try:
+        retrieved_sources = retrieve_with_faiss(query=query, top_k=3)
+        context = build_context_from_sources(retrieved_sources)
+        if not context.strip():
+            return _error_response("No indexed context found in FAISS", status=400)
+
+        system_prompt = (
+            "You are a rigorous academic teaching assistant. Please answer the questions based on the following reference materials."
+            "If the evidence is insufficient, please explain clearly."
+        )
+        user_prompt = f"参考资料：\n{context}\n\n用户提问：{query}"
+
+        ollama_client = OllamaClient(
+            host=settings.LOCAL_QWEN_BASE_URL,
+            timeout=settings.LOCAL_QWEN_TIMEOUT_SECONDS,
+        )
+        model_response = ollama_client.chat(
+            model=settings.LOCAL_QWEN_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            stream=False,
+            keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
+        )
+
+        answer = str(model_response.get("message", {}).get("content", "")).strip()
+        if not answer:
+            raise LocalRAGError("Empty response from local Qwen model")
+    except httpx.TimeoutException:
+        return _error_response(
+            (
+                "Local Qwen model request timed out "
+                f"(timeout={settings.LOCAL_QWEN_TIMEOUT_SECONDS}s)"
+            ),
+            status=504,
+        )
+    except httpx.RequestError as exc:
+        return _error_response(f"Failed to call local Qwen model: {str(exc)}", status=503)
+    except LocalRAGError as exc:
+        return _error_response(str(exc), status=503)
+    except Exception as exc:  # noqa: BLE001
+        return _error_response(f"Failed to process query: {str(exc)}", status=500)
+
+    source_files = sorted(
+        {
+            str(source.get("source", "unknown"))
+            for source in retrieved_sources
+            if source.get("source")
+        }
+    )
+    return JsonResponse({"answer": answer, "sources": source_files})
 
 
 @csrf_exempt
