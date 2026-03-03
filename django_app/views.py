@@ -11,6 +11,7 @@ from django.views.decorators.http import require_http_methods
 from app.config import settings
 from app.services.embedding import EmbeddingService
 from app.services.pdf_loader import PDFLoader
+from app.services.pdf_indexing import PDFIndexingError, index_pdf_file
 from app.services.rag_pipeline import LLMError, RAGPipeline
 from app.services.vector_store import VectorStore
 
@@ -115,16 +116,29 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
     try:
         contents = upload_file.read()
         unique_filename = f"{uuid.uuid4()}_{upload_file.name}"
-        pdf_loader.save_pdf(contents, unique_filename)
+        saved_file_path = pdf_loader.save_pdf(contents, unique_filename)
     except OSError as exc:
         return _error_response(f"Failed to save PDF: {str(exc)}", status=500)
+
+    try:
+        index_stats = index_pdf_file(
+            pdf_path=saved_file_path,
+            chunk_size=500,
+        )
+    except PDFIndexingError as exc:
+        return _error_response(str(exc), status=400)
+    except Exception as exc:  # noqa: BLE001
+        return _error_response(
+            f"Failed to process embeddings: {str(exc)}",
+            status=500,
+        )
 
     return JsonResponse(
         {
             "success": True,
-            "message": "PDF uploaded successfully",
+            "message": "PDF uploaded and indexed successfully",
             "filename": unique_filename,
-            "chunks_created": 0,
+            "chunks_created": index_stats["chunks_created"],
         }
     )
 

@@ -1,12 +1,29 @@
 import re
+from pathlib import Path
 from typing import List
 
 from pypdf import PdfReader
 
 
+def _normalize_path_arg(path: str) -> str:
+    cleaned = str(path).strip()
+    if (
+        len(cleaned) >= 2
+        and cleaned[0] == cleaned[-1]
+        and cleaned[0] in {"'", '"'}
+    ):
+        cleaned = cleaned[1:-1].strip()
+    return cleaned
+
+
 def read_pdf_text(pdf_path: str) -> str:
     """Read all text from a PDF file."""
-    reader = PdfReader(pdf_path)
+    cleaned_path = _normalize_path_arg(pdf_path)
+    pdf_file = Path(cleaned_path)
+    if not pdf_file.exists():
+        raise FileNotFoundError(f"PDF file not found: {cleaned_path}")
+
+    reader = PdfReader(str(pdf_file))
     pages: List[str] = []
 
     for page in reader.pages:

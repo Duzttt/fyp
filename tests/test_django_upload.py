@@ -19,6 +19,14 @@ def client() -> Client:
 
 def test_upload_pdf_success(client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setattr(settings, "DOCUMENTS_PATH", str(tmp_path))
+    monkeypatch.setattr(
+        "django_app.views.index_pdf_file",
+        lambda pdf_path, chunk_size=500: {
+            "total_chars": 1000,
+            "chunks_created": 3,
+            "total_chunks_in_index": 3,
+        },
+    )
 
     file = SimpleUploadedFile(
         "lecture.pdf",
@@ -31,8 +39,8 @@ def test_upload_pdf_success(client: Client, monkeypatch: pytest.MonkeyPatch, tmp
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
-    assert data["message"] == "PDF uploaded successfully"
-    assert data["chunks_created"] == 0
+    assert data["message"] == "PDF uploaded and indexed successfully"
+    assert data["chunks_created"] == 3
     assert data["filename"].endswith("_lecture.pdf")
 
     saved_file = tmp_path / data["filename"]
