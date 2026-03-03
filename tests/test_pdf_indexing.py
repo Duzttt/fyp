@@ -48,8 +48,11 @@ class _DummyVectorStore:
 def test_index_pdf_file_success(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
     monkeypatch.setattr(
-        "app.services.pdf_indexing.split_text_into_chunks",
-        lambda text, chunk_size=500: ["chunk-1", "chunk-2"],
+        "app.services.pdf_indexing.chunk_pdf_with_metadata",
+        lambda pdf_path, chunk_size=500, source_name=None: [
+            {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
+            {"text": "chunk-2", "source": source_name or "dummy.pdf", "page": 2},
+        ],
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.EmbeddingService",
@@ -68,16 +71,24 @@ def test_index_pdf_file_success(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_index_pdf_file_strips_pdf_path(monkeypatch: pytest.MonkeyPatch):
-    received = {"path": None}
+    received = {"path": None, "source_name": None}
 
     def _fake_read_pdf_text(path: str) -> str:
         received["path"] = path
         return "mock text"
 
     monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", _fake_read_pdf_text)
+
+    def _fake_chunk_pdf_with_metadata(pdf_path: str, chunk_size=500, source_name=None):
+        received["source_name"] = source_name
+        return [
+            {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
+            {"text": "chunk-2", "source": source_name or "dummy.pdf", "page": 2},
+        ]
+
     monkeypatch.setattr(
-        "app.services.pdf_indexing.split_text_into_chunks",
-        lambda text, chunk_size=500: ["chunk-1", "chunk-2"],
+        "app.services.pdf_indexing.chunk_pdf_with_metadata",
+        _fake_chunk_pdf_with_metadata,
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.EmbeddingService",
@@ -91,13 +102,14 @@ def test_index_pdf_file_strips_pdf_path(monkeypatch: pytest.MonkeyPatch):
     index_pdf_file("  dummy.pdf  ", chunk_size=500)
 
     assert received["path"] == "dummy.pdf"
+    assert received["source_name"] == "dummy.pdf"
 
 
 def test_index_pdf_file_raises_on_empty_chunks(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
     monkeypatch.setattr(
-        "app.services.pdf_indexing.split_text_into_chunks",
-        lambda text, chunk_size=500: [],
+        "app.services.pdf_indexing.chunk_pdf_with_metadata",
+        lambda pdf_path, chunk_size=500, source_name=None: [],
     )
 
     with pytest.raises(PDFIndexingError, match="No chunks created from text"):
@@ -114,8 +126,11 @@ def test_index_pdf_file_raises_on_dimension_mismatch(
 
     monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
     monkeypatch.setattr(
-        "app.services.pdf_indexing.split_text_into_chunks",
-        lambda text, chunk_size=500: ["chunk-1", "chunk-2"],
+        "app.services.pdf_indexing.chunk_pdf_with_metadata",
+        lambda pdf_path, chunk_size=500, source_name=None: [
+            {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
+            {"text": "chunk-2", "source": source_name or "dummy.pdf", "page": 2},
+        ],
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.EmbeddingService",

@@ -1,10 +1,11 @@
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
 from app.config import settings
 from app.services.embedding import EmbeddingError, EmbeddingService
-from app.services.pdf_chunking import read_pdf_text, split_text_into_chunks
+from app.services.pdf_chunking import chunk_pdf_with_metadata, read_pdf_text
 from app.services.vector_store import VectorStore, VectorStoreError
 
 
@@ -23,7 +24,7 @@ def _normalize_path_arg(path: str) -> str:
     return cleaned
 
 
-def _validate_embeddings(embeddings: np.ndarray, chunks: List[str]) -> int:
+def _validate_embeddings(embeddings: np.ndarray, chunks: List[Dict[str, Any]]) -> int:
     if embeddings.size == 0:
         raise PDFIndexingError("Embedding result is empty")
 
@@ -60,8 +61,13 @@ def index_pdf_file(
     if not text.strip():
         raise PDFIndexingError("No text extracted from PDF")
 
-    chunks = split_text_into_chunks(text, chunk_size=chunk_size)
-    if not chunks:
+    source_name = Path(cleaned_pdf_path).name
+    chunk_records = chunk_pdf_with_metadata(
+        pdf_path=cleaned_pdf_path,
+        chunk_size=chunk_size,
+        source_name=source_name,
+    )
+    if not chunk_records:
         raise PDFIndexingError("No chunks created from text")
 
     embedding_service = EmbeddingService(
@@ -69,8 +75,9 @@ def index_pdf_file(
     )
 
     try:
-        embeddings = embedding_service.embed_texts(chunks)
-        embedding_dim = _validate_embeddings(embeddings, chunks)
+        chunk_texts = [chunk["text"] for chunk in chunk_records]
+        embeddings = embedding_service.embed_texts(chunk_texts)
+        embedding_dim = _validate_embeddings(embeddings, chunk_records)
     except EmbeddingError as exc:
         raise PDFIndexingError(str(exc)) from exc
 
@@ -93,7 +100,7 @@ def index_pdf_file(
         )
 
     try:
-        vector_store.add_embeddings(embeddings, chunks)
+        vector_store.add_embeddings(embeddings, chunk_records)
         vector_store.save()
     except VectorStoreError as exc:
         raise PDFIndexingError(str(exc)) from exc
@@ -102,6 +109,6 @@ def index_pdf_file(
 
     return {
         "total_chars": len(text),
-        "chunks_created": len(chunks),
+        "chunks_created": len(chunk_records),
         "total_chunks_in_index": vector_store.get_total_chunks(),
     }

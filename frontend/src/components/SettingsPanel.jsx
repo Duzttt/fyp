@@ -48,7 +48,7 @@ export default function SettingsPanel() {
       await updateSettings({ provider, model, api_key: apiKey || undefined });
       setSaveStatus('success');
       setTimeout(() => setSaveStatus(null), 3000);
-    } catch (error) {
+    } catch {
       setSaveStatus('error');
     } finally {
       setIsSaving(false);

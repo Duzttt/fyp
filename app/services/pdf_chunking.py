@@ -1,6 +1,6 @@
 import re
 from pathlib import Path
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from pypdf import PdfReader
 
@@ -18,21 +18,32 @@ def _normalize_path_arg(path: str) -> str:
 
 def read_pdf_text(pdf_path: str) -> str:
     """Read all text from a PDF file."""
+    pages = read_pdf_pages(pdf_path)
+    return "\n".join([page["text"] for page in pages])
+
+
+def read_pdf_pages(pdf_path: str) -> List[Dict[str, Any]]:
+    """Read a PDF and return page-level text records with page number metadata."""
     cleaned_path = _normalize_path_arg(pdf_path)
     pdf_file = Path(cleaned_path)
     if not pdf_file.exists():
         raise FileNotFoundError(f"PDF file not found: {cleaned_path}")
 
     reader = PdfReader(str(pdf_file))
-    pages: List[str] = []
+    pages: List[Dict[str, Any]] = []
 
-    for page in reader.pages:
+    for page_idx, page in enumerate(reader.pages, start=1):
         page_text = page.extract_text() or ""
         cleaned = page_text.strip()
         if cleaned:
-            pages.append(cleaned)
+            pages.append(
+                {
+                    "page": page_idx,
+                    "text": cleaned,
+                }
+            )
 
-    return "\n".join(pages)
+    return pages
 
 
 def split_text_into_chunks(text: str, chunk_size: int = 500) -> List[str]:
@@ -100,6 +111,35 @@ def split_text_into_chunks(text: str, chunk_size: int = 500) -> List[str]:
 
     flush_current()
     return chunks
+
+
+def chunk_pdf_with_metadata(
+    pdf_path: str,
+    chunk_size: int = 500,
+    source_name: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Chunk a PDF while preserving source filename and page number metadata."""
+    cleaned_path = _normalize_path_arg(pdf_path)
+    pdf_file = Path(cleaned_path)
+    resolved_source = source_name or pdf_file.name
+    page_records = read_pdf_pages(cleaned_path)
+
+    chunk_records: List[Dict[str, Any]] = []
+    for page_record in page_records:
+        page_num = int(page_record["page"])
+        page_text = str(page_record["text"])
+        page_chunks = split_text_into_chunks(page_text, chunk_size=chunk_size)
+
+        for chunk in page_chunks:
+            chunk_records.append(
+                {
+                    "text": chunk,
+                    "source": resolved_source,
+                    "page": page_num,
+                }
+            )
+
+    return chunk_records
 
 
 def preview_pdf_chunks(

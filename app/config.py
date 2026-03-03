@@ -3,10 +3,16 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
+
     APP_NAME: str = "Lecture Note Q&A System"
     APP_VERSION: str = "1.0.0"
     
@@ -46,11 +52,6 @@ class Settings(BaseSettings):
 
         return value
     
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-
-
 def get_settings() -> Settings:
     settings = Settings()
     

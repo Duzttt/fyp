@@ -87,8 +87,17 @@ export default function QAChat() {
                           </p>
                           <div className="space-y-1 max-h-24 overflow-y-auto">
                             {msg.sources.map((source, sIdx) => (
-                              <div key={sIdx} className="text-xs text-slate-300 bg-slate-900/70 rounded p-1.5 line-clamp-2">
-                                {source}
+                              <div key={sIdx} className="text-xs text-slate-300 bg-slate-900/70 rounded p-1.5">
+                                {typeof source === 'string' ? (
+                                  <div className="line-clamp-2">{source}</div>
+                                ) : (
+                                  <div className="space-y-1">
+                                    <div className="text-slate-400">
+                                      {source.source || 'unknown'} · p.{source.page ?? 'N/A'} · d={Number(source.distance || 0).toFixed(4)}
+                                    </div>
+                                    <div className="line-clamp-2">{source.text || ''}</div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>

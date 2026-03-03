@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -33,21 +33,32 @@ class RAGPipeline:
             self.model = model or "anthropic/claude-3-haiku"
             self.base_url = settings.OPENROUTER_BASE_URL
 
-    def retrieve(self, query: str, top_k: int = 3) -> List[str]:
+    def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         query_embedding = self.embedding_service.embed_query(query)
-        sources, _ = self.vector_store.search(query_embedding, top_k=top_k)
-        return sources
+        return self.vector_store.search_with_metadata(query_embedding, top_k=top_k)
 
-    def generate_answer(self, query: str, context: List[str]) -> str:
+    def generate_answer(self, query: str, context: List[Dict[str, Any]]) -> str:
         if not context:
             return "No relevant information found in the uploaded documents."
 
         if not self.api_key:
             raise LLMError(f"{self.provider.upper()} API key not configured")
 
-        context_text = "\n\n".join([f"Source {i+1}:\n{source}" for i, source in enumerate(context)])
+        context_lines = []
+        for item in context:
+            source = item.get("source", "unknown")
+            page = item.get("page")
+            page_label = str(page) if page is not None else "unknown"
+            text = item.get("text", "")
+            rank = item.get("rank", "?")
+            context_lines.append(f"[S{rank}] file={source}, page={page_label}\n{text}")
+        context_text = "\n\n".join(context_lines)
 
-        prompt = f"""You are a helpful teaching assistant. Based on the following context from lecture notes, please answer the question.
+        prompt = f"""You are a helpful teaching assistant.
+Answer only using the provided sources.
+If the sources do not contain enough evidence, say so explicitly.
+When making claims, cite source tags like [S1], [S2].
+When possible, mention both file name and page number in your citations.
 
 Context:
 {context_text}
