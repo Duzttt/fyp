@@ -7,17 +7,17 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: '#0891B2',
-        secondary: '#22D3EE',
+        primary: '#f97316',      // warm orange accent
+        secondary: '#fb923c',
         cta: '#22C55E',
-        background: '#F8FAFC',
-        surface: '#FFFFFF',
-        text: '#164E63',
-        muted: '#64748B',
+        background: '#020617',   // near-black background
+        surface: '#0B1120',      // slightly lighter surface
+        text: '#E5E7EB',
+        muted: '#9CA3AF',
       },
       fontFamily: {
-        'heading': ['Poppins', 'sans-serif'],
-        'body': ['Open Sans', 'sans-serif'],
+        heading: ['Poppins', 'sans-serif'],
+        body: ['Open Sans', 'sans-serif'],
       },
     },
   },

@@ -2,8 +2,8 @@ import os
 from pathlib import Path
 from typing import Optional
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
-from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -33,6 +33,18 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_PROVIDER: str = "gemini"
+
+    @field_validator("DEBUG", mode="before")
+    @classmethod
+    def parse_debug_flag(cls, value):
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"release", "prod", "production", "false", "0", "off"}:
+                return False
+            if lowered in {"debug", "dev", "development", "true", "1", "on"}:
+                return True
+
+        return value
     
     class Config:
         env_file = ".env"

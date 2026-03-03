@@ -5,11 +5,11 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #0891B2;
-  --color-secondary: #22D3EE;
+  --color-primary: #f97316;
+  --color-secondary: #fb923c;
   --color-cta: #22C55E;
-  --color-background: #ECFEFF;
-  --color-text: #164E63;
+  --color-background: #020617;
+  --color-text: #E5E7EB;
 }
 
 * {
@@ -19,13 +19,18 @@
 body {
   margin: 0;
   font-family: 'Open Sans', sans-serif;
-  background-color: #F8FAFC;
+  background-color: #020617;
   color: var(--color-text);
   min-width: 320px;
   min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: 'Poppins', sans-serif;
 }
 
@@ -53,3 +58,4 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
 }
+

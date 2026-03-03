@@ -1,7 +1,10 @@
 # AGENTS.md - Development Guidelines
 
 ## Project Overview
-This is an AI-based Lecture Note Question Answering System using Retrieval-Augmented Generation (RAG). The backend is built with FastAPI and uses sentence-transformers for embeddings, FAISS for vector storage, and integrates with LLM APIs via OpenRouter.
+This is an AI-based Lecture Note Question Answering System using
+Retrieval-Augmented Generation (RAG). The backend is built with Django and
+uses sentence-transformers for embeddings, FAISS for vector storage, and
+integrates with LLM APIs via Gemini/OpenRouter.
 
 ## Build / Lint / Test Commands
 
@@ -12,7 +15,7 @@ pip install -r requirements.txt
 
 ### Running the Application
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+python manage.py runserver 0.0.0.0:8000
 ```
 
 ### Running Tests
@@ -20,21 +23,21 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 pytest tests/                          # Run all tests
 pytest tests/test_name.py              # Run specific test file
 pytest tests/test_name.py::test_func   # Run single test
-pytest -v                             # Verbose output
-pytest --tb=short                     # Short traceback format
+pytest -v                              # Verbose output
+pytest --tb=short                      # Short traceback format
 ```
 
 ### Linting & Code Quality
 ```bash
-ruff check app/                       # Lint the app directory
-ruff check app/ --fix                 # Auto-fix linting issues
-black app/                            # Format code
-mypy app/                            # Type checking
+ruff check app/ django_app/ django_backend/ manage.py
+ruff check app/ django_app/ django_backend/ manage.py --fix
+black app/ django_app/ django_backend/ manage.py
+mypy app/ django_app/ django_backend/
 ```
 
 ### Combined Quality Check
 ```bash
-ruff check app/ && black --check app/ && mypy app/
+ruff check app/ django_app/ django_backend/ manage.py && black --check app/ django_app/ django_backend/ manage.py && mypy app/ django_app/ django_backend/
 ```
 
 ## Code Style Guidelines
@@ -48,7 +51,7 @@ ruff check app/ && black --check app/ && mypy app/
 - Line length: 88 characters (Black default)
 - Use 4 spaces for indentation (no tabs)
 - Add trailing commas in multi-line constructs
-- Use f-strings for string formatting (no .format() or % formatting)
+- Use f-strings for string formatting (no `.format()` or `%` formatting)
 
 ### Types
 - Always use type hints for function arguments and return values
@@ -68,31 +71,27 @@ ruff check app/ && black --check app/ && mypy app/
 - Always catch specific exceptions, never bare `except:`
 - Log errors with appropriate severity levels
 - Return meaningful HTTP status codes and error messages in API responses
-- Use FastAPI's HTTPException for API-level errors
+- Use consistent JSON error payloads with a `detail` field
 
 ### Architecture Patterns
-- Use dependency injection via FastAPI's Depends() for services
-- Separate business logic from API routes (services layer)
-- Use Pydantic models for request/response validation
-- Keep configuration in config.py (no hardcoded values)
-- Avoid global variables; use dependency injection instead
+- Keep business logic in `app/services` and call it from Django views
+- Keep request parsing and HTTP responses in Django views
+- Use Pydantic models where strict validation is needed
+- Keep configuration in `app/config.py` (no hardcoded values)
+- Avoid global mutable state
 
 ### Module Structure
-```
+```text
+django_backend/       # Django project settings/urls/asgi/wsgi
+django_app/           # Django API views
 app/
-├── main.py           # FastAPI app factory, event handlers, middleware
 ├── config.py         # Settings and configuration
-├── api/              # API route handlers
-│   ├── upload.py     # POST /api/upload endpoint
-│   └── ask.py        # POST /api/ask endpoint
-├── services/         # Business logic (dependency injectable)
-│   ├── pdf_loader.py     # PDF text extraction
-│   ├── chunker.py        # Text chunking
-│   ├── embedding.py      # Sentence embeddings
-│   ├── vector_store.py   # FAISS vector storage
-│   └── rag_pipeline.py   # RAG orchestration
-└── models/           # Pydantic schemas
-    └── schemas.py    # Request/response models
+└── services/         # Business logic
+    ├── pdf_loader.py     # PDF text extraction
+    ├── chunker.py        # Text chunking
+    ├── embedding.py      # Sentence embeddings
+    ├── vector_store.py   # FAISS vector storage
+    └── rag_pipeline.py   # RAG orchestration
 ```
 
 ### Testing Guidelines
@@ -108,10 +107,9 @@ app/
 - Return JSON responses with appropriate status codes
 - Include source chunks in ask endpoint response for transparency
 - Validate file uploads (PDF only, size limits)
-- Handle async operations properly with asyncio
 
 ### Future Extensibility
-- Prepare for OCR extension in pdf_loader (text-based PDFs first)
-- Make LLM provider configurable (currently OpenRouter)
+- Prepare for OCR extension in `pdf_loader` (text-based PDFs first)
+- Keep LLM provider/model configurable
 - Consider chunking strategy as configurable parameter
 - Design vector store to support multiple document indices
