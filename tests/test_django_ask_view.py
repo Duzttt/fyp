@@ -18,9 +18,17 @@ def client() -> Client:
 def test_ask_view_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.retrieve_with_faiss",
-        lambda query, top_k=3: [
-            {"text": "趋势包括 ubiquity...", "source": "Intelligent_Agent.pdf", "page": 7},
-            {"text": "趋势包括 interconnection...", "source": "Intelligent_Agent.pdf", "page": 8},
+        lambda query, top_k=3, source_filter=None: [
+            {
+                "text": "趋势包括 ubiquity...",
+                "source": "Intelligent_Agent.pdf",
+                "page": 7,
+            },
+            {
+                "text": "趋势包括 interconnection...",
+                "source": "Intelligent_Agent.pdf",
+                "page": 8,
+            },
         ],
     )
     monkeypatch.setattr(
@@ -42,6 +50,7 @@ def test_ask_view_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     data = response.json()
     assert data["answer"].startswith("根据《Intelligent_Agent.pdf》第7页")
     assert data["sources"] == ["Intelligent_Agent.pdf"]
+    assert len(data["source_snippets"]) == 2
 
 
 def test_ask_view_missing_query(client: Client):
@@ -57,7 +66,9 @@ def test_ask_view_missing_query(client: Client):
 def test_ask_view_timeout(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.retrieve_with_faiss",
-        lambda query, top_k=3: [{"text": "chunk", "source": "a.pdf", "page": 1}],
+        lambda query, top_k=3, source_filter=None: [
+            {"text": "chunk", "source": "a.pdf", "page": 1}
+        ],
     )
     monkeypatch.setattr(
         "django_app.views.build_context_from_sources",

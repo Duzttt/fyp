@@ -24,6 +24,20 @@ ROOT_URLCONF = "django_backend.urls"
 WSGI_APPLICATION = "django_backend.wsgi.application"
 ASGI_APPLICATION = "django_backend.asgi.application"
 
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "django_app" / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.template.context_processors.csrf",
+            ],
+        },
+    }
+]
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",

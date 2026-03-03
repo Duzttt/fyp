@@ -1,7 +1,14 @@
+from pathlib import Path
+from typing import Optional
+
 import numpy as np
 import pytest
 
-from app.services.pdf_indexing import PDFIndexingError, index_pdf_file
+from app.services.pdf_indexing import (
+    PDFIndexingError,
+    index_pdf_directory,
+    index_pdf_file,
+)
 
 
 class _DummyEmbeddingService:
@@ -46,7 +53,9 @@ class _DummyVectorStore:
 
 
 def test_index_pdf_file_success(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
+    monkeypatch.setattr(
+        "app.services.pdf_indexing.read_pdf_text", lambda _: "mock text"
+    )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
         lambda pdf_path, chunk_size=500, source_name=None: [
@@ -106,7 +115,9 @@ def test_index_pdf_file_strips_pdf_path(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_index_pdf_file_raises_on_empty_chunks(monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
+    monkeypatch.setattr(
+        "app.services.pdf_indexing.read_pdf_text", lambda _: "mock text"
+    )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
         lambda pdf_path, chunk_size=500, source_name=None: [],
@@ -124,7 +135,9 @@ def test_index_pdf_file_raises_on_dimension_mismatch(
             super().__init__(index_path=index_path, embedding_dim=embedding_dim)
             self.index = _DummyIndex(d=999, ntotal=1)
 
-    monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", lambda _: "mock text")
+    monkeypatch.setattr(
+        "app.services.pdf_indexing.read_pdf_text", lambda _: "mock text"
+    )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
         lambda pdf_path, chunk_size=500, source_name=None: [
@@ -143,3 +156,54 @@ def test_index_pdf_file_raises_on_dimension_mismatch(
 
     with pytest.raises(PDFIndexingError, match="Embedding dimension mismatch"):
         index_pdf_file("dummy.pdf", chunk_size=500)
+
+
+def test_index_pdf_directory_full_rebuild(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    (tmp_path / "b.pdf").write_bytes(b"%PDF-1.4")
+    (tmp_path / "a.pdf").write_bytes(b"%PDF-1.4")
+
+    calls = []
+
+    def _fake_index_pdf_file(
+        pdf_path: str,
+        chunk_size: int = 500,
+        index_path: Optional[str] = None,
+        model_name: Optional[str] = None,
+        clear_existing: bool = False,
+    ):
+        calls.append(
+            (Path(pdf_path).name, clear_existing, chunk_size, index_path, model_name)
+        )
+        return {
+            "total_chars": 10,
+            "chunks_created": 2,
+            "total_chunks_in_index": len(calls) * 2,
+        }
+
+    monkeypatch.setattr(
+        "app.services.pdf_indexing.index_pdf_file", _fake_index_pdf_file
+    )
+
+    result = index_pdf_directory(
+        data_source_dir=str(tmp_path),
+        chunk_size=256,
+        index_path="data/faiss_index",
+        model_name="test-model",
+        clear_existing=True,
+    )
+
+    assert calls[0][:2] == ("a.pdf", True)
+    assert calls[1][:2] == ("b.pdf", False)
+    assert calls[0][2:] == (256, "data/faiss_index", "test-model")
+    assert calls[1][2:] == (256, "data/faiss_index", "test-model")
+    assert result["processed_pdfs"] == 2
+    assert result["chunks_created"] == 4
+    assert result["total_chunks_in_index"] == 4
+
+
+def test_index_pdf_directory_raises_on_empty_dir(tmp_path: Path):
+    with pytest.raises(PDFIndexingError, match="No PDF files found"):
+        index_pdf_directory(str(tmp_path))

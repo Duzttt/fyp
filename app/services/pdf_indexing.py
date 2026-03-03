@@ -15,11 +15,7 @@ class PDFIndexingError(Exception):
 
 def _normalize_path_arg(path: str) -> str:
     cleaned = str(path).strip()
-    if (
-        len(cleaned) >= 2
-        and cleaned[0] == cleaned[-1]
-        and cleaned[0] in {"'", '"'}
-    ):
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {"'", '"'}:
         cleaned = cleaned[1:-1].strip()
     return cleaned
 
@@ -111,4 +107,55 @@ def index_pdf_file(
         "total_chars": len(text),
         "chunks_created": len(chunk_records),
         "total_chunks_in_index": vector_store.get_total_chunks(),
+    }
+
+
+def index_pdf_directory(
+    data_source_dir: str,
+    chunk_size: int = 500,
+    index_path: Optional[str] = None,
+    model_name: Optional[str] = None,
+    clear_existing: bool = True,
+) -> Dict[str, int]:
+    """
+    Index all PDF files in a directory.
+
+    For "full rebuild", use clear_existing=True so the first PDF resets the index.
+    """
+    cleaned_dir_path = _normalize_path_arg(data_source_dir)
+    source_dir = Path(cleaned_dir_path)
+    if not source_dir.exists() or not source_dir.is_dir():
+        raise PDFIndexingError(f"Data source directory not found: {cleaned_dir_path}")
+
+    pdf_files = sorted(
+        [
+            item
+            for item in source_dir.iterdir()
+            if item.is_file() and item.suffix.lower() == ".pdf"
+        ]
+    )
+    if not pdf_files:
+        raise PDFIndexingError(f"No PDF files found in data source: {cleaned_dir_path}")
+
+    total_chars = 0
+    total_chunks_created = 0
+    total_chunks_in_index = 0
+
+    for idx, pdf_file in enumerate(pdf_files):
+        stats = index_pdf_file(
+            pdf_path=str(pdf_file),
+            chunk_size=chunk_size,
+            index_path=index_path,
+            model_name=model_name,
+            clear_existing=clear_existing and idx == 0,
+        )
+        total_chars += stats["total_chars"]
+        total_chunks_created += stats["chunks_created"]
+        total_chunks_in_index = stats["total_chunks_in_index"]
+
+    return {
+        "processed_pdfs": len(pdf_files),
+        "total_chars": total_chars,
+        "chunks_created": total_chunks_created,
+        "total_chunks_in_index": total_chunks_in_index,
     }

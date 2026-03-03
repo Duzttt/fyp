@@ -50,10 +50,7 @@ class VectorStore:
                 loaded_chunks = np.load(chunks_file, allow_pickle=True).tolist()
                 if not isinstance(loaded_chunks, list):
                     loaded_chunks = [loaded_chunks]
-                self.chunks = [
-                    self._normalize_chunk(chunk)
-                    for chunk in loaded_chunks
-                ]
+                self.chunks = [self._normalize_chunk(chunk) for chunk in loaded_chunks]
             except Exception as e:
                 raise VectorStoreError(f"Failed to load index: {str(e)}")
         else:
@@ -79,7 +76,9 @@ class VectorStore:
             return []
 
         query_vector = np.array([query_embedding]).astype("float32")
-        distances, indices = self.index.search(query_vector, min(top_k, self.index.ntotal))
+        distances, indices = self.index.search(
+            query_vector, min(top_k, self.index.ntotal)
+        )
 
         results: List[Dict[str, Any]] = []
         for rank, idx in enumerate(indices[0], start=1):
@@ -102,7 +101,9 @@ class VectorStore:
 
         return results
 
-    def search(self, query_embedding: np.ndarray, top_k: int = 3) -> Tuple[List[str], List[float]]:
+    def search(
+        self, query_embedding: np.ndarray, top_k: int = 3
+    ) -> Tuple[List[str], List[float]]:
         grounded_results = self.search_with_metadata(
             query_embedding=query_embedding,
             top_k=top_k,
@@ -125,7 +126,10 @@ class VectorStore:
 
     def clear(self) -> None:
         if self.index is not None:
-            self.index.reset()
+            if self.index.d != self.embedding_dim:
+                self.index = faiss.IndexFlatL2(self.embedding_dim)
+            else:
+                self.index.reset()
         self.chunks = []
 
     def get_total_chunks(self) -> int:

@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Notebook Style Layout</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-main: #111827;
+        --bg-panel: #111827;
+        --bg-panel-soft: #020617;
+        --bg-chip: #1f2937;
+        --border-subtle: #1f2937;
+        --border-strong: #374151;
+        --text-main: #e5e7eb;
+        --text-muted: #9ca3af;
+        --accent: #6366f1;
+        --accent-soft: #312e81;
+        --radius-lg: 14px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top, #1f2937 0, #020617 60%);
+        color: var(--text-main);
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+      }
+
+      .app-shell {
+        width: min(1280px, 100vw);
+        height: min(720px, 100vh - 40px);
+        background: rgba(15, 23, 42, 0.95);
+        border-radius: 20px;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        backdrop-filter: blur(16px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.8);
+      }
+
+      /* 顶栏 */
+      .topbar {
+        height: 56px;
+        padding: 0 16px 0 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(55, 65, 81, 0.8);
+        background: linear-gradient(135deg, #020617, #111827);
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo-dot {
+        width: 26px;
+        height: 26px;
+        border-radius: 10px;
+        background: radial-gradient(circle at 30% 20%, #a855f7, #6366f1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 0 0 1px rgba(129, 140, 248, 0.35);
+      }
+
+      .logo-dot span {
+        width: 12px;
+        height: 12px;
+        border-radius: 4px;
+        background: rgba(15, 23, 42, 0.95);
+      }
+
+      .topbar-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .topbar-title-main {
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .topbar-title-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .topbar-center {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pill-btn {
+        padding: 6px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(75, 85, 99, 0.9);
+        font-size: 12px;
+        background: radial-gradient(circle at top left, #020617, #111827);
+        color: var(--text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .pill-btn.primary {
+        background: linear-gradient(135deg, var(--accent), #a855f7);
+        border-color: rgba(129, 140, 248, 0.9);
+        color: #f9fafb;
+      }
+
+      .pill-btn span.icon {
+        font-size: 13px;
+      }
+
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon-btn {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.95);
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 2px solid #4ade80;
+        background: linear-gradient(135deg, #06b6d4, #a855f7);
+      }
+
+      /* 主体区域：左中右三栏 */
+      .main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1.2fr) 270px;
+        gap: 8px;
+        padding: 10px 10px 14px;
+        background: radial-gradient(circle at top, #020617 0, #020617 45%, #000 90%);
+      }
+
+      .panel {
+        background: var(--bg-panel-soft);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-subtle);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* 左侧 Sources 栏 */
+      .panel-header {
+        padding: 10px 12px;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+
+      .panel-header-title {
+        font-weight: 600;
+      }
+
+      .panel-header-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .sources-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px dashed rgba(75, 85, 99, 0.9);
+        font-size: 11px;
+        color: var(--text-main);
+        cursor: pointer;
+      }
+
+      .sources-body {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .sources-search {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: #020617;
+        border: 1px solid rgba(55, 65, 81, 0.8);
+      }
+
+      .sources-search input {
+        flex: 1;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 12px;
+      }
+
+      .chip-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .chip {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--bg-chip);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        font-size: 11px;
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .sources-empty {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.4);
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+
+      /* 中间 Chat 区 */
+      .chat-panel {
+        position: relative;
+      }
+
+      .chat-header {
+        padding: 10px 14px;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .chat-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .chat-title-main {
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .chat-title-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .chat-body {
+        flex: 1;
+        padding: 14px;
+        overflow-y: auto;
+        position: relative;
+      }
+
+      .chat-empty-card {
+        margin: 0 auto;
+        margin-top: 10%;
+        max-width: 260px;
+        text-align: center;
+        padding: 16px 14px 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(55, 65, 81, 0.8);
+        background: radial-gradient(circle at top, #020617, #020617);
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.8);
+      }
+
+      .chat-empty-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 16px;
+        margin: 0 auto 10px;
+        background: radial-gradient(circle at 20% 0, #a855f7, #22c55e);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #020617;
+        font-size: 20px;
+      }
+
+      .chat-empty-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .chat-empty-desc {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .chat-input-wrap {
+        padding: 10px 14px 12px;
+        border-top: 1px solid rgba(31, 41, 55, 0.9);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .chat-input {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: #020617;
+        color: var(--text-main);
+        font-size: 13px;
+        outline: none;
+      }
+
+      .chat-send-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), #a855f7);
+        color: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      /* 右侧 Studio 栏 */
+      .studio-body {
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 12px;
+      }
+
+      .studio-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .studio-card {
+        padding: 9px 8px;
+        border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        background: #020617;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        cursor: pointer;
+      }
+
+      .studio-card span.title {
+        font-size: 11px;
+      }
+
+      .studio-card span.sub {
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .studio-footer {
+        margin-top: 10px;
+        padding: 8px 8px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.6);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      @media (max-width: 1024px) {
+        .app-shell {
+          width: 100vw;
+          height: 100vh;
+          border-radius: 0;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .panel-left,
+        .panel-right {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- 顶栏 -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="logo-dot"><span></span></div>
+          <div class="topbar-title">
+            <div class="topbar-title-main">Untitled notebook</div>
+            <div class="topbar-title-sub">0 sources</div>
+          </div>
+        </div>
+        <div class="topbar-center">
+          <button class="pill-btn primary">
+            <span class="icon">＋</span>
+            Create notebook
+          </button>
+          <button class="pill-btn">Analytics</button>
+          <button class="pill-btn">Share</button>
+        </div>
+        <div class="topbar-right">
+          <button class="icon-btn">⚙</button>
+          <div class="avatar"></div>
+        </div>
+      </div>
+
+      <!-- 主体区域：左中右 -->
+      <div class="main">
+        <!-- 左侧 Sources -->
+        <aside class="panel panel-left">
+          <div class="panel-header">
+            <div>
+              <div class="panel-header-title">Sources</div>
+              <div class="panel-header-sub">Add PDFs, links, notes…</div>
+            </div>
+            <button class="sources-add">
+              <span>＋</span>
+              <span>Add sources</span>
+            </button>
+          </div>
+          <div class="sources-body">
+            <div class="sources-search">
+              <span style="font-size: 12px; color: var(--text-muted)">🔍</span>
+              <input
+                placeholder="Search sources"
+                aria-label="Search sources"
+              />
+            </div>
+            <div class="chip-row">
+              <div class="chip">
+                <span>Web</span>
+              </div>
+              <div class="chip">
+                <span>Fast Research</span>
+              </div>
+            </div>
+            <div class="sources-empty">
+              Saved sources will appear here. Click “Add sources” to upload PDFs,
+              links, or notes.
+            </div>
+          </div>
+        </aside>
+
+        <!-- 中间 Chat -->
+        <section class="panel chat-panel">
+          <div class="chat-header">
+            <div class="chat-title">
+              <div class="chat-title-main">Chat</div>
+              <div class="chat-title-sub">
+                Ask questions about your notebook
+              </div>
+            </div>
+          </div>
+          <div class="chat-body">
+            <div class="chat-empty-card">
+              <div class="chat-empty-icon">💬</div>
+              <div class="chat-empty-title">Untitled notebook</div>
+              <div class="chat-empty-desc">
+                Start chatting about your sources. Add PDFs or links on the left
+                to get more grounded answers.
+              </div>
+            </div>
+          </div>
+          <div class="chat-input-wrap">
+            <input
+              class="chat-input"
+              placeholder="Start typing..."
+              aria-label="Chat input"
+            />
+            <button class="chat-send-btn">➤</button>
+          </div>
+        </section>
+
+        <!-- 右侧 Studio -->
+        <aside class="panel panel-right">
+          <div class="panel-header">
+            <div class="panel-header-title">Studio</div>
+          </div>
+          <div class="studio-body">
+            <div class="studio-grid">
+              <div class="studio-card">
+                <span class="title">Audio Overview</span>
+                <span class="sub">Generate a spoken summary</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Slide Deck</span>
+                <span class="sub">Turn notes into slides</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Study Guide</span>
+                <span class="sub">Key concepts & questions</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Data Table</span>
+                <span class="sub">Structure information</span>
+              </div>
+            </div>
+            <div class="studio-footer">
+              Studio output will appear here. After adding sources, click a
+              Studio tool to generate overviews, slides, or study material.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </body>
+</html>

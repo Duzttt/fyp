@@ -4,6 +4,7 @@ An end-to-end Retrieval-Augmented Generation (RAG) application for asking
 questions over lecture notes in PDF format.
 
 The system lets you:
+
 - Upload lecture PDFs
 - Parse and split content into chunks (LangChain-powered)
 - Embed chunks into vectors
@@ -13,17 +14,19 @@ The system lets you:
 ## Architecture Overview
 
 ### Backend pipeline
+
 1. `POST /api/upload` receives a PDF.
 2. `PDFLoader` parses the PDF text using LangChain `PyPDFLoader`.
 3. `TextChunker` splits text with LangChain
-   `RecursiveCharacterTextSplitter`.
+  `RecursiveCharacterTextSplitter`.
 4. `EmbeddingService` creates embeddings with
-   `sentence-transformers/all-MiniLM-L6-v2`.
+  `sentence-transformers/all-MiniLM-L6-v2`.
 5. `VectorStore` stores vectors in a FAISS index (`data/faiss_index`).
 6. `POST /api/ask` retrieves top chunks and sends context + question to the
-   configured LLM provider.
+  configured LLM provider.
 
 ### Frontend flow
+
 - React + Vite UI for file upload, chat, and provider settings.
 - Calls backend at `VITE_API_BASE_URL` (defaults to `http://localhost:8000`).
 
@@ -106,8 +109,10 @@ CHUNK_OVERLAP=50
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
 EMBEDDING_DIM=384
 FAISS_INDEX_PATH=data/faiss_index
-DOCUMENTS_PATH=data/documents
+DOCUMENTS_PATH=media/data_source
 MAX_UPLOAD_SIZE=10485760
+UPLOAD_INDEXING_STRATEGY=full_rebuild
+UPLOAD_INDEXING_ASYNC=true
 
 # LLM provider config
 LLM_PROVIDER=gemini
@@ -120,6 +125,7 @@ OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 ```
 
 Notes:
+
 - `DEBUG` accepts `true/false`, and also `dev/debug` or `release/prod`.
 - You can also set provider/model/API key from the UI settings panel.
 
@@ -130,6 +136,7 @@ python manage.py runserver 0.0.0.0:8000
 ```
 
 Backend endpoints:
+
 - API root: `http://localhost:8000/`
 - Health: `http://localhost:8000/health`
 
@@ -152,21 +159,43 @@ VITE_API_BASE_URL=http://localhost:8000
 
 ### `POST /api/upload`
 
-Upload a PDF and index it for retrieval.
+Upload a PDF, save it to disk, and trigger indexing.
 
 - Content type: `multipart/form-data`
 - Field: `file` (PDF only, max 10MB by default)
+- Default mode: full rebuild in background (`UPLOAD_INDEXING_STRATEGY=full_rebuild`)
 
 Success response:
 
 ```json
 {
   "success": true,
-  "message": "PDF uploaded and processed successfully",
+  "message": "File uploaded. Full reindex is running in background.",
   "filename": "uuid_original.pdf",
-  "chunks_created": 42
+  "saved_path": "/abs/path/to/media/data_source/uuid_original.pdf",
+  "indexing_mode": "full_rebuild",
+  "indexing_status": "queued"
 }
 ```
+
+Synchronous mode response (when `UPLOAD_INDEXING_ASYNC=false`):
+
+```json
+{
+  "success": true,
+  "message": "PDF uploaded and indexed successfully",
+  "filename": "uuid_original.pdf",
+  "saved_path": "/abs/path/to/media/data_source/uuid_original.pdf",
+  "indexing_mode": "full_rebuild",
+  "indexing_status": "completed",
+  "chunks_created": 42,
+  "total_chunks_in_index": 420
+}
+```
+
+### `GET /api/upload/status`
+
+Check background indexing progress.
 
 ### `POST /api/ask`
 
@@ -236,21 +265,22 @@ ruff check app/ django_app/ django_backend/ manage.py && black --check app/ djan
 
 ## Data and Persistence
 
-- Uploaded files are saved to `data/documents`.
+- Uploaded files are saved to `media/data_source`.
 - Vector index/chunks are stored in `data/faiss_index`:
   - `index.faiss`
   - `chunks.npy`
-- Re-uploading adds more chunks to the same index unless you clear it.
+- Default strategy is full rebuild on each upload (stable early-stage behavior).
+- Optional `append` strategy processes only the new file.
 
 ## Notes and Limitations
 
 - Current ingestion expects text-based PDFs.
 - If LangChain PDF dependencies are missing, upload parsing will fail with a
-  clear install message.
+clear install message.
 - Retrieval currently uses top-`k` cosine-like nearest vectors in FAISS
-  (`IndexFlatL2` distance).
+(`IndexFlatL2` distance).
 - `ask` uses provider/model/API key from persisted `/api/settings` when present,
-  and falls back to environment variables.
+and falls back to environment variables.
 
 ## License
 

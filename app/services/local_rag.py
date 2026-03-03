@@ -16,7 +16,9 @@ class LocalRAGError(Exception):
     pass
 
 
-def retrieve_with_faiss(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
+def retrieve_with_faiss(
+    query: str, top_k: int = 3, source_filter: Optional[List[str]] = None
+) -> List[Dict[str, Any]]:
     if not query.strip():
         raise LocalRAGError("Query cannot be empty")
 
@@ -28,7 +30,21 @@ def retrieve_with_faiss(query: str, top_k: int = 3) -> List[Dict[str, Any]]:
 
     try:
         query_embedding = embedding_service.embed_query(query)
-        return vector_store.search_with_metadata(query_embedding, top_k=top_k)
+        # If filtering is needed, retrieve more candidates and filter them
+        search_k = top_k * 10 if source_filter else top_k
+        results = vector_store.search_with_metadata(query_embedding, top_k=search_k)
+
+        if source_filter:
+            # Case-insensitive partial match to handle UUID prefixes
+            target_sources = [s.lower() for s in source_filter]
+            filtered = [
+                r
+                for r in results
+                if any(ts in str(r.get("source", "")).lower() for ts in target_sources)
+            ]
+            return filtered[:top_k]
+
+        return results
     except EmbeddingError as exc:
         raise LocalRAGError(str(exc)) from exc
     except VectorStoreError as exc:

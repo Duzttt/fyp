@@ -1,139 +1,129 @@
-import { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { uploadPDF } from '../services/api';
+import { Plus, Upload, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { useCallback, useState } from 'react';
+import { useDropzone } from 'react-dropzone';
+import { uploadFile } from '../services/api';
 
-export default function PDFUpload({ onUploadSuccess }) {
-  const [isDragging, setIsDragging] = useState(false);
+export default function PDFUpload({ onUploadAccepted, onUploadSuccess }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null);
-  const [error, setError] = useState(null);
-  const fileInputRef = useRef(null);
+  const [uploadStatus, setUploadStatus] = useState(null); // 'idle' | 'uploading' | 'success' | 'error'
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleDragOver = (e) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
+  const onDrop = useCallback(
+    async (acceptedFiles) => {
+      const file = acceptedFiles[0];
+      if (!file) return;
 
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  const handleDrop = async (e) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      await handleFileUpload(files[0]);
-    }
-  };
-
-  const handleFileSelect = async (e) => {
-    const files = e.target.files;
-    if (files.length > 0) {
-      await handleFileUpload(files[0]);
-    }
-  };
-
-  const handleFileUpload = async (file) => {
-    if (!file.type.includes('pdf')) {
-      setError('Please upload a PDF file');
-      setUploadStatus(null);
-      return;
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
-      setUploadStatus(null);
-      return;
-    }
-
-    setIsUploading(true);
-    setError(null);
-    setUploadStatus(null);
-
-    try {
-      const result = await uploadPDF(file);
-      setUploadStatus(result);
-      if (onUploadSuccess) {
-        onUploadSuccess(result);
+      setIsUploading(true);
+      setUploadStatus('uploading');
+      
+      if (onUploadAccepted) {
+        onUploadAccepted({ filename: file.name });
       }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
+
+      try {
+        const result = await uploadFile(file);
+        setUploadStatus('success');
+        if (onUploadSuccess) {
+          onUploadSuccess(result);
+        }
+        // Auto close after success
+        setTimeout(() => {
+          setIsOpen(false);
+          setUploadStatus(null);
+        }, 1500);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        setUploadStatus('error');
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [onUploadAccepted, onUploadSuccess]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'application/pdf': ['.pdf'] },
+    multiple: false,
+    disabled: isUploading,
+  });
 
   return (
-    <div className="w-full">
-      <div
-        className={`
-          border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer
-          ${isDragging 
-            ? 'border-primary bg-primary/10' 
-            : 'border-slate-700 hover:border-primary/80 hover:bg-slate-900/60'
-          }
-          ${isUploading ? 'opacity-50 pointer-events-none' : ''}
-        `}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
+    <>
+      <button 
+        onClick={() => setIsOpen(true)}
+        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-dashed border-gray-600 text-[11px] text-gray-200 hover:border-indigo-500 hover:text-indigo-400 transition-all cursor-pointer"
       >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf"
-          onChange={handleFileSelect}
-          className="hidden"
-        />
+        <Plus className="w-3 h-3" />
+        <span>Add sources</span>
+      </button>
 
-        <div className="flex flex-col items-center gap-3">
-          <div className={`
-            w-12 h-12 rounded-xl flex items-center justify-center
-            ${isDragging ? 'bg-primary text-white' : 'bg-slate-900 text-primary'}
-          `}>
-            {isUploading ? (
-              <Loader2 className="w-6 h-6 animate-spin" />
-            ) : (
-              <Upload className="w-6 h-6" />
-            )}
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#020617] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-200">Upload Source</h3>
+              <button 
+                onClick={() => !isUploading && setIsOpen(false)}
+                className="p-1 text-gray-500 hover:text-white transition-colors disabled:opacity-30"
+                disabled={isUploading}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <div
+                {...getRootProps()}
+                className={`
+                  border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center transition-all cursor-pointer
+                  ${isDragActive ? 'border-indigo-500 bg-indigo-500/5' : 'border-gray-800 bg-gray-900/30'}
+                  ${isUploading ? 'opacity-50 cursor-not-allowed' : 'hover:border-gray-700 hover:bg-gray-900/50'}
+                `}
+              >
+                <input {...getInputProps()} />
+                
+                {uploadStatus === 'uploading' ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    <p className="text-sm text-gray-300">Processing document...</p>
+                  </div>
+                ) : uploadStatus === 'success' ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+                    <p className="text-sm text-gray-300">Upload successful!</p>
+                  </div>
+                ) : uploadStatus === 'error' ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <X className="w-8 h-8 text-red-500" />
+                    <p className="text-sm text-gray-300">Something went wrong. Try again.</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 mb-4">
+                      <Upload className="w-6 h-6" />
+                    </div>
+                    <p className="text-sm font-medium text-gray-200 mb-1">
+                      {isDragActive ? 'Drop PDF here' : 'Click or drag PDF to upload'}
+                    </p>
+                    <p className="text-xs text-gray-500">Only PDF files supported (Max 20MB)</p>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-900/50 border-t border-gray-800 flex justify-end">
+              <button
+                onClick={() => setIsOpen(false)}
+                disabled={isUploading}
+                className="px-4 py-2 text-xs font-medium text-gray-400 hover:text-white disabled:opacity-30"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-
-          <div>
-            <p className="font-medium text-slate-100">
-              {isUploading ? 'Uploading...' : 'Drop PDF here or click to browse'}
-            </p>
-            <p className="text-sm text-slate-400 mt-1">
-              Maximum file size: 10MB
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-slate-400">
-            <FileText className="w-4 h-4 text-slate-400" />
-            <span>PDF only</span>
-          </div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="mt-4 p-3 bg-red-900/40 border border-red-500/60 rounded-lg flex items-center gap-2 text-sm text-red-200">
-          <XCircle className="w-4 h-4 flex-shrink-0" />
-          <span>{error}</span>
         </div>
       )}
-
-      {uploadStatus && (
-        <div className="mt-4 p-3 bg-emerald-900/40 border border-emerald-500/60 rounded-lg flex items-center gap-2 text-sm text-emerald-200">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          <div>
-            <span className="font-medium">{uploadStatus.message}</span>
-            {uploadStatus.chunks_created && (
-              <span className="ml-2 text-emerald-300">({uploadStatus.chunks_created} chunks)</span>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   );
 }

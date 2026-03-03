@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, Check, XCircle, Loader2, X } from 'lucide-react';
+import { Settings, Save, Check, XCircle, Loader2, X, ShieldCheck, Key } from 'lucide-react';
 import { getSettings, updateSettings } from '../services/api';
 
 const LLM_PROVIDERS = [
@@ -61,96 +61,113 @@ export default function SettingsPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 w-12 h-12 bg-primary text-white rounded-lg shadow-lg hover:bg-primary/90 transition-colors flex items-center justify-center cursor-pointer z-40"
+        className="fixed bottom-6 right-6 w-10 h-10 bg-[#1f2937] border border-gray-700/50 text-gray-400 rounded-full shadow-2xl hover:text-white hover:border-indigo-500/50 transition-all flex items-center justify-center cursor-pointer z-40 group"
         title="Settings"
       >
-        <Settings className="w-5 h-5" />
+        <Settings className="w-4 h-4 group-hover:rotate-45 transition-transform duration-300" />
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-surface rounded-lg shadow-xl w-full max-w-md">
-        <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="font-heading font-semibold text-lg text-text">Settings</h2>
-          <button onClick={() => setIsOpen(false)} className="text-muted hover:text-text cursor-pointer">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+      <div className="bg-[#020617] border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between bg-gradient-to-r from-gray-900/50 to-transparent">
+          <div className="flex items-center gap-2">
+            <Settings className="w-4 h-4 text-indigo-400" />
+            <h2 className="text-sm font-semibold text-gray-100">AI Configuration</h2>
+          </div>
+          <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-white transition-colors cursor-pointer p-1">
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {isLoading ? (
-          <div className="p-8 flex justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <div className="p-12 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+            <p className="text-xs text-gray-500">Retrieving configuration...</p>
           </div>
         ) : (
-          <div className="p-5 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">Provider</label>
+          <div className="p-5 space-y-6">
+            <div className="space-y-3">
+              <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Provider</label>
               <div className="grid grid-cols-2 gap-2">
                 {LLM_PROVIDERS.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => handleProviderChange(p.id)}
                     className={`
-                      py-2 px-3 rounded border text-sm font-medium transition-colors cursor-pointer
+                      py-2.5 px-3 rounded-xl border text-[13px] font-medium transition-all cursor-pointer flex items-center justify-center gap-2
                       ${provider === p.id 
-                        ? 'border-primary bg-primary text-white' 
-                        : 'border-slate-200 text-text hover:border-primary'
+                        ? 'border-indigo-500/50 bg-indigo-500/10 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.1)]' 
+                        : 'border-gray-800 text-gray-400 hover:border-gray-700 hover:text-gray-300'
                       }
                     `}
                   >
+                    {provider === p.id && <ShieldCheck className="w-3.5 h-3.5" />}
                     {p.name}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">Model</label>
-              <select
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                className="w-full px-3 py-2 rounded border border-slate-200 text-sm focus:border-primary focus:outline-none"
-              >
-                {selectedProvider?.models.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
+            <div className="space-y-3">
+              <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Model Selection</label>
+              <div className="relative">
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full h-10 px-3 pr-8 rounded-xl bg-[#020617] border border-gray-800 text-[13px] text-gray-200 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all appearance-none cursor-pointer"
+                >
+                  {selectedProvider?.models.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-text mb-2">
-                API Key
-                {apiKey && <span className="text-green-600 ml-2 text-xs">saved</span>}
+            <div className="space-y-3">
+              <label className="text-[11px] font-medium text-gray-400 uppercase tracking-wider flex items-center justify-between">
+                <span>API Key</span>
+                {apiKey && <span className="text-emerald-500 text-[9px] flex items-center gap-1"><Check className="w-2.5 h-2.5" /> SAVED</span>}
               </label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter API key"
-                className="w-full px-3 py-2 rounded border border-slate-200 text-sm focus:border-primary focus:outline-none"
-              />
-              <p className="text-xs text-muted mt-1">
-                {provider === 'gemini' ? 'Get from aistudio.google.com/app/apikey' : 'Get from openrouter.ai/settings'}
+              <div className="relative">
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="••••••••••••••••"
+                  className="w-full h-10 pl-9 pr-3 rounded-xl bg-[#020617] border border-gray-800 text-[13px] text-gray-200 placeholder:text-gray-700 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 outline-none transition-all"
+                />
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+              </div>
+              <p className="text-[10px] text-gray-500 leading-relaxed italic">
+                {provider === 'gemini' 
+                  ? 'Obtain from aistudio.google.com' 
+                  : 'Obtain from openrouter.ai/settings'}
               </p>
             </div>
 
-            {saveStatus && (
-              <div className={`p-2 rounded text-sm flex items-center gap-2 ${saveStatus === 'success' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                {saveStatus === 'success' ? <Check className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                <span>{saveStatus === 'success' ? 'Saved!' : 'Failed to save'}</span>
-              </div>
-            )}
-
-            <button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="w-full py-2 bg-primary text-white rounded hover:bg-primary/90 disabled:opacity-50 transition-colors font-medium text-sm flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Save
-            </button>
+            <div className="pt-2">
+              <button
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`
+                  w-full py-2.5 rounded-xl text-[13px] font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer
+                  ${saveStatus === 'success' 
+                    ? 'bg-emerald-600/20 text-emerald-400 border border-emerald-500/30' 
+                    : 'bg-indigo-600 text-white hover:bg-indigo-500 active:scale-[0.98] border border-indigo-400/20'
+                  }
+                  disabled:opacity-50 disabled:grayscale
+                `}
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : saveStatus === 'success' ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                {isSaving ? 'Updating...' : saveStatus === 'success' ? 'Settings Saved' : 'Update Configuration'}
+              </button>
+            </div>
           </div>
         )}
       </div>

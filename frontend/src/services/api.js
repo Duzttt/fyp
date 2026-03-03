@@ -17,13 +17,21 @@ export const uploadPDF = async (file) => {
   return response.json();
 };
 
-export const askQuestion = async (question) => {
-  const response = await fetch(`${API_BASE_URL}/api/ask`, {
+export const getUploadStatus = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/upload/status`);
+  if (!response.ok) {
+    throw new Error('Failed to check upload status');
+  }
+  return response.json();
+};
+
+export const askQuestion = async (question, sources = null) => {
+  const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({ query: question, sources }),
   });
 
   if (!response.ok) {
@@ -63,6 +71,48 @@ export const updateSettings = async (settings) => {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to update settings');
+  }
+
+  return response.json();
+};
+
+export const listFiles = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/files`);
+  if (!response.ok) {
+    throw new Error('Failed to list files');
+  }
+  return response.json();
+};
+
+export const summarizeDoc = async (filename) => {
+  const response = await fetch(`${API_BASE_URL}/api/summarize`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ filename }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to summarize document');
+  }
+
+  return response.json();
+};
+
+export const generatePodcast = async (filename) => {
+  const response = await fetch(`${API_BASE_URL}/api/podcast`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ filename }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to generate podcast');
   }
 
   return response.json();

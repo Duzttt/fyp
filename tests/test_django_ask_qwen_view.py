@@ -18,7 +18,7 @@ def client() -> Client:
 def test_ask_qwen_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.retrieve_with_faiss",
-        lambda query, top_k=3: [
+        lambda query, top_k=3, source_filter=None: [
             {"text": "trend one", "source": "Intelligent_Agent.pdf", "page": 7},
             {"text": "trend two", "source": "Intelligent_Agent.pdf", "page": 8},
         ],
@@ -44,12 +44,13 @@ def test_ask_qwen_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     data = response.json()
     assert data["answer"].startswith("根据资料")
     assert data["sources"] == ["Intelligent_Agent.pdf"]
+    assert len(data["source_snippets"]) == 2
 
 
 def test_ask_qwen_timeout(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.retrieve_with_faiss",
-        lambda query, top_k=3: [
+        lambda query, top_k=3, source_filter=None: [
             {"text": "trend one", "source": "Intelligent_Agent.pdf", "page": 7}
         ],
     )

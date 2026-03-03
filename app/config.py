@@ -15,27 +15,29 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "Lecture Note Q&A System"
     APP_VERSION: str = "1.0.0"
-    
+
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     DEBUG: bool = True
-    
+
     CHUNK_SIZE: int = 400
     CHUNK_OVERLAP: int = 50
-    
+
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     EMBEDDING_DIM: int = 384
-    
+
     FAISS_INDEX_PATH: str = "data/faiss_index"
-    DOCUMENTS_PATH: str = "data/documents"
-    
+    DOCUMENTS_PATH: str = "media/data_source"
+
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024
     ALLOWED_EXTENSIONS: set = {".pdf"}
-    
+    UPLOAD_INDEXING_STRATEGY: str = "full_rebuild"
+    UPLOAD_INDEXING_ASYNC: bool = True
+
     GEMINI_API_KEY: Optional[str] = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta"
-    
+
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     LLM_PROVIDER: str = "gemini"
@@ -56,16 +58,26 @@ class Settings(BaseSettings):
                 return True
 
         return value
-    
+
+    @field_validator("UPLOAD_INDEXING_STRATEGY", mode="before")
+    @classmethod
+    def validate_upload_indexing_strategy(cls, value):
+        strategy = str(value).strip().lower()
+        allowed = {"full_rebuild", "append"}
+        if strategy not in allowed:
+            return "full_rebuild"
+        return strategy
+
+
 def get_settings() -> Settings:
     settings = Settings()
-    
+
     settings.FAISS_INDEX_PATH = str(Path(settings.FAISS_INDEX_PATH).resolve())
     settings.DOCUMENTS_PATH = str(Path(settings.DOCUMENTS_PATH).resolve())
-    
+
     os.makedirs(settings.FAISS_INDEX_PATH, exist_ok=True)
     os.makedirs(settings.DOCUMENTS_PATH, exist_ok=True)
-    
+
     return settings
 
 

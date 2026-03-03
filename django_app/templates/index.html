@@ -1,0 +1,1007 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Notebook Style Layout</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-main: #071018;
+        --bg-panel: #0a1823;
+        --bg-panel-soft: #08131d;
+        --bg-chip: #13283b;
+        --border-subtle: #1a3247;
+        --border-strong: #2d4b63;
+        --text-main: #e8f1f8;
+        --text-muted: #91a7ba;
+        --text-soft: #bfd1df;
+        --accent: #06b6d4;
+        --accent-soft: #155e75;
+        --accent-2: #f59e0b;
+        --ok: #10b981;
+        --danger: #ef4444;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        --shadow-soft: 0 18px 45px rgba(2, 9, 15, 0.45);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Segoe UI Variable Display", "Noto Sans SC",
+          "PingFang SC", sans-serif;
+        background:
+          radial-gradient(circle at 10% 0, rgba(6, 182, 212, 0.12), transparent 42%),
+          radial-gradient(circle at 92% 8%, rgba(245, 158, 11, 0.1), transparent 38%),
+          linear-gradient(165deg, #040b12 0%, #071018 48%, #03070b 100%);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+        padding: 16px;
+      }
+
+      .app-shell {
+        width: min(1320px, 100vw);
+        height: min(760px, calc(100vh - 32px));
+        background:
+          linear-gradient(180deg, rgba(8, 19, 29, 0.98), rgba(6, 13, 20, 0.98));
+        border-radius: 24px;
+        border: 1px solid rgba(45, 75, 99, 0.85);
+        backdrop-filter: blur(14px);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow:
+          0 30px 85px rgba(1, 6, 10, 0.7),
+          inset 0 1px 0 rgba(191, 209, 223, 0.06);
+        animation: shell-enter 0.55s ease-out;
+      }
+
+      /* 顶栏 */
+      .topbar {
+        height: 62px;
+        padding: 0 18px 0 22px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(31, 57, 79, 0.88);
+        background:
+          linear-gradient(120deg, rgba(6, 17, 26, 0.98), rgba(7, 20, 31, 0.96));
+      }
+
+      .topbar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .logo-dot {
+        width: 30px;
+        height: 30px;
+        border-radius: 10px;
+        background:
+          conic-gradient(from 210deg, rgba(245, 158, 11, 0.95), rgba(6, 182, 212, 0.95));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow:
+          0 8px 20px rgba(6, 182, 212, 0.25),
+          inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+      }
+
+      .logo-dot span {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        background: rgba(4, 12, 18, 0.95);
+      }
+
+      .topbar-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .topbar-title-main {
+        font-size: 14px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+      }
+
+      .topbar-title-sub {
+        font-size: 11px;
+        color: var(--text-soft);
+        opacity: 0.82;
+      }
+
+      .topbar-center {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pill-btn {
+        padding: 7px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(46, 74, 97, 0.95);
+        font-size: 12px;
+        background: linear-gradient(140deg, rgba(8, 23, 34, 0.98), rgba(10, 29, 44, 0.98));
+        color: var(--text-main);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .pill-btn.primary {
+        background: linear-gradient(
+          135deg,
+          rgba(6, 182, 212, 0.95),
+          rgba(21, 94, 117, 0.95)
+        );
+        border-color: rgba(6, 182, 212, 0.78);
+        color: #ecfeff;
+        box-shadow: 0 8px 18px rgba(6, 182, 212, 0.28);
+      }
+
+      .pill-btn span.icon {
+        font-size: 13px;
+      }
+
+      .pill-btn:hover {
+        transform: translateY(-1px);
+        border-color: rgba(88, 128, 158, 0.95);
+      }
+
+      .topbar-right {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .icon-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        border: 1px solid rgba(46, 74, 97, 0.95);
+        background: rgba(8, 22, 33, 0.95);
+        color: var(--text-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        cursor: pointer;
+      }
+
+      .avatar {
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        border: 2px solid rgba(16, 185, 129, 0.85);
+        background: linear-gradient(135deg, #0ea5e9, #10b981);
+      }
+
+      /* 主体区域：左中右三栏 */
+      .main {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 272px minmax(0, 1.2fr) 278px;
+        gap: 10px;
+        padding: 12px;
+        background:
+          radial-gradient(circle at 16% -10%, rgba(6, 182, 212, 0.08), transparent 25%),
+          radial-gradient(circle at 94% 12%, rgba(245, 158, 11, 0.07), transparent 24%),
+          linear-gradient(180deg, rgba(2, 8, 14, 0.95), rgba(1, 6, 11, 0.96));
+      }
+
+      .panel {
+        background: linear-gradient(
+          180deg,
+          rgba(8, 21, 32, 0.94),
+          rgba(7, 18, 27, 0.92)
+        );
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-subtle);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .panel-left {
+        animation: panel-enter 0.45s ease-out;
+      }
+
+      .chat-panel {
+        animation: panel-enter 0.55s ease-out;
+      }
+
+      .panel-right {
+        animation: panel-enter 0.65s ease-out;
+      }
+
+      /* 左侧 Sources 栏 */
+      .panel-header {
+        padding: 12px 13px;
+        border-bottom: 1px solid rgba(25, 49, 68, 0.95);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 12px;
+      }
+
+      .panel-header-title {
+        font-weight: 650;
+        letter-spacing: 0.02em;
+      }
+
+      .panel-header-sub {
+        font-size: 11px;
+        color: var(--text-soft);
+        opacity: 0.82;
+      }
+
+      .sources-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 11px;
+        border-radius: 999px;
+        border: 1px dashed rgba(6, 182, 212, 0.68);
+        background: rgba(8, 34, 45, 0.42);
+        font-size: 11px;
+        color: var(--text-main);
+        cursor: pointer;
+        transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+      }
+
+      .sources-add:hover {
+        border-color: rgba(6, 182, 212, 0.96);
+        background: rgba(8, 49, 62, 0.55);
+        transform: translateY(-1px);
+      }
+
+      .sources-body {
+        padding: 11px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        font-size: 12px;
+      }
+
+      .sources-search {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        border-radius: 999px;
+        padding: 6px 10px;
+        background: rgba(7, 22, 34, 0.9);
+        border: 1px solid rgba(39, 67, 91, 0.9);
+      }
+
+      .sources-search input {
+        flex: 1;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: var(--text-main);
+        font-size: 12px;
+      }
+
+      .sources-search input::placeholder {
+        color: rgba(145, 167, 186, 0.75);
+      }
+
+      .chip-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .chip {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--bg-chip);
+        border: 1px solid rgba(43, 73, 99, 0.9);
+        font-size: 11px;
+        color: var(--text-soft);
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .sources-empty {
+        margin-top: 8px;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(54, 90, 121, 0.9);
+        background: rgba(10, 25, 38, 0.56);
+        color: var(--text-muted);
+        font-size: 11px;
+      }
+
+      .sources-empty.is-hidden {
+        display: none;
+      }
+
+      .sources-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .sources-item {
+        padding: 7px 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(47, 78, 105, 0.9);
+        background: rgba(10, 28, 41, 0.78);
+        font-size: 11px;
+        color: var(--text-main);
+        word-break: break-word;
+        animation: message-enter 0.2s ease-out;
+      }
+
+      .sources-upload-status {
+        margin-top: 8px;
+        padding: 8px;
+        border-radius: 8px;
+        border: 1px solid rgba(43, 72, 98, 0.9);
+        background: rgba(10, 28, 40, 0.72);
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .sources-upload-status.is-hidden {
+        display: none;
+      }
+
+      .sources-upload-status.error {
+        border-color: rgba(239, 68, 68, 0.86);
+        color: #ffd0d0;
+      }
+
+      .upload-progress-track {
+        margin-top: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(34, 60, 84, 0.85);
+        overflow: hidden;
+      }
+
+      .upload-progress-fill {
+        width: 0%;
+        height: 100%;
+        background: linear-gradient(135deg, #06b6d4, #f59e0b);
+        transition: width 0.2s ease;
+      }
+
+      /* 中间 Chat 区 */
+      .chat-panel {
+        position: relative;
+      }
+
+      .chat-header {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(25, 49, 68, 0.95);
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .chat-title {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .chat-title-main {
+        font-size: 13px;
+        font-weight: 650;
+        letter-spacing: 0.02em;
+      }
+
+      .chat-title-sub {
+        font-size: 11px;
+        color: var(--text-soft);
+        opacity: 0.82;
+      }
+
+      .chat-body {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        position: relative;
+      }
+
+      .chat-empty-card {
+        margin: 0 auto;
+        margin-top: 10%;
+        max-width: 280px;
+        text-align: center;
+        padding: 17px 16px 18px;
+        border-radius: 18px;
+        border: 1px solid rgba(43, 72, 98, 0.84);
+        background:
+          linear-gradient(180deg, rgba(11, 29, 42, 0.76), rgba(8, 22, 33, 0.8));
+        box-shadow: 0 16px 35px rgba(2, 10, 16, 0.5);
+        animation: float-in 0.45s ease-out;
+      }
+
+      .chat-empty-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 16px;
+        margin: 0 auto 10px;
+        background: linear-gradient(145deg, rgba(6, 182, 212, 0.95), rgba(245, 158, 11, 0.95));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #05212e;
+        font-size: 20px;
+      }
+
+      .chat-empty-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .chat-empty-desc {
+        font-size: 12px;
+        color: var(--text-soft);
+      }
+
+      .chat-input-wrap {
+        padding: 11px 15px 13px;
+        border-top: 1px solid rgba(25, 49, 68, 0.95);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .chat-input {
+        flex: 1;
+        padding: 10px 13px;
+        border-radius: 999px;
+        border: 1px solid rgba(46, 76, 103, 0.9);
+        background: rgba(8, 24, 36, 0.94);
+        color: var(--text-main);
+        font-size: 13px;
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .chat-input:focus {
+        border-color: rgba(6, 182, 212, 0.95);
+        box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.16);
+      }
+
+      .chat-input::placeholder {
+        color: rgba(145, 167, 186, 0.78);
+      }
+
+      .chat-send-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+        color: #031019;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: 0 10px 22px rgba(6, 182, 212, 0.3);
+        transition: transform 0.15s ease;
+      }
+
+      .chat-send-btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      .chat-send-btn:not(:disabled):hover {
+        transform: translateY(-1px);
+      }
+
+      .chat-message {
+        max-width: 82%;
+        margin-bottom: 11px;
+        padding: 11px 13px;
+        border-radius: 14px;
+        font-size: 13px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        animation: message-enter 0.18s ease-out;
+      }
+
+      .chat-message.user {
+        margin-left: auto;
+        border: 1px solid rgba(6, 182, 212, 0.72);
+        background: linear-gradient(
+          140deg,
+          rgba(8, 89, 114, 0.95),
+          rgba(14, 116, 144, 0.95)
+        );
+        color: #ecfeff;
+      }
+
+      .chat-message.assistant {
+        margin-right: auto;
+        border: 1px solid rgba(42, 72, 97, 0.9);
+        background: rgba(10, 28, 41, 0.9);
+        color: var(--text-main);
+      }
+
+      .chat-message.error {
+        border-color: rgba(239, 68, 68, 0.86);
+        background: rgba(114, 24, 24, 0.48);
+        color: #ffd0d0;
+      }
+
+      .user-msg,
+      .ai-msg {
+        max-width: 82%;
+        margin-bottom: 11px;
+        padding: 11px 13px;
+        border-radius: 14px;
+        font-size: 13px;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        animation: message-enter 0.18s ease-out;
+      }
+
+      .user-msg {
+        margin-left: auto;
+        border: 1px solid rgba(6, 182, 212, 0.72);
+        background: linear-gradient(
+          140deg,
+          rgba(8, 89, 114, 0.95),
+          rgba(14, 116, 144, 0.95)
+        );
+        color: #ecfeff;
+      }
+
+      .ai-msg {
+        margin-right: auto;
+        border: 1px solid rgba(42, 72, 97, 0.9);
+        background: rgba(10, 28, 41, 0.9);
+        color: var(--text-main);
+      }
+
+      .chat-message-meta {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-soft);
+      }
+
+      .chat-message-meta ul {
+        margin: 5px 0 0 16px;
+        padding: 0;
+      }
+
+      .sources-add:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+
+      /* 右侧 Studio 栏 */
+      .studio-body {
+        padding: 11px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        font-size: 12px;
+      }
+
+      .studio-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 9px;
+      }
+
+      .studio-card {
+        padding: 10px 9px;
+        border-radius: 10px;
+        border: 1px solid var(--border-strong);
+        background: linear-gradient(180deg, rgba(10, 28, 40, 0.95), rgba(8, 22, 32, 0.95));
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        cursor: pointer;
+        transition: transform 0.16s ease, border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .studio-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(6, 182, 212, 0.58);
+        background: linear-gradient(180deg, rgba(12, 35, 50, 0.95), rgba(10, 28, 40, 0.95));
+      }
+
+      .studio-card span.title {
+        font-size: 11px;
+        color: var(--text-main);
+      }
+
+      .studio-card span.sub {
+        font-size: 10px;
+        color: var(--text-soft);
+      }
+
+      .studio-footer {
+        margin-top: 10px;
+        padding: 9px 9px 10px;
+        border-radius: 10px;
+        border: 1px dashed rgba(43, 72, 98, 0.9);
+        background: rgba(9, 25, 37, 0.72);
+        font-size: 11px;
+        color: var(--text-soft);
+      }
+
+      .chat-body::-webkit-scrollbar {
+        width: 9px;
+      }
+
+      .chat-body::-webkit-scrollbar-thumb {
+        background: rgba(44, 75, 100, 0.9);
+        border-radius: 999px;
+      }
+
+      .chat-body::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      @media (max-width: 1024px) {
+        .app-shell {
+          width: 100vw;
+          height: 100vh;
+          border-radius: 0;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .main {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 12px;
+          padding: 10px;
+        }
+        .panel-left,
+        .panel-right {
+          display: none;
+        }
+        .topbar-center {
+          display: none;
+        }
+        .topbar {
+          padding: 0 12px 0 14px;
+        }
+        .chat-empty-card {
+          margin-top: 16%;
+        }
+      }
+
+      @media (max-width: 520px) {
+        body {
+          padding: 0;
+        }
+        .chat-input {
+          font-size: 14px;
+        }
+      }
+
+      @keyframes shell-enter {
+        from {
+          opacity: 0;
+          transform: translateY(10px) scale(0.99);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      @keyframes panel-enter {
+        from {
+          opacity: 0;
+          transform: translateY(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes float-in {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes message-enter {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <!-- 顶栏 -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <div class="logo-dot"><span></span></div>
+          <div class="topbar-title">
+            <div class="topbar-title-main">Untitled notebook</div>
+            <div class="topbar-title-sub">0 sources</div>
+          </div>
+        </div>
+        <div class="topbar-center">
+          <button class="pill-btn primary">
+            <span class="icon">＋</span>
+            Create notebook
+          </button>
+          <button class="pill-btn">Analytics</button>
+          <button class="pill-btn">Share</button>
+        </div>
+        <div class="topbar-right">
+          <button class="icon-btn">⚙</button>
+          <div class="avatar"></div>
+        </div>
+      </div>
+
+      <!-- 主体区域：左中右 -->
+      <div class="main">
+        <!-- 左侧 Sources -->
+        <aside class="panel panel-left">
+          <div class="panel-header">
+            <div>
+              <div class="panel-header-title">Sources</div>
+              <div class="panel-header-sub">Add PDFs, links, notes…</div>
+            </div>
+            <button class="sources-add" id="add-sources-btn" type="button">
+              <span>＋</span>
+              <span>Add sources</span>
+            </button>
+          </div>
+          <div class="sources-body">
+            <div class="sources-search">
+              <span style="font-size: 12px; color: var(--text-muted)">🔍</span>
+              <input
+                placeholder="Search sources"
+                aria-label="Search sources"
+              />
+            </div>
+            <div class="chip-row">
+              <div class="chip">
+                <span>Web</span>
+              </div>
+              <div class="chip">
+                <span>Fast Research</span>
+              </div>
+            </div>
+            <div class="sources-empty" id="sources-empty">
+              Saved sources will appear here. Click “Add sources” to upload PDFs,
+              links, or notes.
+            </div>
+            <div class="sources-list" id="sources-list"></div>
+            <div class="sources-upload-status is-hidden" id="upload-status">
+              <div id="upload-status-text"></div>
+              <div class="upload-progress-track">
+                <div class="upload-progress-fill" id="upload-progress-fill"></div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <!-- 中间 Chat -->
+        <section class="panel chat-panel">
+          <div class="chat-header">
+            <div class="chat-title">
+              <div class="chat-title-main">Chat</div>
+              <div class="chat-title-sub">
+                Ask questions about your notebook
+              </div>
+            </div>
+          </div>
+          <div class="chat-body" id="chat-window">
+            <div class="chat-empty-card" id="chat-empty-card">
+              <div class="chat-empty-icon">💬</div>
+              <div class="chat-empty-title">Untitled notebook</div>
+              <div class="chat-empty-desc">
+                Start chatting about your sources. Add PDFs or links on the left
+                to get more grounded answers.
+              </div>
+            </div>
+          </div>
+          <form class="chat-input-wrap" id="chat-form">
+            <input
+              class="chat-input"
+              id="user-input"
+              placeholder="Start typing..."
+              aria-label="Chat input"
+            />
+            <button class="chat-send-btn" id="send-btn" type="submit">
+              ➤
+            </button>
+          </form>
+        </section>
+
+        <!-- 右侧 Studio -->
+        <aside class="panel panel-right">
+          <div class="panel-header">
+            <div class="panel-header-title">Studio</div>
+          </div>
+          <div class="studio-body">
+            <div class="studio-grid">
+              <div class="studio-card">
+                <span class="title">Audio Overview</span>
+                <span class="sub">Generate a spoken summary</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Slide Deck</span>
+                <span class="sub">Turn notes into slides</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Study Guide</span>
+                <span class="sub">Key concepts & questions</span>
+              </div>
+              <div class="studio-card">
+                <span class="title">Data Table</span>
+                <span class="sub">Structure information</span>
+              </div>
+            </div>
+            <div class="studio-footer">
+              Studio output will appear here. After adding sources, click a
+              Studio tool to generate overviews, slides, or study material.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+    <input id="file-input" type="file" accept=".pdf,application/pdf" style="display: none" />
+    <form id="csrf-form" style="display: none">{% csrf_token %}</form>
+    <script>
+      // 1. 获取 CSRF Token (Django 安全必备)
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i += 1) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+
+      // 2. 发送聊天请求
+      async function sendMessage() {
+        const input = document.getElementById("user-input");
+        const chatWindow = document.getElementById("chat-window");
+        const query = input.value.trim();
+        if (!query) return;
+
+        const emptyCard = document.getElementById("chat-empty-card");
+        if (emptyCard) {
+          emptyCard.remove();
+        }
+
+        // 在界面上显示用户的问题
+        chatWindow.innerHTML += `<div class="user-msg">${query}</div>`;
+        input.value = ""; // 清空输入框
+
+        // 显示加载状态
+        const loadingId = "loading-" + Date.now();
+        chatWindow.innerHTML += `<div id="${loadingId}" class="ai-msg">AI 正在思考...</div>`;
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+
+        try {
+          const response = await fetch("/api/chat/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: JSON.stringify({ query: query }),
+          });
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.detail || "请求失败");
+          }
+
+          // 替换加载状态为真实回答
+          document.getElementById(loadingId).innerText = data.answer || "(empty answer)";
+        } catch (error) {
+          document.getElementById(loadingId).innerText = "出错了，请稍后再试。";
+        }
+      }
+
+      async function uploadFile(file) {
+        const chatWindow = document.getElementById("chat-window");
+        const sourcesList = document.getElementById("sources-list");
+        const sourcesEmpty = document.getElementById("sources-empty");
+        const sourceCountLabel = document.querySelector(".topbar-title-sub");
+        const uploadStatus = document.getElementById("upload-status");
+        const uploadStatusText = document.getElementById("upload-status-text");
+        const uploadProgressFill = document.getElementById("upload-progress-fill");
+        const formData = new FormData();
+        formData.append("file", file);
+
+        uploadStatus.classList.remove("is-hidden");
+        uploadStatus.classList.remove("error");
+        uploadStatusText.textContent = "正在上传...";
+        uploadProgressFill.style.width = "20%";
+
+        try {
+          const response = await fetch("/api/upload/", {
+            method: "POST",
+            headers: {
+              "X-CSRFToken": getCookie("csrftoken"),
+            },
+            body: formData,
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "上传失败");
+          }
+
+          uploadStatusText.textContent = "上传成功";
+          uploadProgressFill.style.width = "100%";
+          sourcesEmpty.classList.add("is-hidden");
+          sourcesList.innerHTML += `<div class="sources-item">PDF: ${
+            data.filename || file.name
+          }</div>`;
+          sourceCountLabel.textContent = sourcesList.children.length + " sources";
+          chatWindow.innerHTML += `<div class="ai-msg">已上传: ${
+            data.filename || file.name
+          }</div>`;
+          chatWindow.scrollTop = chatWindow.scrollHeight;
+        } catch (error) {
+          uploadStatus.classList.add("error");
+          uploadStatusText.textContent =
+            "上传失败: " + (error && error.message ? error.message : "未知错误");
+          uploadProgressFill.style.width = "0%";
+        }
+      }
+
+      // 绑定事件
+      document.getElementById("send-btn").addEventListener("click", sendMessage);
+      document.getElementById("chat-form").addEventListener("submit", function (event) {
+        event.preventDefault();
+        sendMessage();
+      });
+      document.getElementById("add-sources-btn").addEventListener("click", function () {
+        document.getElementById("file-input").click();
+      });
+      document.getElementById("file-input").addEventListener("change", function (event) {
+        const selected = event.target.files && event.target.files[0];
+        if (selected) {
+          uploadFile(selected);
+        }
+        event.target.value = "";
+      });
+    </script>
+  </body>
+</html>

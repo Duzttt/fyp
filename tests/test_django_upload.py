@@ -17,14 +17,17 @@ def client() -> Client:
     return Client()
 
 
-def test_upload_pdf_success(client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_upload_pdf_success(
+    client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     monkeypatch.setattr(settings, "DOCUMENTS_PATH", str(tmp_path))
+    monkeypatch.setattr(settings, "UPLOAD_INDEXING_STRATEGY", "full_rebuild")
+    monkeypatch.setattr(settings, "UPLOAD_INDEXING_ASYNC", True)
     monkeypatch.setattr(
-        "django_app.views.index_pdf_file",
-        lambda pdf_path, chunk_size=500: {
-            "total_chars": 1000,
-            "chunks_created": 3,
-            "total_chunks_in_index": 3,
+        "django_app.views._enqueue_full_rebuild",
+        lambda uploaded_filename: {
+            "status": "queued",
+            "last_uploaded_filename": uploaded_filename,
         },
     )
 
@@ -36,15 +39,24 @@ def test_upload_pdf_success(client: Client, monkeypatch: pytest.MonkeyPatch, tmp
 
     response = client.post("/api/upload", {"file": file})
 
-    assert response.status_code == 200
+    assert response.status_code == 202
     data = response.json()
     assert data["success"] is True
-    assert data["message"] == "PDF uploaded and indexed successfully"
-    assert data["chunks_created"] == 3
+    assert data["message"] == "File uploaded. Full reindex is running in background."
+    assert data["indexing_mode"] == "full_rebuild"
+    assert data["indexing_status"] == "queued"
     assert data["filename"].endswith("_lecture.pdf")
 
     saved_file = tmp_path / data["filename"]
     assert saved_file.exists()
+
+
+def test_upload_index_status_endpoint(client: Client):
+    response = client.get("/api/upload/status")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "status" in data
 
 
 def test_upload_pdf_rejects_invalid_extension(client: Client):
