@@ -7,8 +7,9 @@ from app.services.embedding import EmbeddingError, EmbeddingService
 from app.services.vector_store import VectorStore, VectorStoreError
 
 SYSTEM_PROMPT = (
-    "你是一个严谨的学术助教。请【仅仅】根据以下参考资料回答问题。"
-    "若证据不足请明确说明。回答请使用中文。"
+    "You are a rigorous academic teaching assistant. Answer strictly based on "
+    "the provided reference materials. If evidence is insufficient, say so clearly. "
+    "Respond in English by default unless the user explicitly requests another language."
 )
 
 
@@ -23,7 +24,7 @@ def retrieve_with_faiss(
         raise LocalRAGError("Query cannot be empty")
 
     embedding_service = EmbeddingService(model_name=settings.EMBEDDING_MODEL)
-    vector_store = VectorStore(
+    vector_store = VectorStore.get_cached(
         index_path=settings.FAISS_INDEX_PATH,
         embedding_dim=settings.EMBEDDING_DIM,
     )
@@ -58,7 +59,7 @@ def build_context_from_sources(sources: List[Dict[str, Any]]) -> str:
         page = item.get("page")
         page_label = str(page) if page is not None else "unknown"
         text = item.get("text", "")
-        lines.append(f"[S{idx}] 文件={source} 页码={page_label}\n{text}")
+        lines.append(f"[S{idx}] source={source} page={page_label}\n{text}")
     return "\n\n".join(lines)
 
 
@@ -70,7 +71,7 @@ def generate_with_local_qwen(
     timeout_seconds: Optional[int] = 30,
 ) -> str:
     if not context.strip():
-        return "未检索到可用参考资料，无法基于证据回答。"
+        return "No usable reference material was retrieved, so I cannot answer based on evidence."
 
     resolved_model = model or settings.LOCAL_QWEN_MODEL
     resolved_base_url = base_url or settings.LOCAL_QWEN_BASE_URL
@@ -82,7 +83,7 @@ def generate_with_local_qwen(
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
-                "content": f"参考资料：\n{context}\n\n用户提问：{query}",
+                "content": f"Reference materials:\n{context}\n\nUser question: {query}",
             },
         ],
         "stream": False,

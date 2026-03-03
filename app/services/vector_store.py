@@ -9,6 +9,9 @@ class VectorStoreError(Exception):
     pass
 
 
+_GLOBAL_INDEX_CACHE: Dict[Tuple[str, int], "VectorStore"] = {}
+
+
 class VectorStore:
     def __init__(self, index_path: str, embedding_dim: int = 384):
         self.index_path = index_path
@@ -16,6 +19,25 @@ class VectorStore:
         self.index: Optional[faiss.Index] = None
         self.chunks: List[Dict[str, Any]] = []
         self._load_or_create_index()
+
+    @classmethod
+    def get_cached(
+        cls,
+        index_path: str,
+        embedding_dim: int = 384,
+    ) -> "VectorStore":
+        """
+        Return a cached VectorStore instance for the given index path and
+        embedding dimension, creating and caching it on first use.
+        """
+        key = (index_path, embedding_dim)
+        cached = _GLOBAL_INDEX_CACHE.get(key)
+        if cached is not None:
+            return cached
+
+        store = cls(index_path=index_path, embedding_dim=embedding_dim)
+        _GLOBAL_INDEX_CACHE[key] = store
+        return store
 
     @staticmethod
     def _normalize_chunk(item: Any) -> Dict[str, Any]:

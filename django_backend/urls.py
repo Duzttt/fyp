@@ -15,6 +15,8 @@ urlpatterns = [
     path("api/upload/status/", views.upload_index_status),
     path("api/files", views.list_files),
     path("api/files/", views.list_files),
+    path("api/documents", views.list_documents),
+    path("api/documents/", views.list_documents),
     path("api/summarize", views.summarize_doc),
     path("api/summarize/", views.summarize_doc),
     path("api/podcast", views.generate_podcast),

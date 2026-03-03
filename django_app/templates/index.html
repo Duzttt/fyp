@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>Notebook Style Layout</title>
@@ -62,7 +62,7 @@
         animation: shell-enter 0.55s ease-out;
       }
 
-      /* 顶栏 */
+      /* Top bar */
       .topbar {
         height: 62px;
         padding: 0 18px 0 22px;
@@ -187,7 +187,7 @@
         background: linear-gradient(135deg, #0ea5e9, #10b981);
       }
 
-      /* 主体区域：左中右三栏 */
+      /* Main area: left, center, right */
       .main {
         flex: 1;
         display: grid;
@@ -226,7 +226,7 @@
         animation: panel-enter 0.65s ease-out;
       }
 
-      /* 左侧 Sources 栏 */
+      /* Left Sources panel */
       .panel-header {
         padding: 12px 13px;
         border-bottom: 1px solid rgba(25, 49, 68, 0.95);
@@ -380,7 +380,7 @@
         transition: width 0.2s ease;
       }
 
-      /* 中间 Chat 区 */
+      /* Center Chat panel */
       .chat-panel {
         position: relative;
       }
@@ -593,7 +593,7 @@
         cursor: not-allowed;
       }
 
-      /* 右侧 Studio 栏 */
+      /* Right Studio panel */
       .studio-body {
         padding: 11px;
         display: flex;
@@ -744,7 +744,7 @@
   </head>
   <body>
     <div class="app-shell">
-      <!-- 顶栏 -->
+      <!-- Top bar -->
       <div class="topbar">
         <div class="topbar-left">
           <div class="logo-dot"><span></span></div>
@@ -767,9 +767,9 @@
         </div>
       </div>
 
-      <!-- 主体区域：左中右 -->
+      <!-- Main area: left, center, right -->
       <div class="main">
-        <!-- 左侧 Sources -->
+        <!-- Left Sources -->
         <aside class="panel panel-left">
           <div class="panel-header">
             <div>
@@ -811,7 +811,7 @@
           </div>
         </aside>
 
-        <!-- 中间 Chat -->
+        <!-- Center Chat -->
         <section class="panel chat-panel">
           <div class="chat-header">
             <div class="chat-title">
@@ -844,7 +844,7 @@
           </form>
         </section>
 
-        <!-- 右侧 Studio -->
+        <!-- Right Studio -->
         <aside class="panel panel-right">
           <div class="panel-header">
             <div class="panel-header-title">Studio</div>
@@ -871,6 +871,16 @@
             <div class="studio-footer">
               Studio output will appear here. After adding sources, click a
               Studio tool to generate overviews, slides, or study material.
+              <div style="margin-top: 8px; display: flex; justify-content: flex-end">
+                <button
+                  id="clear-chat-btn"
+                  type="button"
+                  class="pill-btn"
+                  style="padding: 4px 10px; font-size: 11px"
+                >
+                  Clear chat
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -879,7 +889,7 @@
     <input id="file-input" type="file" accept=".pdf,application/pdf" style="display: none" />
     <form id="csrf-form" style="display: none">{% csrf_token %}</form>
     <script>
-      // 1. 获取 CSRF Token (Django 安全必备)
+      // 1. Get CSRF token (required for Django security)
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== "") {
@@ -895,7 +905,7 @@
         return cookieValue;
       }
 
-      // 2. 发送聊天请求
+      // 2. Send chat request
       async function sendMessage() {
         const input = document.getElementById("user-input");
         const chatWindow = document.getElementById("chat-window");
@@ -907,13 +917,13 @@
           emptyCard.remove();
         }
 
-        // 在界面上显示用户的问题
+        // Render user message in the chat window
         chatWindow.innerHTML += `<div class="user-msg">${query}</div>`;
-        input.value = ""; // 清空输入框
+        input.value = ""; // Clear input field
 
-        // 显示加载状态
+        // Show loading state
         const loadingId = "loading-" + Date.now();
-        chatWindow.innerHTML += `<div id="${loadingId}" class="ai-msg">AI 正在思考...</div>`;
+        chatWindow.innerHTML += `<div id="${loadingId}" class="ai-msg">AI is thinking...</div>`;
         chatWindow.scrollTop = chatWindow.scrollHeight;
 
         try {
@@ -928,13 +938,34 @@
           const data = await response.json();
 
           if (!response.ok) {
-            throw new Error(data.detail || "请求失败");
+            throw new Error(data.detail || "Request failed");
           }
 
-          // 替换加载状态为真实回答
-          document.getElementById(loadingId).innerText = data.answer || "(empty answer)";
+          const answerText = data.answer || "(empty answer)";
+          const sources = Array.isArray(data.sources) ? data.sources : [];
+
+          // Replace loading state with the actual answer
+          const loadingEl = document.getElementById(loadingId);
+          if (loadingEl) {
+            loadingEl.innerText = answerText;
+          }
+
+          // Persist chat history to localStorage
+          try {
+            const raw = window.localStorage.getItem("chat_history") || "[]";
+            const history = JSON.parse(raw);
+            const nextHistory = Array.isArray(history) ? history : [];
+            nextHistory.push({ role: "user", content: query });
+            nextHistory.push({ role: "assistant", content: answerText, sources: sources });
+            window.localStorage.setItem("chat_history", JSON.stringify(nextHistory));
+          } catch (e) {
+            // Ignore localStorage errors so they don't break chat
+          }
         } catch (error) {
-          document.getElementById(loadingId).innerText = "出错了，请稍后再试。";
+          const loadingEl = document.getElementById(loadingId);
+          if (loadingEl) {
+            loadingEl.innerText = "Something went wrong. Please try again.";
+          }
         }
       }
 
@@ -951,7 +982,7 @@
 
         uploadStatus.classList.remove("is-hidden");
         uploadStatus.classList.remove("error");
-        uploadStatusText.textContent = "正在上传...";
+        uploadStatusText.textContent = "Uploading...";
         uploadProgressFill.style.width = "20%";
 
         try {
@@ -964,29 +995,124 @@
           });
           const data = await response.json();
           if (!response.ok) {
-            throw new Error(data.detail || "上传失败");
+            throw new Error(data.detail || "Upload failed");
           }
 
-          uploadStatusText.textContent = "上传成功";
+          uploadStatusText.textContent = "Upload successful";
           uploadProgressFill.style.width = "100%";
           sourcesEmpty.classList.add("is-hidden");
           sourcesList.innerHTML += `<div class="sources-item">PDF: ${
             data.filename || file.name
           }</div>`;
           sourceCountLabel.textContent = sourcesList.children.length + " sources";
-          chatWindow.innerHTML += `<div class="ai-msg">已上传: ${
+          chatWindow.innerHTML += `<div class="ai-msg">Uploaded: ${
             data.filename || file.name
           }</div>`;
           chatWindow.scrollTop = chatWindow.scrollHeight;
         } catch (error) {
           uploadStatus.classList.add("error");
           uploadStatusText.textContent =
-            "上传失败: " + (error && error.message ? error.message : "未知错误");
+            "Upload failed: " + (error && error.message ? error.message : "Unknown error");
           uploadProgressFill.style.width = "0%";
         }
       }
 
-      // 绑定事件
+      // 3. Sync existing PDFs from backend on load
+      async function refreshFileList() {
+        const sourcesList = document.getElementById("sources-list");
+        const sourcesEmpty = document.getElementById("sources-empty");
+        const sourceCountLabel = document.querySelector(".topbar-title-sub");
+
+        if (!sourcesList) {
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/files/");
+          if (!response.ok) {
+            return;
+          }
+          const data = await response.json();
+
+          if (Array.isArray(data.files) && data.files.length > 0) {
+            if (sourcesEmpty) {
+              sourcesEmpty.classList.add("is-hidden");
+            }
+
+            sourcesList.innerHTML = data.files
+              .map(function (file) {
+                var label = typeof file === "string" ? file : file.name;
+                return '<div class="sources-item">PDF: ' + label + "</div>";
+              })
+              .join("");
+
+            if (sourceCountLabel) {
+              sourceCountLabel.textContent = data.files.length + " sources";
+            }
+          }
+        } catch (error) {
+          // Ignore sync errors on initial load
+        }
+      }
+
+      // Helper to render a chat message from history
+      function renderMessage(role, content, sources) {
+        const chatWindow = document.getElementById("chat-window");
+        if (!chatWindow) {
+          return;
+        }
+
+        const messageEl = document.createElement("div");
+        messageEl.className = role === "user" ? "user-msg" : "ai-msg";
+        messageEl.textContent = content;
+        chatWindow.appendChild(messageEl);
+
+        if (sources && Array.isArray(sources) && sources.length > 0) {
+          const metaEl = document.createElement("div");
+          metaEl.className = "chat-message-meta";
+          metaEl.textContent = "Sources: " + sources.join(", ");
+          chatWindow.appendChild(metaEl);
+        }
+
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+      }
+
+      // 4. Restore chat history from localStorage
+      function loadChatHistory() {
+        var raw = window.localStorage.getItem("chat_history") || "[]";
+        var history;
+
+        try {
+          history = JSON.parse(raw);
+        } catch (error) {
+          return;
+        }
+
+        if (!Array.isArray(history) || history.length === 0) {
+          return;
+        }
+
+        const emptyCard = document.getElementById("chat-empty-card");
+        if (emptyCard) {
+          emptyCard.style.display = "none";
+        }
+
+        history.forEach(function (msg) {
+          if (msg && msg.role && msg.content) {
+            renderMessage(msg.role, msg.content, msg.sources);
+          }
+        });
+      }
+
+      // 5. Init function to run on page load
+      function init() {
+        refreshFileList();
+        loadChatHistory();
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+
+      // Bind events
       document.getElementById("send-btn").addEventListener("click", sendMessage);
       document.getElementById("chat-form").addEventListener("submit", function (event) {
         event.preventDefault();
@@ -1002,6 +1128,17 @@
         }
         event.target.value = "";
       });
+      const clearChatBtn = document.getElementById("clear-chat-btn");
+      if (clearChatBtn) {
+        clearChatBtn.addEventListener("click", function () {
+          try {
+            window.localStorage.removeItem("chat_history");
+          } catch (e) {
+            // ignore
+          }
+          window.location.reload();
+        });
+      }
     </script>
   </body>
 </html>

@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 import requests
+from django.conf import settings as django_settings
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.csrf import csrf_exempt
@@ -288,8 +289,16 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
 
     try:
         contents = upload_file.read()
-        unique_filename = f"{uuid.uuid4()}_{original_filename}"
-        saved_file_path = pdf_loader.save_pdf(contents, unique_filename)
+        # Prefer keeping the original filename; if a file with the same
+        # name already exists, append a numeric suffix instead of a UUID.
+        base_name, ext = os.path.splitext(original_filename)
+        safe_filename = original_filename
+        counter = 1
+        while os.path.exists(os.path.join(settings.DOCUMENTS_PATH, safe_filename)):
+            safe_filename = f"{base_name}_{counter}{ext}"
+            counter += 1
+
+        saved_file_path = pdf_loader.save_pdf(contents, safe_filename)
     except OSError as exc:
         return _error_response(f"Failed to save PDF: {str(exc)}", status=500)
 
@@ -298,12 +307,12 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
         indexing_strategy == INDEXING_STRATEGY_FULL_REBUILD
         and settings.UPLOAD_INDEXING_ASYNC
     ):
-        state = _enqueue_full_rebuild(uploaded_filename=unique_filename)
+        state = _enqueue_full_rebuild(uploaded_filename=safe_filename)
         return JsonResponse(
             {
                 "success": True,
                 "message": "File uploaded. Full reindex is running in background.",
-                "filename": unique_filename,
+                "filename": safe_filename,
                 "saved_path": saved_file_path,
                 "indexing_mode": INDEXING_STRATEGY_FULL_REBUILD,
                 "indexing_status": state["status"],
@@ -344,7 +353,7 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
         {
             "success": True,
             "message": "PDF uploaded and indexed successfully",
-            "filename": unique_filename,
+            "filename": safe_filename,
             "saved_path": saved_file_path,
             "indexing_mode": indexing_strategy,
             "indexing_status": INDEXING_STATUS_COMPLETED,
@@ -440,9 +449,10 @@ def ask_qwen(request: HttpRequest) -> JsonResponse:
 
         system_prompt = (
             "You are a rigorous academic teaching assistant. Please answer the questions based on the following reference materials."
-            "If the evidence is insufficient, please explain clearly."
+            "If the evidence is insufficient, please explain clearly. "
+            "Respond in English by default unless the user explicitly requests another language."
         )
-        user_prompt = f"参考资料：\n{context}\n\n用户提问：{query}"
+        user_prompt = f"Reference materials:\n{context}\n\nUser question: {query}"
 
         ollama_client = OllamaClient(
             host=settings.LOCAL_QWEN_BASE_URL,
@@ -583,6 +593,22 @@ def list_files(request: HttpRequest) -> JsonResponse:
     )
 
 
+@require_http_methods(["GET"])
+def list_documents(request: HttpRequest) -> JsonResponse:
+    upload_dir = os.path.join(str(django_settings.MEDIA_ROOT), "data_source")
+    if not os.path.exists(upload_dir):
+        return JsonResponse({"files": []})
+
+    files = sorted(
+        [
+            filename
+            for filename in os.listdir(upload_dir)
+            if filename.lower().endswith(".pdf")
+        ]
+    )
+    return JsonResponse({"files": files})
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def summarize_doc(request: HttpRequest) -> JsonResponse:
@@ -595,7 +621,10 @@ def summarize_doc(request: HttpRequest) -> JsonResponse:
     if not filename:
         return _error_response("Filename is required", status=400)
 
-    query = f"请总结文档 {filename} 的核心内容，并列出 3 个最重要的知识点。"
+    query = (
+        f"Please summarize the core content of document {filename}, and list the "
+        "3 most important knowledge points."
+    )
 
     try:
         retrieved_sources = retrieve_with_faiss(query=query, top_k=6)
