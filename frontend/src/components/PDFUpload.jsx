@@ -1,7 +1,7 @@
 import { Plus, Upload, X, Loader2, CheckCircle2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { uploadFile } from '../services/api';
+import { uploadPDF } from '../services/api';
 
 export default function PDFUpload({ onUploadAccepted, onUploadSuccess }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -21,7 +21,7 @@ export default function PDFUpload({ onUploadAccepted, onUploadSuccess }) {
       }
 
       try {
-        const result = await uploadFile(file);
+        const result = await uploadPDF(file);
         setUploadStatus('success');
         if (onUploadSuccess) {
           onUploadSuccess(result);

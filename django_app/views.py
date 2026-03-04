@@ -1,7 +1,6 @@
 import json
 import os
 import threading
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -28,10 +27,19 @@ from app.services.pdf_indexing import (
     index_pdf_directory,
     index_pdf_file,
 )
+from django.template.loader import render_to_string
 
 SETTINGS_FILE = Path(__file__).resolve().parents[1] / "data" / "settings.json"
+RAG_CONFIG_FILE = Path(__file__).resolve().parents[1] / "data" / "rag_config.json"
 CHAT_DEMO_FILE = Path(__file__).resolve().parent / "chat_demo.html"
 VALID_PROVIDERS = {"gemini", "openrouter"}
+LOCAL_QWEN_MODELS = [
+    "qwen2.5:0.5b",
+    "qwen2.5:1.5b",
+    "qwen2.5:3b",
+    "qwen2.5:7b",
+    "qwen2.5:14b",
+]
 INDEXING_STRATEGY_FULL_REBUILD = "full_rebuild"
 INDEXING_STRATEGY_APPEND = "append"
 VALID_INDEXING_STRATEGIES = {
@@ -198,6 +206,32 @@ def _load_persisted_settings() -> Dict[str, Any]:
         return {}
 
     return {}
+
+
+def _load_rag_config() -> Dict[str, Any]:
+    default_config = {
+        "llm_model": settings.LOCAL_QWEN_MODEL,
+        "top_k": 3,
+        "temperature": 0.7,
+    }
+    if not RAG_CONFIG_FILE.exists():
+        return default_config
+
+    try:
+        with RAG_CONFIG_FILE.open("r", encoding="utf-8") as config_file:
+            data = json.load(config_file)
+            if isinstance(data, dict):
+                return {**default_config, **data}
+    except (OSError, json.JSONDecodeError):
+        return default_config
+
+    return default_config
+
+
+def _save_rag_config(config: Dict[str, Any]) -> None:
+    RAG_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with RAG_CONFIG_FILE.open("w", encoding="utf-8") as config_file:
+        json.dump(config, config_file)
 
 
 def _build_runtime_llm_settings() -> Dict[str, Optional[str]]:
@@ -439,9 +473,14 @@ def ask_qwen(request: HttpRequest) -> JsonResponse:
     if not query:
         return _error_response("Query cannot be empty", status=400)
 
+    rag_config = _load_rag_config()
+    top_k = rag_config.get("top_k", 3)
+    llm_model = rag_config.get("llm_model", settings.LOCAL_QWEN_MODEL)
+    temperature = rag_config.get("temperature", 0.7)
+
     try:
         retrieved_sources = retrieve_with_faiss(
-            query=query, top_k=3, source_filter=source_filter
+            query=query, top_k=top_k, source_filter=source_filter
         )
         context = build_context_from_sources(retrieved_sources)
         if not context.strip():
@@ -459,13 +498,14 @@ def ask_qwen(request: HttpRequest) -> JsonResponse:
             timeout=settings.LOCAL_QWEN_TIMEOUT_SECONDS,
         )
         model_response = ollama_client.chat(
-            model=settings.LOCAL_QWEN_MODEL,
+            model=llm_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             stream=False,
             keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
+            options={"temperature": temperature},
         )
 
         answer = str(model_response.get("message", {}).get("content", "")).strip()
@@ -657,3 +697,128 @@ def generate_podcast(request: HttpRequest) -> JsonResponse:
             "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
         }
     )
+
+
+@require_http_methods(["GET"])
+def get_rag_config(request: HttpRequest) -> JsonResponse:
+    config = _load_rag_config()
+    return JsonResponse(config)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_rag_config(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    llm_model = str(payload.get("llm_model", settings.LOCAL_QWEN_MODEL)).strip()
+    top_k = int(payload.get("top_k", 3))
+    temperature = float(payload.get("temperature", 0.7))
+
+    if top_k < 1:
+        top_k = 1
+    elif top_k > 20:
+        top_k = 20
+
+    if temperature < 0.0:
+        temperature = 0.0
+    elif temperature > 2.0:
+        temperature = 2.0
+
+    config = {
+        "llm_model": llm_model,
+        "top_k": top_k,
+        "temperature": temperature,
+    }
+    _save_rag_config(config)
+    return JsonResponse({"status": "success", "config": config})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def reset_faiss_index(request: HttpRequest) -> JsonResponse:
+    import shutil
+
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    confirm_text = str(payload.get("confirm", "")).strip().lower()
+    if confirm_text != "reset":
+        return _error_response(
+            'Please type "reset" to confirm index deletion', status=400
+        )
+
+    index_path = Path(settings.FAISS_INDEX_PATH)
+    if index_path.exists():
+        shutil.rmtree(index_path)
+        index_path.mkdir(parents=True, exist_ok=True)
+
+    return JsonResponse({"status": "success", "message": "FAISS index has been reset"})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def chat_htmx(request: HttpRequest) -> HttpResponse:
+    query = str(request.POST.get("query", "")).strip()
+    if not query:
+        return HttpResponse(
+            '<div class="chat-message chat-message-error"><div class="chat-message-text">'
+            "Question cannot be empty."
+            "</div></div>",
+            status=400,
+        )
+
+    rag_config = _load_rag_config()
+    top_k = rag_config.get("top_k", 3)
+    llm_model = rag_config.get("llm_model", settings.LOCAL_QWEN_MODEL)
+    temperature = rag_config.get("temperature", 0.7)
+
+    try:
+        retrieved_sources = retrieve_with_faiss(
+            query=query,
+            top_k=top_k,
+            source_filter=None,
+        )
+        context = build_context_from_sources(retrieved_sources)
+        if not context.strip():
+            answer = "No indexed context found in FAISS. Please upload and index PDFs first."
+        else:
+            system_prompt = (
+                "You are a rigorous academic teaching assistant. Please answer the questions based on the following reference materials. "
+                "If the evidence is insufficient, please explain clearly."
+            )
+            user_prompt = f"Reference materials:\n{context}\n\nUser question: {query}"
+
+            ollama_client = OllamaClient(
+                host=settings.LOCAL_QWEN_BASE_URL,
+                timeout=settings.LOCAL_QWEN_TIMEOUT_SECONDS,
+            )
+            model_response = ollama_client.chat(
+                model=llm_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                stream=False,
+                keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
+                options={"temperature": temperature},
+            )
+            answer = str(model_response.get("message", {}).get("content", "")).strip()
+            if not answer:
+                answer = "Empty response from local Qwen model."
+    except Exception as exc:  # noqa: BLE001
+        answer = f"Failed to process query: {str(exc)}"
+
+    user_html = render_to_string(
+        "_chat_message.html",
+        {"role": "user", "text": query},
+    )
+    assistant_html = render_to_string(
+        "_chat_message.html",
+        {"role": "assistant", "text": answer},
+    )
+    return HttpResponse(user_html + assistant_html)

@@ -1,11 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  BookOpen,
   CheckSquare,
   Headphones,
   Play,
   Sparkles,
-  Square,
   Plus,
   Search,
   Globe,
@@ -17,7 +15,6 @@ import {
 import Header from './components/Header';
 import PDFUpload from './components/PDFUpload';
 import QAChat from './components/QAChat';
-import SettingsPanel from './components/SettingsPanel';
 import { generatePodcast, listFiles, summarizeDoc } from './services/api';
 
 function App() {
@@ -137,14 +134,10 @@ function App() {
 
   return (
     <div className="w-full h-screen bg-[#020617] flex flex-col overflow-hidden">
-      {/* 顶栏 */}
       <Header />
 
-      {/* 主体区域：左中右三栏 */}
-      <main className="flex-1 grid grid-cols-1 md:grid-cols-[260px_1fr_270px] gap-2 p-2 bg-[radial-gradient(circle_at_top,#020617_0,#020617_45%,#000_90%)] overflow-hidden">
-        
-        {/* 左侧 Sources 栏 */}
-        <aside className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden">
+      <main className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-2 p-2 bg-[radial-gradient(circle_at_top,#020617_0,#020617_45%,#000_90%)] overflow-hidden min-h-0">
+        <aside className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden md:col-span-3 min-h-0">
           <div className="p-3 border-b border-gray-800/90 flex items-center justify-between">
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-gray-200">Sources</span>
@@ -155,16 +148,16 @@ function App() {
               onUploadSuccess={handleUploadSuccess}
             />
           </div>
-          
+
           <div className="p-3 flex flex-col gap-2 overflow-y-auto">
             <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-[#020617] border border-gray-800/80">
               <Search className="w-3.5 h-3.5 text-[#9ca3af]" />
-              <input 
-                placeholder="Search sources" 
+              <input
+                placeholder="Search sources"
                 className="flex-1 bg-transparent border-none outline-none text-xs text-gray-200 placeholder:text-gray-500"
               />
             </div>
-            
+
             <div className="flex gap-1.5 flex-wrap">
               <div className="px-2 py-0.5 rounded-full bg-[#1f2937] border border-gray-700/90 text-[11px] text-[#9ca3af] flex items-center gap-1">
                 <Globe className="w-3 h-3" />
@@ -189,7 +182,7 @@ function App() {
 
               {!hasDocument ? (
                 <div className="p-2 border border-dashed border-gray-800 rounded-xl bg-gray-900/40 text-[11px] text-[#9ca3af] text-center">
-                  Saved sources will appear here. Click “+” to upload PDFs.
+                  Saved sources will appear here. Click "+" to upload PDFs.
                 </div>
               ) : (
                 files.map((file) => {
@@ -224,20 +217,18 @@ function App() {
           </div>
         </aside>
 
-        {/* 中间 Chat 区 */}
-        <section className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden relative">
+        <section className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden relative md:col-span-6 min-h-0">
           <QAChat selectedSources={selectedSources} />
         </section>
 
-        {/* 右侧 Studio 栏 */}
-        <aside className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden">
+        <aside className="bg-[#020617] rounded-[14px] border border-[#1f2937] flex flex-col overflow-hidden md:col-span-3 min-h-0">
           <div className="p-3 border-b border-gray-800/90">
             <span className="text-xs font-semibold text-gray-200">Studio</span>
           </div>
-          
+
           <div className="p-3 flex flex-col gap-3 overflow-y-auto">
             <div className="grid grid-cols-2 gap-2">
-              <div 
+              <div
                 onClick={handleGeneratePodcast}
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
                   isGeneratingPodcast ? 'border-indigo-500/50 bg-indigo-500/10' : 'border-gray-800 bg-[#020617] hover:border-gray-700'
@@ -303,7 +294,7 @@ function App() {
                   {focusedDisplayName || 'None'}
                 </span>
               </div>
-              
+
               <div className="p-3 rounded-xl border border-gray-800 bg-gray-900/30 min-h-[100px]">
                 {isSummarizing ? (
                   <div className="space-y-2 animate-pulse">
@@ -325,9 +316,6 @@ function App() {
           </div>
         </aside>
       </main>
-
-      {/* 底部设置面板 (浮动) */}
-      <SettingsPanel />
     </div>
   );
 }

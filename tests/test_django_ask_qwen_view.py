@@ -29,7 +29,7 @@ def test_ask_qwen_success(client: Client, monkeypatch: pytest.MonkeyPatch):
             self.host = host
             self.timeout = timeout
 
-        def chat(self, model, messages, stream, keep_alive):
+        def chat(self, model, messages, stream, keep_alive, options=None):
             return {"message": {"content": "根据资料，这五个趋势是 ..."}}
 
     monkeypatch.setattr("django_app.views.OllamaClient", FakeOllamaClient)
@@ -60,7 +60,7 @@ def test_ask_qwen_timeout(client: Client, monkeypatch: pytest.MonkeyPatch):
             self.host = host
             self.timeout = timeout
 
-        def chat(self, model, messages, stream, keep_alive):
+        def chat(self, model, messages, stream, keep_alive, options=None):
             raise httpx.TimeoutException("timeout")
 
     monkeypatch.setattr("django_app.views.OllamaClient", FakeOllamaClient)

@@ -117,3 +117,45 @@ export const generatePodcast = async (filename) => {
 
   return response.json();
 };
+
+export const getRagConfig = async () => {
+  const response = await fetch(`${API_BASE_URL}/api/rag-config`);
+  if (!response.ok) {
+    throw new Error('Failed to get RAG config');
+  }
+  return response.json();
+};
+
+export const updateRagConfig = async (config) => {
+  const response = await fetch(`${API_BASE_URL}/api/rag-config/update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(config),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update RAG config');
+  }
+
+  return response.json();
+};
+
+export const resetFaissIndex = async (confirmText) => {
+  const response = await fetch(`${API_BASE_URL}/api/index/reset`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ confirm: confirmText }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to reset FAISS index');
+  }
+
+  return response.json();
+};

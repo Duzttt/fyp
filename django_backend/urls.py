@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from django_app import views
 
@@ -29,4 +29,15 @@ urlpatterns = [
     path("api/ask_qwen/", views.ask_qwen),
     path("api/settings", views.settings_handler),
     path("api/settings/", views.settings_handler),
+    path("api/rag-config", views.get_rag_config),
+    path("api/rag-config/", views.get_rag_config),
+    path("api/rag-config/update", views.update_rag_config),
+    path("api/rag-config/update/", views.update_rag_config),
+    path("api/index/reset", views.reset_faiss_index),
+    path("api/index/reset/", views.reset_faiss_index),
+    path("chat-htmx", views.chat_htmx),
+    path("chat-htmx/", views.chat_htmx),
+    # SPA catch-all: serve index.html for any route not matched above
+    # so React Router can handle client-side paths like /config
+    re_path(r"^(?!api/).*$", views.index_page),
 ]

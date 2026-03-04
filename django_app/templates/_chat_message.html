@@ -1,0 +1,15 @@
+<div class="chat-message chat-message-{{ role }}">
+  <div class="chat-message-role">
+    {% if role == "user" %}
+      You
+    {% elif role == "assistant" %}
+      AI
+    {% else %}
+      System
+    {% endif %}
+  </div>
+  <div class="chat-message-text">
+    {{ text }}
+  </div>
+</div>
+
