@@ -1,5 +1,5 @@
 {% load tz %}{% now "H:i" as current_time %}
-<div class="chat-message chat-message-{{ role }}" data-message-id="{{ message_id|default:'' }}" data-timestamp="{{ timestamp|default:current_time }}">
+<div class="chat-message chat-message-{{ role }}" data-message-id="{{ message_id|default:'' }}" data-timestamp="{{ timestamp|default:current_time }}" {% if citations %}data-citations='{{ citations_json|default:"[]" }}'{% endif %}>
   <div class="chat-message-role">
     {% if role == "user" %}
       You
@@ -10,14 +10,19 @@
     {% endif %}
   </div>
   <div class="chat-message-content">
-    <div class="chat-message-text">{{ text }}</div>
+    <div class="chat-message-text">{{ text|safe }}</div>
     
     {% if role == "assistant" and citations %}
     <div class="chat-message-citations">
       {% for citation in citations %}
       <button class="citation-tag" 
+              data-citation-id="{{ citation.citation_id }}"
               data-source="{{ citation.source }}" 
               data-page="{{ citation.page|default:'' }}"
+              data-text="{{ citation.text|escapejs }}"
+              data-bbox="{{ citation.bbox|default:"" }}"
+              onmouseenter="showCitationTooltip(event, this)"
+              onmouseleave="hideCitationTooltip()"
               onclick="openPdfViewer('{{ citation.source }}', {{ citation.page|default:'null' }})">
         <span class="citation-icon">📄</span>
         <span class="citation-source">{{ citation.source }}</span>

@@ -809,6 +809,47 @@ def reset_faiss_index(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"status": "success", "message": "FAISS index has been reset"})
 
 
+def inject_citation_marks(answer: str, citations: List[Dict[str, Any]]) -> str:
+    """
+    Inject citation marks [1], [2], etc. into the answer text.
+    Places citations at the end of sentences or paragraphs.
+    """
+    if not citations:
+        return answer
+
+    import re
+
+    citation_ids = [c.get("citation_id", i + 1) for i, c in enumerate(citations)]
+
+    sentences = re.split(r"([。！？.!?\n]+)", answer)
+    result = []
+    citation_idx = 0
+
+    for i, part in enumerate(sentences):
+        result.append(part)
+
+        if i % 2 == 0 and part.strip() and citation_idx < len(citation_ids):
+            if len(part.strip()) > 20:
+                result.append(
+                    f' <span class="inline-citation" data-citation-id="{citation_ids[citation_idx]}">[{citation_ids[citation_idx]}]</span>'
+                )
+                citation_idx += 1
+
+    if citation_idx < len(citation_ids):
+        result.append(
+            ' <span class="inline-citations">'
+            + " ".join(
+                [
+                    f'<span class="inline-citation" data-citation-id="{cid}">[{cid}]</span>'
+                    for cid in citation_ids[citation_idx:]
+                ]
+            )
+            + "</span>"
+        )
+
+    return "".join(result)
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def chat_htmx(request: HttpRequest) -> HttpResponse:
@@ -844,15 +885,17 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
         max_distance = max(distances) if distances else 1.0
         max_distance = max(max_distance, 0.001)
 
-        for src in retrieved_sources:
+        for idx, src in enumerate(retrieved_sources, start=1):
             distance = src.get("distance", 0)
             similarity = max(0.0, 1.0 - (distance / max_distance))
             text = src.get("text", "")
             citations.append(
                 {
+                    "citation_id": idx,
                     "source": src.get("source", "unknown"),
                     "page": src.get("page"),
                     "text": text[:200],
+                    "bbox": src.get("bbox"),
                 }
             )
             retrieved_chunks.append(
@@ -863,6 +906,7 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
                     "distance": round(distance, 4),
                     "source": src.get("source", "unknown"),
                     "page": src.get("page"),
+                    "bbox": src.get("bbox"),
                 }
             )
 
@@ -894,6 +938,8 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             answer = str(model_response.get("message", {}).get("content", "")).strip()
             if not answer:
                 answer = "Empty response from local Qwen model."
+            else:
+                answer = inject_citation_marks(answer, citations)
     except Exception as exc:  # noqa: BLE001
         answer = f"Failed to process query: {str(exc)}"
 
@@ -908,6 +954,7 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             "timestamp": timestamp,
             "message_id": f"assistant_{message_id}",
             "citations": citations,
+            "citations_json": json.dumps(citations),
             "retrieved_chunks": retrieved_chunks,
         },
     )
@@ -966,3 +1013,152 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
         )
 
     return JsonResponse({"chunks": chunks})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def compare_documents(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    query = str(payload.get("query") or "").strip()
+    sources = payload.get("sources")
+
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
+
+    if not sources or not isinstance(sources, list):
+        return _error_response("Sources must be a list of document names", status=400)
+
+    if len(sources) < 2:
+        return _error_response(
+            "At least 2 documents required for comparison", status=400
+        )
+
+    if len(sources) > 3:
+        return _error_response(
+            "Maximum 3 documents can be compared at once", status=400
+        )
+
+    rag_config = _load_rag_config()
+    top_k = rag_config.get("top_k", 3)
+    llm_model = rag_config.get("llm_model", settings.LOCAL_QWEN_MODEL)
+    temperature = rag_config.get("temperature", 0.7)
+
+    results: List[Dict[str, Any]] = []
+
+    for source in sources:
+        try:
+            retrieved = retrieve_with_faiss(
+                query=query,
+                top_k=top_k,
+                source_filter=[source],
+            )
+            context = build_context_from_sources(retrieved)
+
+            if not context.strip():
+                results.append(
+                    {
+                        "source": source,
+                        "answer": "No relevant content found in this document.",
+                        "success": True,
+                    }
+                )
+                continue
+
+            system_prompt = (
+                "You are a rigorous academic teaching assistant. Please answer the question "
+                "based strictly on the provided reference material. If evidence is insufficient, "
+                "say so clearly."
+            )
+            user_prompt = f"Reference material:\n{context}\n\nQuestion: {query}"
+
+            ollama_client = OllamaClient(
+                host=settings.LOCAL_QWEN_BASE_URL,
+                timeout=settings.LOCAL_QWEN_TIMEOUT_SECONDS,
+            )
+            model_response = ollama_client.chat(
+                model=llm_model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                stream=False,
+                keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
+                options={"temperature": temperature},
+            )
+            answer = str(model_response.get("message", {}).get("content", "")).strip()
+            if not answer:
+                answer = "Empty response from model."
+
+            results.append(
+                {
+                    "source": source,
+                    "answer": answer,
+                    "success": True,
+                }
+            )
+
+        except Exception as exc:  # noqa: BLE001
+            results.append(
+                {
+                    "source": source,
+                    "answer": f"Error: {str(exc)}",
+                    "success": False,
+                }
+            )
+
+    common_points, different_points = analyze_differences(
+        [r["answer"] for r in results if r["success"]]
+    )
+
+    return JsonResponse(
+        {
+            "results": results,
+            "analysis": {
+                "common": common_points,
+                "different": different_points,
+            },
+        }
+    )
+
+
+def analyze_differences(answers: List[str]) -> tuple[List[str], List[str]]:
+    """
+    Analyze differences between multiple answers.
+    Returns (common_points, different_points).
+    """
+    if len(answers) < 2:
+        return [], []
+
+    import re
+
+    def extract_sentences(text: str) -> List[str]:
+        sentences = re.split(r"[。！？.!?\n]+", text)
+        return [s.strip() for s in sentences if len(s.strip()) > 10]
+
+    all_sentences = [extract_sentences(a) for a in answers]
+
+    sentence_counts: Dict[str, int] = {}
+    for sentences in all_sentences:
+        for s in sentences:
+            normalized = s.lower()
+            sentence_counts[normalized] = sentence_counts.get(normalized, 0) + 1
+
+    common = [
+        s for s, count in sentence_counts.items() if count == len(answers) and count > 1
+    ]
+
+    different = []
+    for i, sentences in enumerate(all_sentences):
+        for s in sentences:
+            normalized = s.lower()
+            if sentence_counts.get(normalized, 0) == 1:
+                different.append(f"[{answers[i][:20]}...] {s[:80]}...")
+
+    common_points = [s.capitalize() for s in common[:5]]
+    different_points = different[:5]
+
+    return common_points, different_points

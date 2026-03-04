@@ -1714,9 +1714,579 @@
         color: var(--text-muted);
         font-size: 12px;
       }
+
+      /* Comparison View */
+      .chat-mode-switch {
+        display: flex;
+        gap: 4px;
+        background: rgba(15, 23, 42, 0.6);
+        border-radius: 8px;
+        padding: 3px;
+      }
+
+      .mode-btn {
+        padding: 6px 14px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        font-size: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .mode-btn.active {
+        background: var(--accent);
+        color: white;
+      }
+
+      .mode-btn:hover:not(.active) {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      /* Comparison View */
+      .comparison-view {
+        display: none;
+        flex-direction: column;
+        height: 100%;
+        padding: 14px;
+      }
+
+      .comparison-view.active {
+        display: flex;
+      }
+
+      .comparison-header {
+        margin-bottom: 14px;
+      }
+
+      .comparison-input-wrap {
+        display: flex;
+        gap: 8px;
+      }
+
+      .comparison-input {
+        flex: 1;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1px solid rgba(55, 65, 81, 0.8);
+        background: #020617;
+        color: var(--text-main);
+        font-size: 13px;
+        outline: none;
+      }
+
+      .comparison-input:focus {
+        border-color: var(--accent);
+      }
+
+      .comparison-submit-btn {
+        padding: 10px 20px;
+        border-radius: 12px;
+        border: none;
+        background: linear-gradient(135deg, var(--accent), #8b5cf6);
+        color: white;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .comparison-submit-btn:hover {
+        transform: scale(1.02);
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+      }
+
+      .comparison-submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .comparison-body {
+        flex: 1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 12px;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .comparison-column {
+        display: flex;
+        flex-direction: column;
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .comparison-column-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+      }
+
+      .comparison-column-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .comparison-column-title .doc-icon {
+        font-size: 14px;
+      }
+
+      .comparison-column-body {
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text-main);
+      }
+
+      .comparison-column-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-muted);
+      }
+
+      /* Difference Analysis */
+      .difference-analysis {
+        margin-top: 14px;
+        padding: 14px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 12px;
+      }
+
+      .difference-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .difference-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .difference-summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+      }
+
+      .summary-card {
+        padding: 12px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.2);
+      }
+
+      .summary-card.common {
+        border-left: 3px solid #3b82f6;
+      }
+
+      .summary-card.different {
+        border-left: 3px solid #f59e0b;
+      }
+
+      .summary-card-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+
+      .summary-card-content {
+        font-size: 12px;
+        color: var(--text-main);
+        line-height: 1.5;
+      }
+
+      .diff-common {
+        background: rgba(59, 130, 246, 0.15);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      .diff-different {
+        background: rgba(245, 158, 11, 0.15);
+        padding: 2px 4px;
+        border-radius: 3px;
+      }
+
+      /* Document Switcher */
+      .doc-switcher {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+
+      .doc-switcher-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 20px;
+        font-size: 11px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .doc-switcher-item.selected {
+        background: rgba(99, 102, 241, 0.2);
+        border-color: var(--accent);
+        color: white;
+      }
+
+      .doc-switcher-item:hover:not(.selected) {
+        border-color: var(--accent);
+        color: white;
+      }
+
+      /* Save/Export Buttons */
+      .comparison-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+        justify-content: flex-end;
+      }
+
+      .comparison-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(55, 65, 81, 0.8);
+        background: rgba(31, 41, 55, 0.6);
+        color: var(--text-muted);
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .comparison-action-btn:hover {
+        background: rgba(55, 65, 81, 0.8);
+        color: white;
+        border-color: var(--accent);
+      }
+
+      /* Source Checkbox */
+      .source-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.4);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .source-checkbox:hover {
+        border-color: var(--accent);
+      }
+
+      .source-checkbox.selected {
+        background: rgba(99, 102, 241, 0.15);
+        border-color: var(--accent);
+      }
+
+      .source-checkbox input {
+        display: none;
+      }
+
+      .source-checkbox .checkbox-visual {
+        width: 16px;
+        height: 16px;
+        border-radius: 4px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
+
+      .source-checkbox.selected .checkbox-visual {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+
+      .source-checkbox .checkbox-visual::after {
+        content: '✓';
+        color: white;
+        font-size: 10px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .source-checkbox.selected .checkbox-visual::after {
+        opacity: 1;
+      }
+
+      .source-checkbox .source-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .source-checkbox .source-name {
+        font-size: 12px;
+        color: var(--text-main);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .source-checkbox .source-size {
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      /* Inline Citation Styles */
+      .inline-citation {
+        display: inline-inline;
+        color: var(--accent);
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0 3px;
+        margin: 0 2px;
+        border-radius: 3px;
+        transition: all 0.2s ease;
+      }
+
+      .inline-citation:hover {
+        background: rgba(99, 102, 241, 0.2);
+        text-decoration: underline;
+      }
+
+      .inline-citations {
+        display: inline;
+      }
+
+      /* Citation Tooltip */
+      .citation-tooltip {
+        position: fixed;
+        z-index: 5000;
+        max-width: 400px;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(10px);
+        transition: all 0.2s ease;
+        pointer-events: none;
+      }
+
+      .citation-tooltip.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .citation-tooltip-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        background: rgba(99, 102, 241, 0.15);
+        border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+      }
+
+      .citation-tooltip-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .citation-tooltip-title .doc-name {
+        color: var(--accent);
+      }
+
+      .citation-tooltip-body {
+        padding: 12px 14px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+
+      .citation-tooltip-text {
+        font-size: 12px;
+        line-height: 1.6;
+        color: var(--text-main);
+      }
+
+      .citation-tooltip-footer {
+        padding: 8px 14px;
+        background: rgba(0, 0, 0, 0.2);
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .citation-tooltip-btn {
+        padding: 6px 12px;
+        background: rgba(99, 102, 241, 0.3);
+        border: 1px solid rgba(99, 102, 241, 0.5);
+        border-radius: 6px;
+        color: white;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .citation-tooltip-btn:hover {
+        background: rgba(99, 102, 241, 0.5);
+      }
+
+      /* Bidirectional Tracing Panel */
+      .bidirectional-panel {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        width: 350px;
+        max-height: 400px;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid rgba(99, 102, 241, 0.4);
+        border-radius: 16px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        z-index: 4500;
+        overflow: hidden;
+        display: none;
+      }
+
+      .bidirectional-panel.visible {
+        display: block;
+      }
+
+      .bidirectional-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: rgba(99, 102, 241, 0.15);
+        border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+      }
+
+      .bidirectional-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: white;
+      }
+
+      .bidirectional-close {
+        width: 24px;
+        height: 24px;
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+
+      .bidirectional-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .bidirectional-body {
+        padding: 12px;
+        max-height: 320px;
+        overflow-y: auto;
+      }
+
+      .bidirectional-item {
+        padding: 10px 12px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(55, 65, 81, 0.5);
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .bidirectional-item:hover {
+        border-color: var(--accent);
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .bidirectional-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .bidirectional-query {
+        font-size: 12px;
+        color: var(--text-main);
+        margin-bottom: 6px;
+      }
+
+      .bidirectional-answer {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .bidirectional-empty {
+        text-align: center;
+        padding: 30px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
+    <!-- Citation Tooltip Container -->
+    <div id="citationTooltip" class="citation-tooltip" style="display: none;">
+      <div class="citation-tooltip-header">
+        <div class="citation-tooltip-title">
+          <span>📄</span>
+          <span class="doc-name" id="tooltipDocName"></span>
+        </div>
+      </div>
+      <div class="citation-tooltip-body">
+        <div class="citation-tooltip-text" id="tooltipText"></div>
+      </div>
+      <div class="citation-tooltip-footer">
+        <button class="citation-tooltip-btn" onclick="viewCitationInPdf()">View in PDF</button>
+      </div>
+    </div>
+
     <div class="app-shell">
       <!-- 顶栏 -->
       <header class="topbar">
@@ -1930,6 +2500,14 @@
                 Ask questions about your notebook
               </div>
             </div>
+            <div class="chat-mode-switch">
+              <button class="mode-btn active" id="chatModeBtn" onclick="switchChatMode('chat')">
+                💬 Chat
+              </button>
+              <button class="mode-btn" id="compareModeBtn" onclick="switchChatMode('compare')">
+                ⚖ Compare
+              </button>
+            </div>
           </div>
           <div class="chat-body" id="chat-messages">
             <div class="chat-empty-card">
@@ -1941,6 +2519,55 @@
               </div>
             </div>
           </div>
+          
+          <!-- Comparison View -->
+          <div class="comparison-view" id="comparisonView">
+            <div class="comparison-header">
+              <div class="comparison-input-wrap">
+                <input
+                  type="text"
+                  class="comparison-input"
+                  id="comparisonQuery"
+                  placeholder="Enter question to compare across documents..."
+                />
+                <button
+                  class="comparison-submit-btn"
+                  id="comparisonSubmitBtn"
+                  onclick="runComparison()"
+                >
+                  ⚡ Compare
+                </button>
+              </div>
+              <div class="doc-switcher" id="docSwitcher">
+                <!-- Populated by JavaScript -->
+              </div>
+            </div>
+            <div class="comparison-body" id="comparisonBody">
+              <div class="comparison-empty">
+                Select 2-3 documents from the left panel and enter a question to compare answers.
+              </div>
+            </div>
+            <div class="difference-analysis" id="differenceAnalysis" style="display: none;">
+              <div class="difference-header">
+                <span class="difference-title">
+                  <span>🔍</span>
+                  Difference Analysis
+                </span>
+              </div>
+              <div class="difference-summary-cards" id="differenceSummary">
+                <!-- Populated by JavaScript -->
+              </div>
+            </div>
+            <div class="comparison-actions" id="comparisonActions" style="display: none;">
+              <button class="comparison-action-btn" onclick="saveComparisonAsNote()">
+                💾 Save as Note
+              </button>
+              <button class="comparison-action-btn" onclick="exportComparison()">
+                📤 Export
+              </button>
+            </div>
+          </div>
+          
           <div id="chat-error" class="chat-error" aria-live="polite"></div>
           <form
             class="chat-input-wrap"
@@ -3016,8 +3643,420 @@
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
           document.querySelectorAll('.feedback-modal').forEach(m => m.remove());
+          hideCitationTooltip();
+          hideBidirectionalPanel();
         }
       });
+
+      // Citation Tooltip
+      const citationTooltip = document.getElementById('citationTooltip');
+      let currentCitationData = {};
+
+      function showCitationTooltip(event, btn) {
+        const source = btn.dataset.source || '';
+        const page = btn.dataset.page || '';
+        const text = btn.dataset.text || '';
+        
+        currentCitationData = { source, page };
+        
+        document.getElementById('tooltipDocName').textContent = source;
+        document.getElementById('tooltipText').textContent = text;
+        
+        const rect = btn.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.bottom + 8;
+        
+        if (left + 400 > window.innerWidth) {
+          left = window.innerWidth - 420;
+        }
+        if (top + 250 > window.innerHeight) {
+          top = rect.top - 260;
+        }
+        
+        citationTooltip.style.left = left + 'px';
+        citationTooltip.style.top = top + 'px';
+        citationTooltip.style.display = 'block';
+        
+        setTimeout(() => {
+          citationTooltip.classList.add('visible');
+        }, 10);
+      }
+
+      function hideCitationTooltip() {
+        citationTooltip.classList.remove('visible');
+        setTimeout(() => {
+          citationTooltip.style.display = 'none';
+        }, 200);
+      }
+
+      function viewCitationInPdf() {
+        if (currentCitationData.source) {
+          openPdfViewer(currentCitationData.source, currentCitationData.page ? parseInt(currentCitationData.page) : null);
+        }
+        hideCitationTooltip();
+      }
+
+      // Bidirectional Tracing
+      const bidirectionalCitations = {};
+
+      function registerCitation(messageId, citations) {
+        if (!citations || !Array.isArray(citations)) return;
+        
+        citations.forEach(cit => {
+          const key = cit.source + '_' + cit.page + '_' + (cit.text || '').substring(0, 50);
+          if (!bidirectionalCitations[key]) {
+            bidirectionalCitations[key] = [];
+          }
+          bidirectionalCitations[key].push({
+            messageId: messageId,
+            query: '',
+            answer: ''
+          });
+        });
+      }
+
+      function showBidirectionalPanel(source, page, text) {
+        let panel = document.querySelector('.bidirectional-panel');
+        if (!panel) {
+          panel = document.createElement('div');
+          panel.className = 'bidirectional-panel';
+          panel.innerHTML = `
+            <div class="bidirectional-header">
+              <span class="bidirectional-title">Citations to this text</span>
+              <button class="bidirectional-close" onclick="hideBidirectionalPanel()">✕</button>
+            </div>
+            <div class="bidirectional-body" id="bidirectionalBody"></div>
+          `;
+          document.body.appendChild(panel);
+        }
+        
+        const key = source + '_' + page + '_' + (text || '').substring(0, 50);
+        const citations = bidirectionalCitations[key] || [];
+        
+        const body = document.getElementById('bidirectionalBody');
+        
+        if (citations.length === 0) {
+          body.innerHTML = `
+            <div class="bidirectional-empty">
+              No other answers cite this text yet.
+            </div>
+          `;
+        } else {
+          body.innerHTML = citations.map(cit => `
+            <div class="bidirectional-item" onclick="scrollToMessage('${cit.messageId}')">
+              <div class="bidirectional-query">Q: ${cit.query || '...'}</div>
+              <div class="bidirectional-answer">A: ${cit.answer || '...'}</div>
+            </div>
+          `).join('');
+        }
+        
+        panel.classList.add('visible');
+      }
+
+      function hideBidirectionalPanel() {
+        const panel = document.querySelector('.bidirectional-panel');
+        if (panel) {
+          panel.classList.remove('visible');
+        }
+      }
+
+      function scrollToMessage(messageId) {
+        const msg = document.querySelector(`[data-message-id="${messageId}"]`);
+        if (msg) {
+          msg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          msg.style.animation = 'none';
+          msg.offsetHeight;
+          msg.style.animation = 'highlightMessage 1s ease';
+        }
+      }
+
+      // Register citations from loaded messages
+      function registerAllCitations() {
+        document.querySelectorAll('.chat-message[data-citations]').forEach(msg => {
+          try {
+            const citations = JSON.parse(msg.dataset.citations);
+            const messageId = msg.dataset.messageId;
+            
+            const userMsg = msg.previousElementSibling;
+            const query = userMsg ? userMsg.querySelector('.chat-message-text')?.textContent || '' : '';
+            const answer = msg.querySelector('.chat-message-text')?.textContent || '';
+            
+            citations.forEach(cit => {
+              const key = cit.source + '_' + (cit.page || '') + '_' + (cit.text || '').substring(0, 50);
+              if (!bidirectionalCitations[key]) {
+                bidirectionalCitations[key] = [];
+              }
+              bidirectionalCitations[key].push({
+                messageId: messageId,
+                query: query,
+                answer: answer.substring(0, 100) + (answer.length > 100 ? '...' : '')
+              });
+            });
+          } catch (e) {}
+        });
+      }
+
+      // Add highlight animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes highlightMessage {
+          0% { background: rgba(99, 102, 241, 0.3); }
+          100% { background: transparent; }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // Initialize on page load
+      document.addEventListener('DOMContentLoaded', function() {
+        registerAllCitations();
+        initDocSwitcher();
+      });
+
+      // Comparison View
+      let currentChatMode = 'chat';
+      let selectedDocs = [];
+
+      function switchChatMode(mode) {
+        currentChatMode = mode;
+        const chatMessages = document.getElementById('chat-messages');
+        const comparisonView = document.getElementById('comparisonView');
+        const chatForm = document.querySelector('.chat-input-wrap');
+        const chatModeBtn = document.getElementById('chatModeBtn');
+        const compareModeBtn = document.getElementById('compareModeBtn');
+        
+        if (mode === 'compare') {
+          // 仅隐藏聊天消息区域和输入框，不隐藏整个中间面板，避免 Studio 跑到中间
+          if (chatMessages) chatMessages.style.display = 'none';
+          if (chatForm) chatForm.style.display = 'none';
+          if (comparisonView) comparisonView.classList.add('active');
+          if (chatModeBtn) chatModeBtn.classList.remove('active');
+          if (compareModeBtn) compareModeBtn.classList.add('active');
+          updateDocSwitcher();
+        } else {
+          if (chatMessages) chatMessages.style.display = '';
+          if (chatForm) chatForm.style.display = '';
+          if (comparisonView) comparisonView.classList.remove('active');
+          if (chatModeBtn) chatModeBtn.classList.add('active');
+          if (compareModeBtn) compareModeBtn.classList.remove('active');
+        }
+      }
+
+      function initDocSwitcher() {
+        updateDocSwitcher();
+      }
+
+      function updateDocSwitcher() {
+        const docSwitcher = document.getElementById('docSwitcher');
+        if (!docSwitcher) return;
+        
+        const sources = document.querySelectorAll('.source-tag');
+        if (sources.length === 0) {
+          docSwitcher.innerHTML = '<span style="color: var(--text-muted); font-size: 11px;">No documents available</span>';
+          return;
+        }
+        
+        docSwitcher.innerHTML = Array.from(sources).map((source, idx) => {
+          const name = source.dataset.filename || source.querySelector('.source-tag-label')?.textContent || '';
+          const isSelected = selectedDocs.includes(name);
+          return `
+            <div class="doc-switcher-item ${isSelected ? 'selected' : ''}" 
+                 onclick="toggleDocSelection('${name}')">
+              <span>${isSelected ? '☑' : '☐'}</span>
+              <span>${name.length > 25 ? name.substring(0, 25) + '...' : name}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function toggleDocSelection(docName) {
+        const idx = selectedDocs.indexOf(docName);
+        if (idx === -1) {
+          if (selectedDocs.length < 3) {
+            selectedDocs.push(docName);
+          } else {
+            alert('Maximum 3 documents can be compared at once');
+            return;
+          }
+        } else {
+          selectedDocs.splice(idx, 1);
+        }
+        updateDocSwitcher();
+      }
+
+      async function runComparison() {
+        const query = document.getElementById('comparisonQuery')?.value?.trim();
+        if (!query) {
+          alert('Please enter a question');
+          return;
+        }
+        if (selectedDocs.length < 2) {
+          alert('Please select at least 2 documents to compare');
+          return;
+        }
+
+        const submitBtn = document.getElementById('comparisonSubmitBtn');
+        const comparisonBody = document.getElementById('comparisonBody');
+        
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '⏳ Comparing...';
+        }
+
+        // Show loading state
+        if (comparisonBody) {
+          comparisonBody.innerHTML = selectedDocs.map(doc => `
+            <div class="comparison-column">
+              <div class="comparison-column-header">
+                <span class="comparison-column-title">
+                  <span class="doc-icon">📄</span>
+                  ${doc}
+                </span>
+              </div>
+              <div class="comparison-column-body">
+                <div class="comparison-column-loading">
+                  <span class="typing-indicator">
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                    <span class="typing-dot"></span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        try {
+          const response = await fetch('/api/compare', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: query,
+              sources: selectedDocs
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Comparison failed');
+          }
+
+          const data = await response.json();
+          
+          // Render results
+          if (comparisonBody) {
+            comparisonBody.innerHTML = data.results.map((result, idx) => `
+              <div class="comparison-column">
+                <div class="comparison-column-header">
+                  <span class="comparison-column-title">
+                    <span class="doc-icon">📄</span>
+                    ${result.source}
+                  </span>
+                </div>
+                <div class="comparison-column-body">
+                  ${result.answer}
+                </div>
+              </div>
+            `).join('');
+          }
+
+          // Show difference analysis
+          const diffAnalysis = document.getElementById('differenceAnalysis');
+          const diffSummary = document.getElementById('differenceSummary');
+          const comparisonActions = document.getElementById('comparisonActions');
+          
+          if (diffAnalysis && diffSummary) {
+            diffAnalysis.style.display = 'block';
+            
+            let commonHtml = data.analysis.common.length > 0 
+              ? data.analysis.common.map(c => `<div class="summary-card-content">• ${c}</div>`).join('')
+              : '<div class="summary-card-content" style="color: var(--text-muted)">No common points found</div>';
+            
+            let differentHtml = data.analysis.different.length > 0
+              ? data.analysis.different.map(d => `<div class="summary-card-content">• ${d.substring(0, 100)}...</div>`).join('')
+              : '<div class="summary-card-content" style="color: var(--text-muted)">No significant differences found</div>';
+
+            diffSummary.innerHTML = `
+              <div class="summary-card common">
+                <div class="summary-card-label">Common Points (${data.analysis.common.length})</div>
+                ${commonHtml}
+              </div>
+              <div class="summary-card different">
+                <div class="summary-card-label">Different Points (${data.analysis.different.length})</div>
+                ${differentHtml}
+              </div>
+            `;
+          }
+
+          if (comparisonActions) {
+            comparisonActions.style.display = 'flex';
+          }
+
+        } catch (error) {
+          console.error('Comparison error:', error);
+          if (comparisonBody) {
+            comparisonBody.innerHTML = `<div style="color: #ef4444; padding: 20px;">Error: ${error.message}</div>`;
+          }
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '⚡ Compare';
+          }
+        }
+      }
+
+      function saveComparisonAsNote() {
+        const query = document.getElementById('comparisonQuery')?.value || '';
+        const comparisonBody = document.getElementById('comparisonBody');
+        
+        let content = `# Comparison: ${query}\n\n`;
+        
+        if (comparisonBody) {
+          const columns = comparisonBody.querySelectorAll('.comparison-column');
+          columns.forEach(col => {
+            const title = col.querySelector('.comparison-column-title')?.textContent || '';
+            const text = col.querySelector('.comparison-column-body')?.textContent || '';
+            content += `## ${title}\n${text}\n\n`;
+          });
+        }
+
+        const diffAnalysis = document.getElementById('differenceSummary');
+        if (diffAnalysis) {
+          content += `## Analysis\n${diffAnalysis.textContent}\n`;
+        }
+
+        // Save to localStorage (in a real app, would save to backend)
+        const notes = JSON.parse(localStorage.getItem('comparison_notes') || '[]');
+        notes.push({
+          query: query,
+          content: content,
+          timestamp: new Date().toISOString()
+        });
+        localStorage.setItem('comparison_notes', JSON.stringify(notes));
+        
+        alert('Comparison saved as note!');
+      }
+
+      function exportComparison() {
+        const query = document.getElementById('comparisonQuery')?.value || '';
+        let content = `# Comparison: ${query}\n\n`;
+        
+        const comparisonBody = document.getElementById('comparisonBody');
+        if (comparisonBody) {
+          const columns = comparisonBody.querySelectorAll('.comparison-column');
+          columns.forEach(col => {
+            const title = col.querySelector('.comparison-column-title')?.textContent || '';
+            const text = col.querySelector('.comparison-column-body')?.textContent || '';
+            content += `## ${title}\n${text}\n\n`;
+          });
+        }
+
+        const blob = new Blob([content], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `comparison_${Date.now()}.md`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
     </script>
   </body>
 </html>

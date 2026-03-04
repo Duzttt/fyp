@@ -1,17 +1,13 @@
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pypdf import PdfReader
 
 
 def _normalize_path_arg(path: str) -> str:
     cleaned = str(path).strip()
-    if (
-        len(cleaned) >= 2
-        and cleaned[0] == cleaned[-1]
-        and cleaned[0] in {"'", '"'}
-    ):
+    if len(cleaned) >= 2 and cleaned[0] == cleaned[-1] and cleaned[0] in {"'", '"'}:
         cleaned = cleaned[1:-1].strip()
     return cleaned
 
@@ -44,6 +40,70 @@ def read_pdf_pages(pdf_path: str) -> List[Dict[str, Any]]:
             )
 
     return pages
+
+
+def extract_page_text_with_positions(
+    pdf_path: str,
+    page_number: int,
+) -> List[Dict[str, Any]]:
+    """
+    Extract text from a specific page with position information.
+    Returns list of text items with their approximate positions.
+    """
+    cleaned_path = _normalize_path_arg(pdf_path)
+    pdf_file = Path(cleaned_path)
+    if not pdf_file.exists():
+        raise FileNotFoundError(f"PDF file not found: {cleaned_path}")
+
+    reader = PdfReader(str(pdf_file))
+    if page_number < 1 or page_number > len(reader.pages):
+        return []
+
+    page = reader.pages[page_number - 1]
+
+    text_items: List[Dict[str, Any]] = []
+
+    if hasattr(page, "extract_texts"):
+        try:
+            texts = page.extract_texts()
+            for item in texts:
+                if isinstance(item, dict):
+                    text_items.append(
+                        {
+                            "text": item.get("text", ""),
+                            "x": item.get("x", 0),
+                            "y": item.get("y", 0),
+                            "width": item.get("width", 0),
+                            "height": item.get("height", 0),
+                        }
+                    )
+                elif isinstance(item, str) and item.strip():
+                    text_items.append(
+                        {
+                            "text": item,
+                            "x": 0,
+                            "y": 0,
+                            "width": 0,
+                            "height": 0,
+                        }
+                    )
+        except Exception:
+            pass
+
+    if not text_items:
+        page_text = page.extract_text() or ""
+        if page_text.strip():
+            text_items.append(
+                {
+                    "text": page_text.strip(),
+                    "x": 0,
+                    "y": 0,
+                    "width": 0,
+                    "height": 0,
+                }
+            )
+
+    return text_items
 
 
 def split_text_into_chunks(text: str, chunk_size: int = 500) -> List[str]:
@@ -130,16 +190,50 @@ def chunk_pdf_with_metadata(
         page_text = str(page_record["text"])
         page_chunks = split_text_into_chunks(page_text, chunk_size=chunk_size)
 
+        char_position = 0
         for chunk in page_chunks:
+            chunk_length = len(chunk)
             chunk_records.append(
                 {
                     "text": chunk,
                     "source": resolved_source,
                     "page": page_num,
+                    "char_start": char_position,
+                    "char_end": char_position + chunk_length,
+                    "bbox": estimate_bbox_from_position(
+                        page_num, char_position, chunk_length, page_text
+                    ),
                 }
             )
+            char_position += chunk_length
 
     return chunk_records
+
+
+def estimate_bbox_from_position(
+    page: int,
+    char_start: int,
+    char_end: int,
+    page_text: str,
+) -> Optional[List[float]]:
+    """
+    Estimate bounding box from character position.
+    This is a rough approximation since pypdf doesn't provide precise bbox.
+    Returns [x1, y1, x2, y2] normalized coordinates (0-1 range).
+    """
+    if not page_text or char_start >= len(page_text):
+        return None
+
+    total_chars = len(page_text)
+    start_ratio = char_start / max(total_chars, 1)
+    end_ratio = min(char_end / max(total_chars, 1), 1.0)
+
+    x1 = 0.05
+    x2 = 0.95
+    y1 = start_ratio * 0.9 + 0.05
+    y2 = end_ratio * 0.9 + 0.05
+
+    return [x1, y1, x2, y2]
 
 
 def preview_pdf_chunks(

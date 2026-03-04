@@ -41,6 +41,8 @@ urlpatterns = [
     path("chat-htmx/", views.chat_htmx),
     path("api/retrieve", views.retrieve_chunks),
     path("api/retrieve/", views.retrieve_chunks),
+    path("api/compare", views.compare_documents),
+    path("api/compare/", views.compare_documents),
     # SPA catch-all: serve index.html for any route not matched above
     # so React Router can handle client-side paths like /config
     re_path(r"^(?!api/).*$", views.index_page),
