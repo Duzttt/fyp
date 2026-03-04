@@ -1,4 +1,5 @@
-<div class="chat-message chat-message-{{ role }}">
+{% load tz %}{% now "H:i" as current_time %}
+<div class="chat-message chat-message-{{ role }}" data-message-id="{{ message_id|default:'' }}" data-timestamp="{{ timestamp|default:current_time }}">
   <div class="chat-message-role">
     {% if role == "user" %}
       You
@@ -8,8 +9,75 @@
       System
     {% endif %}
   </div>
-  <div class="chat-message-text">
-    {{ text }}
+  <div class="chat-message-content">
+    <div class="chat-message-text">{{ text }}</div>
+    
+    {% if role == "assistant" and citations %}
+    <div class="chat-message-citations">
+      {% for citation in citations %}
+      <button class="citation-tag" 
+              data-source="{{ citation.source }}" 
+              data-page="{{ citation.page|default:'' }}"
+              onclick="openPdfViewer('{{ citation.source }}', {{ citation.page|default:'null' }})">
+        <span class="citation-icon">📄</span>
+        <span class="citation-source">{{ citation.source }}</span>
+        {% if citation.page %}<span class="citation-page">p.{{ citation.page }}</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% if role == "assistant" %}
+    <div class="chat-message-actions">
+      <button class="action-btn action-upvote" title="Helpful" onclick="sendFeedback('{{ message_id|default:"" }}', 'up', this)">
+        <span class="action-icon">👍</span>
+        <span class="action-label">Useful</span>
+      </button>
+      <button class="action-btn action-downvote" title="Not helpful" onclick="showFeedbackReason('{{ message_id|default:"" }}', this)">
+        <span class="action-icon">👎</span>
+        <span class="action-label">Not useful</span>
+      </button>
+      <button class="action-btn action-copy" title="Copy" onclick="copyMessage(this)">
+        <span class="action-icon">📋</span>
+        <span class="action-label">Copy</span>
+      </button>
+    </div>
+    {% endif %}
+    
+    {% if role == "assistant" and retrieved_chunks %}
+    <div class="retrieval-panel">
+      <div class="retrieval-header" onclick="toggleRetrievalPanel(this)">
+        <span class="retrieval-title">
+          <span>📚</span>
+          Retrieved {{ retrieved_chunks|length }} chunks
+          <span class="retrieval-highlight">({{ retrieved_chunks|length }} above 60%)</span>
+        </span>
+        <span class="retrieval-toggle">▼</span>
+      </div>
+      <div class="retrieval-chunks">
+        {% for chunk in retrieved_chunks %}
+        <div class="chunk-card" 
+             data-score="{{ chunk.score|floatformat:3 }}" 
+             data-source="{{ chunk.source }}" 
+             data-page="{{ chunk.page|default:'' }}"
+             onclick="openPdfViewer('{{ chunk.source }}', {{ chunk.page|default:'null' }})">
+          <div class="chunk-score-row">
+            <span class="chunk-score-label">Similarity</span>
+            <div class="chunk-score-bar">
+              <div class="chunk-score-fill {% if chunk.score > 0.8 %}high{% elif chunk.score >= 0.5 %}medium{% else %}low{% endif %}" style="width: {{ chunk.score|stringformat:"%.0f"|add:"0" }}%"></div>
+            </div>
+            <span class="chunk-score-value {% if chunk.score > 0.8 %}high{% elif chunk.score >= 0.5 %}medium{% else %}low{% endif %}">{{ chunk.score|floatformat:0 }}%</span>
+          </div>
+          <div class="chunk-preview">{{ chunk.preview|truncatechars:100 }}</div>
+          <div class="chunk-meta">
+            <span class="chunk-source">📄 {{ chunk.source }}</span>
+            {% if chunk.page %}<span class="chunk-page">· Page {{ chunk.page }}</span>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
   </div>
+  <div class="chat-message-time">{{ timestamp|default:current_time }}</div>
 </div>
-

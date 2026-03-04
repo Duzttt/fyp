@@ -812,6 +812,8 @@ def reset_faiss_index(request: HttpRequest) -> JsonResponse:
 @csrf_exempt
 @require_http_methods(["POST"])
 def chat_htmx(request: HttpRequest) -> HttpResponse:
+    from datetime import datetime
+
     query = str(request.POST.get("query", "")).strip()
     if not query:
         return HttpResponse(
@@ -826,6 +828,10 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
     llm_model = rag_config.get("llm_model", settings.LOCAL_QWEN_MODEL)
     temperature = rag_config.get("temperature", 0.7)
 
+    retrieved_sources: List[Dict[str, Any]] = []
+    citations: List[Dict[str, Any]] = []
+    retrieved_chunks: List[Dict[str, Any]] = []
+
     try:
         retrieved_sources = retrieve_with_faiss(
             query=query,
@@ -833,8 +839,37 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             source_filter=None,
         )
         context = build_context_from_sources(retrieved_sources)
+
+        distances = [r.get("distance", 0) for r in retrieved_sources]
+        max_distance = max(distances) if distances else 1.0
+        max_distance = max(max_distance, 0.001)
+
+        for src in retrieved_sources:
+            distance = src.get("distance", 0)
+            similarity = max(0.0, 1.0 - (distance / max_distance))
+            text = src.get("text", "")
+            citations.append(
+                {
+                    "source": src.get("source", "unknown"),
+                    "page": src.get("page"),
+                    "text": text[:200],
+                }
+            )
+            retrieved_chunks.append(
+                {
+                    "text": text,
+                    "preview": text[:100],
+                    "score": round(similarity, 3),
+                    "distance": round(distance, 4),
+                    "source": src.get("source", "unknown"),
+                    "page": src.get("page"),
+                }
+            )
+
         if not context.strip():
-            answer = "No indexed context found in FAISS. Please upload and index PDFs first."
+            answer = (
+                "No indexed context found in FAISS. Please upload and index PDFs first."
+            )
         else:
             system_prompt = (
                 "You are a rigorous academic teaching assistant. Please answer the questions based on the following reference materials. "
@@ -862,12 +897,72 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
     except Exception as exc:  # noqa: BLE001
         answer = f"Failed to process query: {str(exc)}"
 
-    user_html = render_to_string(
-        "_chat_message.html",
-        {"role": "user", "text": query},
-    )
+    timestamp = datetime.now().strftime("%H:%M")
+    message_id = f"msg_{int(datetime.now().timestamp() * 1000)}"
+
     assistant_html = render_to_string(
         "_chat_message.html",
-        {"role": "assistant", "text": answer},
+        {
+            "role": "assistant",
+            "text": answer,
+            "timestamp": timestamp,
+            "message_id": f"assistant_{message_id}",
+            "citations": citations,
+            "retrieved_chunks": retrieved_chunks,
+        },
     )
-    return HttpResponse(user_html + assistant_html)
+    return HttpResponse(assistant_html)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def retrieve_chunks(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    query = str(payload.get("query") or "").strip()
+    top_k = int(payload.get("top_k", 5))
+    source_filter = payload.get("sources")
+
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
+
+    if isinstance(source_filter, str):
+        source_filter = [source_filter]
+
+    try:
+        results = retrieve_with_faiss(
+            query=query, top_k=top_k, source_filter=source_filter
+        )
+    except LocalRAGError as exc:
+        return _error_response(str(exc), status=503)
+
+    if not results:
+        return JsonResponse({"chunks": []})
+
+    distances = [r.get("distance", 0) for r in results]
+    max_distance = max(distances) if distances else 1.0
+    max_distance = max(max_distance, 0.001)
+
+    chunks = []
+    for r in results:
+        distance = r.get("distance", 0)
+        similarity = max(0.0, 1.0 - (distance / max_distance))
+
+        text = r.get("text", "")
+        preview = text[:100] + ("..." if len(text) > 100 else "")
+
+        chunks.append(
+            {
+                "text": text,
+                "preview": preview,
+                "score": round(similarity, 3),
+                "distance": round(distance, 4),
+                "source": r.get("source", "unknown"),
+                "page": r.get("page"),
+            }
+        )
+
+    return JsonResponse({"chunks": chunks})

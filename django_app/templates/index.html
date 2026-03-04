@@ -348,6 +348,8 @@
         padding: 14px;
         overflow-y: auto;
         position: relative;
+        /* 限制高度，强制内部出现滚动条而不是整页滚动 */
+        max-height: calc(100vh - 220px);
       }
 
       /* 聊天卡片 - 更明显的液态效果 */
@@ -994,6 +996,724 @@
           min-height: 0;
         }
       }
+
+      /* Retrieval Chunks Visualization */
+      .retrieval-section {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .retrieval-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        cursor: pointer;
+      }
+
+      .retrieval-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .retrieval-toggle {
+        font-size: 10px;
+        color: var(--text-muted);
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: all 0.2s;
+      }
+
+      .retrieval-toggle:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .retrieval-chunks {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 10px;
+      }
+
+      .chunk-card {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 10px;
+        padding: 10px 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .chunk-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.6);
+      }
+
+      .chunk-card.hidden {
+        display: none;
+      }
+
+      .chunk-score-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .chunk-score-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        min-width: 50px;
+      }
+
+      .chunk-score-bar {
+        flex: 1;
+        height: 6px;
+        background: rgba(55, 65, 81, 0.8);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .chunk-score-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      .chunk-score-fill.high {
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+      }
+
+      .chunk-score-fill.medium {
+        background: linear-gradient(90deg, #eab308, #ca8a04);
+      }
+
+      .chunk-score-fill.low {
+        background: linear-gradient(90deg, #6b7280, #4b5563);
+      }
+
+      .chunk-score-value {
+        font-size: 11px;
+        font-weight: 600;
+        min-width: 40px;
+        text-align: right;
+      }
+
+      .chunk-score-value.high {
+        color: #22c55e;
+      }
+
+      .chunk-score-value.medium {
+        color: #eab308;
+      }
+
+      .chunk-score-value.low {
+        color: #9ca3af;
+      }
+
+      .chunk-preview {
+        font-size: 12px;
+        color: var(--text-main);
+        line-height: 1.5;
+        margin-bottom: 8px;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+
+      .chunk-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 10px;
+        color: var(--text-muted);
+      }
+
+      .chunk-source {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .chunk-page {
+        color: var(--accent);
+      }
+
+      .chunk-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        gap: 8px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+
+      .chunk-loading-spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(99, 102, 241, 0.3);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      /* PDF Viewer Modal */
+      .pdf-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        animation: fadeIn 0.2s ease;
+      }
+
+      .pdf-modal-container {
+        width: min(900px, 95vw);
+        height: min(90vh, 90vw);
+        background: #1a1a2e;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        animation: slideUp 0.3s ease;
+      }
+
+      .pdf-modal-header {
+        padding: 12px 16px;
+        background: rgba(0, 0, 0, 0.3);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .pdf-modal-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .pdf-modal-title .page-info {
+        font-size: 12px;
+        color: var(--accent);
+        font-weight: normal;
+      }
+
+      .pdf-modal-close {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+
+      .pdf-modal-close:hover {
+        background: rgba(239, 68, 68, 0.5);
+        transform: rotate(90deg);
+      }
+
+      .pdf-modal-body {
+        flex: 1;
+        overflow: auto;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+      }
+
+      .pdf-viewer {
+        max-width: 100%;
+        height: 100%;
+      }
+
+      .pdf-viewer embed,
+      .pdf-viewer iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+      }
+
+      .pdf-empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        color: var(--text-muted);
+        font-size: 14px;
+        gap: 12px;
+      }
+
+      .pdf-empty-state .icon {
+        font-size: 48px;
+        opacity: 0.5;
+      }
+
+      /* Chat Message Bubble Styles */
+      .chat-message {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 16px;
+        animation: slideIn 0.3s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .chat-message-user {
+        align-items: flex-end;
+      }
+
+      .chat-message-assistant {
+        align-items: flex-start;
+      }
+
+      .chat-message-content {
+        max-width: 85%;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .chat-message-user .chat-message-content {
+        align-items: flex-end;
+      }
+
+      .chat-message-assistant .chat-message-content {
+        align-items: flex-start;
+      }
+
+      .chat-message-text {
+        padding: 12px 16px;
+        font-size: 13px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+
+      .chat-message-user .chat-message-text {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+        color: white;
+        border-radius: 18px 18px 4px 18px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      }
+
+      .chat-message-assistant .chat-message-text {
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-main);
+        border-radius: 18px 18px 18px 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      .chat-message-pending .chat-message-text {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 80px;
+      }
+
+      .typing-indicator {
+        display: inline-flex;
+        gap: 4px;
+      }
+
+      .typing-indicator span {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--text-muted);
+        opacity: 0.4;
+        animation: typingBlink 1s infinite ease-in-out;
+      }
+
+      .typing-indicator span:nth-child(2) {
+        animation-delay: 0.15s;
+      }
+
+      .typing-indicator span:nth-child(3) {
+        animation-delay: 0.3s;
+      }
+
+      @keyframes typingBlink {
+        0% {
+          opacity: 0.2;
+          transform: translateY(0);
+        }
+        50% {
+          opacity: 1;
+          transform: translateY(-2px);
+        }
+        100% {
+          opacity: 0.2;
+          transform: translateY(0);
+        }
+      }
+
+      .chat-message-time {
+        font-size: 10px;
+        color: var(--text-muted);
+        margin-top: 4px;
+        padding: 0 4px;
+      }
+
+      .chat-message-user .chat-message-time {
+        text-align: right;
+      }
+
+      /* Citations */
+      .chat-message-citations {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 8px 0;
+      }
+
+      .citation-tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(99, 102, 241, 0.15);
+        border: 1px solid rgba(99, 102, 241, 0.3);
+        border-radius: 20px;
+        font-size: 11px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .citation-tag:hover {
+        background: rgba(99, 102, 241, 0.25);
+        border-color: var(--accent);
+        color: white;
+        transform: translateY(-1px);
+      }
+
+      .citation-icon {
+        font-size: 10px;
+      }
+
+      .citation-source {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .citation-page {
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      /* Message Actions */
+      .chat-message-actions {
+        display: flex;
+        gap: 8px;
+        padding: 8px 0;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .chat-message:hover .chat-message-actions {
+        opacity: 1;
+      }
+
+      .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        background: rgba(31, 41, 55, 0.6);
+        border: 1px solid rgba(55, 65, 81, 0.6);
+        border-radius: 16px;
+        font-size: 11px;
+        color: var(--text-muted);
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .action-btn:hover {
+        background: rgba(55, 65, 81, 0.8);
+        border-color: var(--accent);
+        color: white;
+        transform: scale(1.05);
+      }
+
+      .action-btn.active {
+        background: rgba(34, 197, 94, 0.2);
+        border-color: #22c55e;
+        color: #22c55e;
+      }
+
+      .action-btn.active-down {
+        background: rgba(239, 68, 68, 0.2);
+        border-color: #ef4444;
+        color: #ef4444;
+      }
+
+      .action-icon {
+        font-size: 12px;
+      }
+
+      /* Retrieval Panel */
+      .retrieval-panel {
+        width: 100%;
+        margin-top: 8px;
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(55, 65, 81, 0.5);
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      .retrieval-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        cursor: pointer;
+        transition: background 0.2s ease;
+      }
+
+      .retrieval-header:hover {
+        background: rgba(99, 102, 241, 0.1);
+      }
+
+      .retrieval-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .retrieval-highlight {
+        color: var(--accent);
+        font-weight: normal;
+      }
+
+      .retrieval-toggle {
+        font-size: 10px;
+        color: var(--text-muted);
+        transition: transform 0.3s ease;
+      }
+
+      .retrieval-panel.expanded .retrieval-toggle {
+        transform: rotate(180deg);
+      }
+
+      .retrieval-chunks {
+        display: none;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 10px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.2);
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .retrieval-panel.expanded .retrieval-chunks {
+        display: grid;
+      }
+
+      /* Feedback Reason Modal */
+      .feedback-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+      }
+
+      .feedback-modal-content {
+        background: #1a1a2e;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 20px;
+        width: min(400px, 90vw);
+      }
+
+      .feedback-modal-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: white;
+      }
+
+      .feedback-modal-textarea {
+        width: 100%;
+        min-height: 80px;
+        padding: 12px;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid rgba(55, 65, 81, 0.8);
+        border-radius: 8px;
+        color: white;
+        font-size: 13px;
+        resize: vertical;
+        margin-bottom: 12px;
+      }
+
+      .feedback-modal-textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      .feedback-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      .feedback-modal-btn {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .feedback-modal-btn.cancel {
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: var(--text-muted);
+      }
+
+      .feedback-modal-btn.cancel:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+      }
+
+      .feedback-modal-btn.submit {
+        background: var(--accent);
+        border: none;
+        color: white;
+      }
+
+      .feedback-modal-btn.submit:hover {
+        filter: brightness(1.1);
+      }
+
+      /* Copy Success Toast */
+      .copy-toast {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: rgba(34, 197, 94, 0.9);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-size: 13px;
+        z-index: 4000;
+        opacity: 0;
+        transition: all 0.3s ease;
+      }
+
+      .copy-toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      /* Loading Animation */
+      .typing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 12px 16px;
+      }
+
+      .typing-dot {
+        width: 8px;
+        height: 8px;
+        background: var(--text-muted);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out;
+      }
+
+      .typing-dot:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      .typing-dot:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      .typing-dot:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+
+      @keyframes typingBounce {
+        0%, 80%, 100% {
+          transform: scale(0.8);
+          opacity: 0.5;
+        }
+        40% {
+          transform: scale(1.2);
+          opacity: 1;
+        }
+      }
+
+      /* Infinite Scroll */
+      .chat-scroll-sentinel {
+        height: 1px;
+        width: 100%;
+      }
+
+      .chat-loading-more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -1324,6 +2044,74 @@
             var errBox = document.getElementById("chat-error");
             if (errBox) {
               errBox.textContent = "请输入要提问的内容。";
+            }
+          } else {
+            // Immediately render user message and thinking placeholder
+            var chatBody = document.getElementById("chat-messages");
+            if (!chatBody) return;
+
+            var text = input.value.trim();
+            var now = new Date();
+            var timeStr = now.getHours().toString().padStart(2, "0") +
+              ":" +
+              now.getMinutes().toString().padStart(2, "0");
+
+            // User bubble
+            var userMsg = document.createElement("div");
+            userMsg.className = "chat-message chat-message-user";
+            userMsg.innerHTML =
+              '<div class="chat-message-content">' +
+              '<div class="chat-message-text"></div>' +
+              '<div class="chat-message-time"></div>' +
+              "</div>";
+            userMsg.querySelector(".chat-message-text").textContent = text;
+            userMsg.querySelector(".chat-message-time").textContent = timeStr;
+            chatBody.appendChild(userMsg);
+
+            // Remove empty state if present
+            var empty = document.querySelector(".chat-empty-card");
+            if (empty) empty.remove();
+
+            // Thinking placeholder
+            var pending = document.createElement("div");
+            pending.className =
+              "chat-message chat-message-assistant chat-message-pending";
+            pending.innerHTML =
+              '<div class="chat-message-content">' +
+              '<div class="chat-message-text">' +
+              '<span class="typing-indicator">' +
+              '<span></span><span></span><span></span>' +
+              "</span>" +
+              "</div>" +
+              "</div>";
+            chatBody.appendChild(pending);
+
+            // Clear input immediately after sending
+            input.value = "";
+
+            // Scroll to bottom
+            chatBody.scrollTop = chatBody.scrollHeight;
+          }
+        }
+      });
+
+      // Allow submitting chat with Enter
+      document.addEventListener("keydown", function (event) {
+        var target = event.target;
+        if (
+          target &&
+          target.classList &&
+          target.classList.contains("chat-input") &&
+          event.key === "Enter" &&
+          !event.shiftKey
+        ) {
+          event.preventDefault();
+          var form = target.closest("form");
+          if (form && form.classList.contains("chat-input-wrap")) {
+            if (form.requestSubmit) {
+              form.requestSubmit();
+            } else {
+              form.submit();
             }
           }
         }
@@ -1782,6 +2570,454 @@
       } else {
         loadExistingDocuments();
       }
+
+      // Retrieval Visualization
+      let currentChunks = [];
+      let isChunksExpanded = false;
+      const SIMILARITY_THRESHOLD = 0.6;
+
+      function getScoreClass(score) {
+        if (score > 0.8) return 'high';
+        if (score >= 0.5) return 'medium';
+        return 'low';
+      }
+
+      function formatScore(score) {
+        return (score * 100).toFixed(0) + '%';
+      }
+
+      function truncateText(text, maxLength) {
+        if (text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
+      }
+
+      function createChunkCard(chunk, index) {
+        const scoreClass = getScoreClass(chunk.score);
+        const isHidden = !isChunksExpanded && chunk.score < SIMILARITY_THRESHOLD;
+        
+        return `
+          <div class="chunk-card ${isHidden ? 'hidden' : ''}" 
+               data-index="${index}"
+               data-source="${encodeURIComponent(chunk.source)}"
+               data-page="${chunk.page || ''}"
+               data-text="${encodeURIComponent(chunk.text)}"
+               onclick="openPdfViewer('${encodeURIComponent(chunk.source)}', ${chunk.page || 'null'})"
+               onmouseenter="highlightChunk(${index})"
+               onmouseleave="unhighlightChunk(${index})">
+            <div class="chunk-score-row">
+              <span class="chunk-score-label">Similarity</span>
+              <div class="chunk-score-bar">
+                <div class="chunk-score-fill ${scoreClass}" style="width: ${chunk.score * 100}%"></div>
+              </div>
+              <span class="chunk-score-value ${scoreClass}">${formatScore(chunk.score)}</span>
+            </div>
+            <div class="chunk-preview">${chunk.preview}</div>
+            <div class="chunk-meta">
+              <span class="chunk-source">📄 ${truncateText(chunk.source, 25)}</span>
+              ${chunk.page ? `<span class="chunk-page">· Page ${chunk.page}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      function createRetrievalSection(query, chunks) {
+        if (!chunks || chunks.length === 0) return '';
+        
+        const visibleCount = chunks.filter(c => c.score >= SIMILARITY_THRESHOLD).length;
+        
+        return `
+          <div class="retrieval-section">
+            <div class="retrieval-header" onclick="toggleRetrievalChunks()">
+              <span class="retrieval-title">
+                <span>📚</span>
+                Retrieved ${chunks.length} chunks
+                <span style="color: var(--accent);">(${visibleCount} above ${(SIMILARITY_THRESHOLD * 100).toFixed(0)}%)</span>
+              </span>
+              <button class="retrieval-toggle" id="retrievalToggle">
+                ${isChunksExpanded ? 'Collapse ▲' : 'Expand ▼'}
+              </button>
+            </div>
+            <div class="retrieval-chunks" id="retrievalChunks">
+              ${chunks.map((chunk, i) => createChunkCard(chunk, i)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function toggleRetrievalChunks() {
+        isChunksExpanded = !isChunksExpanded;
+        const toggle = document.getElementById('retrievalToggle');
+        const cards = document.querySelectorAll('.chunk-card');
+        
+        if (toggle) {
+          toggle.textContent = isChunksExpanded ? 'Collapse ▲' : 'Expand ▼';
+        }
+        
+        cards.forEach(card => {
+          const score = parseFloat(card.querySelector('.chunk-score-value').textContent) / 100;
+          if (isChunksExpanded || score >= SIMILARITY_THRESHOLD) {
+            card.classList.remove('hidden');
+          } else {
+            card.classList.add('hidden');
+          }
+        });
+      }
+
+      function highlightChunk(index) {
+        const cards = document.querySelectorAll('.chunk-card');
+        cards.forEach((card, i) => {
+          if (i === index) {
+            card.style.borderColor = 'var(--accent)';
+            card.style.background = 'rgba(99, 102, 241, 0.15)';
+          }
+        });
+      }
+
+      function unhighlightChunk(index) {
+        const cards = document.querySelectorAll('.chunk-card');
+        cards.forEach((card, i) => {
+          if (i === index) {
+            card.style.borderColor = '';
+            card.style.background = '';
+          }
+        });
+      }
+
+      // PDF Viewer Modal
+      let pdfModalOverlay = null;
+
+      function openPdfViewer(source, page) {
+        if (!source) return;
+        
+        source = decodeURIComponent(source);
+        
+        if (!pdfModalOverlay) {
+          pdfModalOverlay = document.createElement('div');
+          pdfModalOverlay.className = 'pdf-modal-overlay';
+          pdfModalOverlay.id = 'pdfViewerModal';
+          pdfModalOverlay.innerHTML = `
+            <div class="pdf-modal-container">
+              <div class="pdf-modal-header">
+                <div class="pdf-modal-title">
+                  <span>📄</span>
+                  <span id="pdfModalTitle">${truncateText(source, 40)}</span>
+                  <span class="page-info" id="pdfModalPage"></span>
+                </div>
+                <button class="pdf-modal-close" onclick="closePdfViewer()">✕</button>
+              </div>
+              <div class="pdf-modal-body" id="pdfModalBody">
+                <div class="pdf-empty-state">
+                  <span class="icon">📄</span>
+                  <span>Loading PDF...</span>
+                </div>
+              </div>
+            </div>
+          `;
+          pdfModalOverlay.addEventListener('click', function(e) {
+            if (e.target === pdfModalOverlay) {
+              closePdfViewer();
+            }
+          });
+          document.body.appendChild(pdfModalOverlay);
+        }
+
+        const titleEl = document.getElementById('pdfModalTitle');
+        const pageEl = document.getElementById('pdfModalPage');
+        const bodyEl = document.getElementById('pdfModalBody');
+        
+        if (titleEl) titleEl.textContent = truncateText(source, 40);
+        if (pageEl) pageEl.textContent = page ? `· Page ${page}` : '';
+        
+        // Try to load PDF using Google Docs Viewer or browser built-in
+        const pdfUrl = '/media/data_source/' + encodeURIComponent(source);
+        const googleViewerUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + pdfUrl)}&embedded=true`;
+        
+        bodyEl.innerHTML = `
+          <iframe 
+            src="${googleViewerUrl}" 
+            class="pdf-viewer"
+            sandbox="allow-scripts allow-same-origin allow-popups"
+            onerror="showPdfError()"
+          ></iframe>
+        `;
+        
+        document.body.style.overflow = 'hidden';
+      }
+
+      function showPdfError() {
+        const bodyEl = document.getElementById('pdfModalBody');
+        if (bodyEl) {
+          bodyEl.innerHTML = `
+            <div class="pdf-empty-state">
+              <span class="icon">⚠️</span>
+              <span>Unable to load PDF viewer</span>
+              <span style="font-size: 12px; opacity: 0.7;">Try opening the file directly</span>
+            </div>
+          `;
+        }
+      }
+
+      function closePdfViewer() {
+        if (pdfModalOverlay) {
+          pdfModalOverlay.remove();
+          pdfModalOverlay = null;
+        }
+        document.body.style.overflow = '';
+      }
+
+      // Close modal on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closePdfViewer();
+        }
+      });
+
+      // Fetch and display retrieval chunks after chat
+      async function fetchRetrievalChunks(query) {
+        try {
+          const response = await fetch('/api/retrieve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query, top_k: 5 })
+          });
+          
+          if (!response.ok) return null;
+          
+          const data = await response.json();
+          return data.chunks || [];
+        } catch (e) {
+          console.error('Failed to fetch retrieval chunks:', e);
+          return null;
+        }
+      }
+
+      // Hook into HTMX chat: remove placeholder, scroll, and manage retrieval panel
+      document.body.addEventListener('htmx:afterSwap', async function(event) {
+        if (event.detail && event.detail.target && event.detail.target.id === 'chat-messages') {
+          const container = event.detail.target;
+
+          // Remove thinking placeholder if present
+          const pending = container.querySelector('.chat-message-pending');
+          if (pending) pending.remove();
+
+          // Remove empty state if present
+          const empty = document.querySelector('.chat-empty-card');
+          if (empty) empty.remove();
+          
+          // Scroll to bottom
+          container.scrollTop = container.scrollHeight;
+          
+          // Get the user query from previous message
+          const userMessages = document.querySelectorAll('.chat-message-user');
+          if (userMessages.length === 0) return;
+          
+          const lastUserMessage = userMessages[userMessages.length - 1];
+          const userTextEl = lastUserMessage.querySelector('.chat-message-text');
+          if (!userTextEl) return;
+          
+          const query = userTextEl.textContent.trim();
+          
+          // Find the latest assistant message and remove old retrieval
+          const messages = document.querySelectorAll('.chat-message-assistant');
+          if (messages.length === 0) return;
+          
+          const latestMessage = messages[messages.length - 1];
+          const existingRetrieval = latestMessage.querySelector('.retrieval-panel');
+          if (existingRetrieval) existingRetrieval.remove();
+        }
+      });
+
+      // Toggle Retrieval Panel
+      function toggleRetrievalPanel(header) {
+        const panel = header.closest('.retrieval-panel');
+        if (panel) {
+          panel.classList.toggle('expanded');
+        }
+      }
+
+      // Send Feedback
+      function sendFeedback(messageId, feedback, btn) {
+        // Save to localStorage
+        const feedbackKey = 'chat_feedback_' + messageId;
+        localStorage.setItem(feedbackKey, feedback);
+        
+        // Update button state
+        const messageEl = btn.closest('.chat-message');
+        if (messageEl) {
+          const upvoteBtn = messageEl.querySelector('.action-upvote');
+          const downvoteBtn = messageEl.querySelector('.action-downvote');
+          
+          if (feedback === 'up') {
+            upvoteBtn.classList.add('active');
+            downvoteBtn.classList.remove('active-down');
+          } else {
+            downvoteBtn.classList.add('active-down');
+            upvoteBtn.classList.remove('active');
+          }
+        }
+        
+        // Send to backend (optional, for analytics)
+        try {
+          fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId, feedback: feedback })
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      // Show Feedback Reason Modal
+      function showFeedbackReason(messageId, btn) {
+        const modal = document.createElement('div');
+        modal.className = 'feedback-modal';
+        modal.innerHTML = `
+          <div class="feedback-modal-content">
+            <div class="feedback-modal-title">Why was this not helpful?</div>
+            <textarea class="feedback-modal-textarea" placeholder="Optional: Tell us why this answer wasn't helpful..."></textarea>
+            <div class="feedback-modal-actions">
+              <button class="feedback-modal-btn cancel" onclick="this.closest('.feedback-modal').remove()">Cancel</button>
+              <button class="feedback-modal-btn submit" onclick="submitFeedbackReason('${messageId}', this)">Submit</button>
+            </div>
+          </div>
+        `;
+        modal.addEventListener('click', function(e) {
+          if (e.target === modal) modal.remove();
+        });
+        document.body.appendChild(modal);
+        
+        // Update button state
+        const messageEl = btn.closest('.chat-message');
+        if (messageEl) {
+          const upvoteBtn = messageEl.querySelector('.action-upvote');
+          const downvoteBtn = messageEl.querySelector('.action-downvote');
+          downvoteBtn.classList.add('active-down');
+          if (upvoteBtn) upvoteBtn.classList.remove('active');
+        }
+      }
+
+      // Submit Feedback with Reason
+      function submitFeedbackReason(messageId, btn) {
+        const modal = btn.closest('.feedback-modal');
+        const reason = modal.querySelector('.feedback-modal-textarea').value;
+        
+        const feedbackKey = 'chat_feedback_' + messageId;
+        localStorage.setItem(feedbackKey, 'down');
+        
+        // Send to backend
+        try {
+          fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId, feedback: 'down', reason: reason })
+          }).catch(() => {});
+        } catch (e) {}
+        
+        modal.remove();
+      }
+
+      // Copy Message
+      function copyMessage(btn) {
+        const messageEl = btn.closest('.chat-message');
+        if (!messageEl) return;
+        
+        const textEl = messageEl.querySelector('.chat-message-text');
+        const citationsEl = messageEl.querySelector('.chat-message-citations');
+        
+        let text = textEl ? textEl.textContent : '';
+        
+        // Add citations if present
+        if (citationsEl) {
+          const citations = citationsEl.querySelectorAll('.citation-tag');
+          if (citations.length > 0) {
+            text += '\n\nSources:\n';
+            citations.forEach(cit => {
+              const source = cit.querySelector('.citation-source').textContent;
+              const page = cit.querySelector('.citation-page');
+              const pageText = page ? ` (page ${page.textContent.replace('p.', '')})` : '';
+              text += `- ${source}${pageText}\n`;
+            });
+          }
+        }
+        
+        navigator.clipboard.writeText(text).then(() => {
+          showCopyToast();
+        }).catch(() => {
+          // Fallback
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          showCopyToast();
+        });
+      }
+
+      // Show Copy Toast
+      function showCopyToast() {
+        let toast = document.querySelector('.copy-toast');
+        if (!toast) {
+          toast = document.createElement('div');
+          toast.className = 'copy-toast';
+          toast.textContent = 'Copied to clipboard!';
+          document.body.appendChild(toast);
+        }
+        
+        toast.classList.add('show');
+        setTimeout(() => {
+          toast.classList.remove('show');
+        }, 2000);
+      }
+
+      // Load feedback state from localStorage
+      function loadFeedbackStates() {
+        document.querySelectorAll('.chat-message-assistant').forEach(msg => {
+          const messageId = msg.dataset.messageId;
+          if (!messageId) return;
+          
+          const feedbackKey = 'chat_feedback_' + messageId;
+          const feedback = localStorage.getItem(feedbackKey);
+          
+          if (feedback) {
+            const upvoteBtn = msg.querySelector('.action-upvote');
+            const downvoteBtn = msg.querySelector('.action-downvote');
+            
+            if (feedback === 'up' && upvoteBtn) {
+              upvoteBtn.classList.add('active');
+            } else if (feedback === 'down' && downvoteBtn) {
+              downvoteBtn.classList.add('active-down');
+            }
+          }
+        });
+      }
+
+      // Initialize feedback states on page load
+      document.addEventListener('DOMContentLoaded', loadFeedbackStates);
+
+      // Infinite Scroll - Intersection Observer
+      const chatBody = document.getElementById('chat-messages');
+      if (chatBody) {
+        const sentinel = document.createElement('div');
+        sentinel.className = 'chat-scroll-sentinel';
+        sentinel.id = 'chat-scroll-sentinel';
+        chatBody.insertBefore(sentinel, chatBody.firstChild);
+        
+        const observer = new IntersectionObserver((entries) => {
+          if (entries[0].isIntersecting && chatBody.scrollTop > 0) {
+            // Could load more historical messages here
+            console.log('Reached top - could load more messages');
+          }
+        }, { threshold: 0.1 });
+        
+        observer.observe(sentinel);
+      }
+
+      // Close modals on Escape
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          document.querySelectorAll('.feedback-modal').forEach(m => m.remove());
+        }
+      });
     </script>
   </body>
 </html>
