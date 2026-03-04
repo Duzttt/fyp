@@ -651,6 +651,55 @@ def list_documents(request: HttpRequest) -> JsonResponse:
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def delete_document(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    filename = str(payload.get("filename") or "").strip()
+    if not filename:
+        return _error_response("Filename is required", status=400)
+
+    upload_dir = os.path.join(str(django_settings.MEDIA_ROOT), "data_source")
+    file_path = os.path.join(upload_dir, filename)
+    if not os.path.exists(file_path):
+        return _error_response("File not found", status=404)
+
+    try:
+        os.remove(file_path)
+    except OSError as exc:
+        return _error_response(f"Failed to delete file: {str(exc)}", status=500)
+
+    try:
+        index_stats = index_pdf_directory(
+            data_source_dir=settings.DOCUMENTS_PATH,
+            chunk_size=settings.CHUNK_SIZE,
+            index_path=settings.FAISS_INDEX_PATH,
+            model_name=settings.EMBEDDING_MODEL,
+            clear_existing=True,
+        )
+    except PDFIndexingError as exc:
+        return _error_response(str(exc), status=400)
+    except Exception as exc:  # noqa: BLE001
+        return _error_response(
+            f"Failed to rebuild embeddings after delete: {str(exc)}",
+            status=500,
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": "Document deleted and index rebuilt successfully",
+            "filename": filename,
+            "chunks_created": index_stats["chunks_created"],
+            "total_chunks_in_index": index_stats["total_chunks_in_index"],
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def summarize_doc(request: HttpRequest) -> JsonResponse:
     try:
         payload = _get_json_body(request)

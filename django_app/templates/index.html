@@ -577,6 +577,59 @@
         transform: rotate(90deg);
       }
 
+      .modal-body {
+        padding: 16px 24px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .modal-section h4 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .form-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        margin-bottom: 8px;
+      }
+
+      .form-row label {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .form-row input,
+      .form-row select {
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: #020617;
+        color: var(--text-main);
+        font-size: 12px;
+        outline: none;
+      }
+
+      .form-row input:focus,
+      .form-row select:focus {
+        border-color: var(--accent);
+      }
+
+      .settings-error {
+        margin-top: 6px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.7);
+        color: #fecaca;
+        font-size: 12px;
+      }
+
       .modal-tabs {
         display: flex;
         padding: 16px 24px 0;
@@ -891,14 +944,38 @@
       .source-tag {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 4px 10px;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 4px 10px 4px 10px;
         background: rgba(99, 102, 241, 0.2);
         border-radius: 30px;
         font-size: 11px;
         color: var(--text-muted);
         margin-right: 6px;
         margin-bottom: 6px;
+        max-width: 100%;
+      }
+
+      .source-tag-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .source-tag-delete {
+        border: none;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 12px;
+        padding: 0 0 0 4px;
+      }
+
+      .source-tag-delete:hover {
+        color: #fecaca;
       }
 
       @media (max-width: 1024px) {
@@ -1014,6 +1091,72 @@
                 Add sources
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings modal -->
+      <div class="modal-overlay" id="settings-modal" style="display: none;">
+        <div class="modal-container">
+          <div class="modal-header">
+            <h3>Settings</h3>
+            <button class="modal-close" onclick="closeSettingsModal()">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-section">
+              <h4>LLM Provider</h4>
+              <div class="form-row">
+                <label for="providerSelect">Provider</label>
+                <select id="providerSelect">
+                  <option value="gemini">Gemini</option>
+                  <option value="openrouter">OpenRouter</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <label for="modelInput">Model</label>
+                <input id="modelInput" type="text" placeholder="Model name" />
+              </div>
+              <div class="form-row">
+                <label for="apiKeyInput">API Key</label>
+                <input
+                  id="apiKeyInput"
+                  type="password"
+                  placeholder="Leave blank to keep existing"
+                />
+              </div>
+            </div>
+
+            <div class="modal-section">
+              <h4>RAG Config</h4>
+              <div class="form-row">
+                <label for="topKInput">Top K</label>
+                <input id="topKInput" type="number" min="1" max="20" step="1" />
+              </div>
+              <div class="form-row">
+                <label for="temperatureInput">Temperature</label>
+                <input
+                  id="temperatureInput"
+                  type="number"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                />
+              </div>
+            </div>
+
+            <div
+              class="settings-error"
+              id="settingsError"
+              style="display: none;"
+            ></div>
+          </div>
+          <div class="modal-footer">
+            <button class="modal-btn secondary" onclick="closeSettingsModal()">
+              Cancel
+            </button>
+            <button class="modal-btn primary" onclick="saveSettings()">
+              Save
+            </button>
           </div>
         </div>
       </div>
@@ -1298,12 +1441,12 @@
             : count + " file" + (count > 1 ? "s" : "") + " selected";
       }
 
-      function addSources() {
+      async function addSources() {
         var activeBtn = document.querySelector(".tab-btn.active");
         if (!activeBtn) return;
         var tab = activeBtn.dataset.tab;
         if (tab === "upload" && selectedFiles.length > 0) {
-          simulateUpload();
+          await uploadSelectedFiles();
         } else if (tab === "link") {
           var linkInput = document.querySelector(".link-input");
           var link = linkInput ? linkInput.value : "";
@@ -1315,45 +1458,69 @@
         }
       }
 
-      function simulateUpload() {
+      async function uploadSelectedFiles() {
         var addBtn = document.getElementById("addSourcesBtn");
         if (!addBtn) return;
         addBtn.disabled = true;
         addBtn.textContent = "Uploading...";
+        var fileItems = document.querySelectorAll(".file-item");
+        var hasError = false;
 
-        selectedFiles.forEach(function (file, index) {
-          var fileItem = document.querySelectorAll(".file-item")[index];
-          if (!fileItem) return;
+        for (var i = 0; i < selectedFiles.length; i++) {
+          var file = selectedFiles[i];
+          var fileItem = fileItems[i];
+          if (!fileItem) continue;
+
           var progress = document.createElement("div");
           progress.className = "upload-progress";
           progress.innerHTML =
             '<div class="upload-progress-bar" style="width: 0%"></div>';
           fileItem.appendChild(progress);
 
-          var width = 0;
-          var interval = setInterval(function () {
-            width += Math.random() * 30;
-            if (width >= 100) {
-              width = 100;
-              clearInterval(interval);
-            }
-            progress.querySelector(".upload-progress-bar").style.width =
-              width + "%";
-          }, 200);
-        });
+          var formData = new FormData();
+          formData.append("file", file);
 
-        setTimeout(function () {
-          addBtn.disabled = false;
-          addBtn.textContent = "Add sources";
-          selectedFiles.forEach(function (file) {
-            addSourceToPanel({
-              type: "file",
-              name: file.name,
-              icon: "📄",
+          try {
+            var response = await fetch("/api/upload", {
+              method: "POST",
+              body: formData,
             });
-          });
+
+            var progressBar = progress.querySelector(".upload-progress-bar");
+            if (response.ok) {
+              progressBar.style.width = "100%";
+              var data = await response.json();
+              var filename = data.filename || file.name;
+              addSourceToPanel({
+                type: "file",
+                name: filename,
+                icon: "📄",
+              });
+            } else {
+              hasError = true;
+              progressBar.style.backgroundColor = "#f97373";
+              progressBar.style.width = "100%";
+            }
+          } catch (e) {
+            hasError = true;
+            var progressBarFallback = progress.querySelector(
+              ".upload-progress-bar"
+            );
+            if (progressBarFallback) {
+              progressBarFallback.style.backgroundColor = "#f97373";
+              progressBarFallback.style.width = "100%";
+            }
+          }
+        }
+
+        addBtn.disabled = false;
+        addBtn.textContent = "Add sources";
+        selectedFiles = [];
+        updateFileList();
+        updateSelectedCount();
+        if (!hasError) {
           closeSourceModal();
-        }, 3000);
+        }
       }
 
       function addLinkSource(link) {
@@ -1381,6 +1548,25 @@
         closeSourceModal();
       }
 
+      function removeSourceTag(sourceEl) {
+        if (!sourceEl) return;
+        var sourcesBody = document.querySelector(".sources-body");
+        var container = sourceEl.parentElement;
+        sourceEl.remove();
+
+        if (container && container.children.length === 0 && sourcesBody) {
+          var emptyState = sourcesBody.querySelector(".sources-empty");
+          if (emptyState) emptyState.style.display = "";
+        }
+
+        var headerSub = document.querySelector(".topbar-title-sub");
+        if (headerSub && container) {
+          var count = container.children.length;
+          headerSub.textContent =
+            count + " source" + (count > 1 ? "s" : "");
+        }
+      }
+
       function addSourceToPanel(source) {
         var sourcesBody = document.querySelector(".sources-body");
         if (!sourcesBody) return;
@@ -1394,8 +1580,23 @@
         }
         var sourceEl = document.createElement("span");
         sourceEl.className = "source-tag";
-        sourceEl.innerHTML = source.icon + " " + source.name;
+        sourceEl.dataset.type = source.type || "file";
+        sourceEl.dataset.filename = source.filename || source.name || "";
+        sourceEl.innerHTML =
+          '<span class="source-tag-label">' +
+          (source.icon || "") +
+          " " +
+          (source.name || "") +
+          '</span><button class="source-tag-delete" aria-label="Remove source">✕</button>';
         sourcesContainer.appendChild(sourceEl);
+
+        var deleteBtn = sourceEl.querySelector(".source-tag-delete");
+        if (deleteBtn) {
+          deleteBtn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            handleDeleteSource(sourceEl);
+          });
+        }
         var headerSub = document.querySelector(".topbar-title-sub");
         if (headerSub) {
           var count = sourcesContainer.children.length;
@@ -1404,10 +1605,182 @@
         }
       }
 
+      async function handleDeleteSource(sourceEl) {
+        if (!sourceEl) return;
+        var type = sourceEl.dataset.type || "file";
+        var filename = sourceEl.dataset.filename || "";
+
+        // For non-file sources, just remove from UI
+        if (type !== "file" || !filename) {
+          removeSourceTag(sourceEl);
+          return;
+        }
+
+        try {
+          var res = await fetch("/api/documents/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filename: filename }),
+          });
+          if (!res.ok) {
+            // If backend delete fails, keep the tag but you could show an error
+            return;
+          }
+          removeSourceTag(sourceEl);
+        } catch (e) {
+          // Ignore network errors for now
+        }
+      }
+
       // Attach click handler to Sources button
       var sourcesAddBtn = document.querySelector(".sources-add");
       if (sourcesAddBtn) {
         sourcesAddBtn.addEventListener("click", openSourceModal);
+      }
+
+      // Settings modal logic
+      function openSettingsModal() {
+        var modal = document.getElementById("settings-modal");
+        if (!modal) return;
+        modal.style.display = "flex";
+        loadSettings();
+      }
+
+      function closeSettingsModal() {
+        var modal = document.getElementById("settings-modal");
+        if (!modal) return;
+        modal.style.display = "none";
+        var err = document.getElementById("settingsError");
+        if (err) {
+          err.style.display = "none";
+          err.textContent = "";
+        }
+      }
+
+      async function loadSettings() {
+        var providerEl = document.getElementById("providerSelect");
+        var modelEl = document.getElementById("modelInput");
+        var topKEl = document.getElementById("topKInput");
+        var tempEl = document.getElementById("temperatureInput");
+        if (!providerEl || !modelEl || !topKEl || !tempEl) return;
+
+        try {
+          // Load provider/model info
+          var settingsRes = await fetch("/api/settings");
+          if (settingsRes.ok) {
+            var sdata = await settingsRes.json();
+            if (sdata.provider) providerEl.value = sdata.provider;
+            if (sdata.model) modelEl.value = sdata.model;
+          }
+
+          // Load RAG config
+          var ragRes = await fetch("/api/rag-config");
+          if (ragRes.ok) {
+            var rdata = await ragRes.json();
+            if (typeof rdata.top_k === "number") {
+              topKEl.value = rdata.top_k;
+            }
+            if (typeof rdata.temperature === "number") {
+              tempEl.value = rdata.temperature;
+            }
+          }
+        } catch (e) {
+          var err = document.getElementById("settingsError");
+          if (err) {
+            err.style.display = "block";
+            err.textContent = "Failed to load settings.";
+          }
+        }
+      }
+
+      async function saveSettings() {
+        var providerEl = document.getElementById("providerSelect");
+        var modelEl = document.getElementById("modelInput");
+        var apiKeyEl = document.getElementById("apiKeyInput");
+        var topKEl = document.getElementById("topKInput");
+        var tempEl = document.getElementById("temperatureInput");
+        var err = document.getElementById("settingsError");
+
+        if (!providerEl || !modelEl || !apiKeyEl || !topKEl || !tempEl) return;
+        if (err) {
+          err.style.display = "none";
+          err.textContent = "";
+        }
+
+        var provider = providerEl.value;
+        var model = modelEl.value.trim();
+        var apiKey = apiKeyEl.value.trim();
+        var topK = parseInt(topKEl.value || "3", 10);
+        var temperature = parseFloat(tempEl.value || "0.7");
+
+        try {
+          // Update provider/model/api key
+          var payload = { provider: provider, model: model };
+          if (apiKey) {
+            payload.api_key = apiKey;
+          }
+          var settingsRes = await fetch("/api/settings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (!settingsRes.ok) {
+            throw new Error("Failed to save provider/model settings");
+          }
+
+          // Update RAG config
+          var ragRes = await fetch("/api/rag-config/update", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              llm_model: model,
+              top_k: topK,
+              temperature: temperature,
+            }),
+          });
+
+          if (!ragRes.ok) {
+            throw new Error("Failed to save RAG config");
+          }
+
+          closeSettingsModal();
+        } catch (e) {
+          if (err) {
+            err.style.display = "block";
+            err.textContent = e.message || "Failed to save settings.";
+          }
+        }
+      }
+
+      var settingsBtn = document.querySelector(".icon-btn[aria-label='Settings']");
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", openSettingsModal);
+      }
+
+      // Load existing uploaded documents on initial load
+      async function loadExistingDocuments() {
+        try {
+          var res = await fetch("/api/documents");
+          if (!res.ok) return;
+          var data = await res.json();
+          if (!data || !Array.isArray(data.files)) return;
+          data.files.forEach(function (name) {
+            addSourceToPanel({
+              type: "file",
+              name: name,
+              icon: "📄",
+            });
+          });
+        } catch (e) {
+          // ignore load errors for now
+        }
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", loadExistingDocuments);
+      } else {
+        loadExistingDocuments();
       }
     </script>
   </body>

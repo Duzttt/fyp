@@ -17,6 +17,8 @@ urlpatterns = [
     path("api/files/", views.list_files),
     path("api/documents", views.list_documents),
     path("api/documents/", views.list_documents),
+    path("api/documents/delete", views.delete_document),
+    path("api/documents/delete/", views.delete_document),
     path("api/summarize", views.summarize_doc),
     path("api/summarize/", views.summarize_doc),
     path("api/podcast", views.generate_podcast),
