@@ -70,4 +70,40 @@ export const deleteFile = async (filename) => {
   return response.data
 }
 
+export const compareDocuments = async (query, sources) => {
+  const response = await api.post('/compare', { query, sources })
+  return response.data
+}
+
+// Dashboard API
+export const getDashboardStats = async () => {
+  const response = await api.get('/dashboard/stats')
+  return response.data
+}
+
+export const getDashboardMetrics = async () => {
+  const response = await api.get('/dashboard/metrics')
+  return response.data
+}
+
+export const getDashboardChunksDistribution = async () => {
+  const response = await api.get('/dashboard/chunks/distribution')
+  return response.data
+}
+
+export const getDashboardSimilarityDistribution = async () => {
+  const response = await api.get('/dashboard/similarity/distribution')
+  return response.data
+}
+
+export const getDashboardDocumentsTimeline = async () => {
+  const response = await api.get('/dashboard/documents/timeline')
+  return response.data
+}
+
+export const reindexDocuments = async () => {
+  const response = await api.post('/dashboard/reindex')
+  return response.data
+}
+
 export default api

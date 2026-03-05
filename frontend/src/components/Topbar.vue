@@ -1,5 +1,5 @@
 <script setup>
-const emit = defineEmits(['open-settings'])
+const emit = defineEmits(['open-settings', 'open-dashboard'])
 </script>
 
 <template>
@@ -14,6 +14,10 @@ const emit = defineEmits(['open-settings'])
       </div>
     </div>
     <div class="topbar-center">
+      <button class="pill-btn" @click="emit('open-dashboard')">
+        <span class="icon">📊</span>
+        Dashboard
+      </button>
       <button class="pill-btn" @click="emit('open-settings')">
         <span class="icon">⚙️</span>
         Settings

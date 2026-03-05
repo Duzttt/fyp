@@ -1,14 +1,13 @@
 from django.urls import path, re_path
+from django.conf import settings
+from django.conf.urls.static import static
 
 from django_app import views
 
 urlpatterns = [
-    path("", views.index_page),
+    # API endpoints
     path("api", views.root),
     path("api/", views.root),
-    path("chat-demo", views.chat_demo_page),
-    path("health", views.health_check),
-    path("health/", views.health_check),
     path("api/upload", views.upload_pdf),
     path("api/upload/", views.upload_pdf),
     path("api/upload/status", views.upload_index_status),
@@ -58,7 +57,10 @@ urlpatterns = [
     path("api/dashboard/config/", views.dashboard_update_config),
     path("api/dashboard/reindex", views.dashboard_reindex),
     path("api/dashboard/reindex/", views.dashboard_reindex),
-    # SPA catch-all: serve index.html for any route not matched above
-    # so React Router can handle client-side paths like /config
+    # SPA catch-all: serve Vue frontend for any non-API route
     re_path(r"^(?!api/).*$", views.index_page),
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -181,6 +181,38 @@ def _build_source_snippets(sources: Any) -> List[Dict[str, Any]]:
     return snippets
 
 
+def _build_retrieved_chunks(sources: Any) -> List[Dict[str, Any]]:
+    """Build retrieved chunks with similarity scores for visualization."""
+    chunks: List[Dict[str, Any]] = []
+    if not isinstance(sources, list):
+        return chunks
+
+    distances = [r.get("distance", 0) for r in sources if isinstance(r, dict)]
+    max_distance = max(distances) if distances else 1.0
+    max_distance = max(max_distance, 0.001)
+
+    for r in sources:
+        if not isinstance(r, dict):
+            continue
+        
+        distance = r.get("distance", 0)
+        similarity = max(0.0, 1.0 - (distance / max_distance))
+        text = r.get("text", "")
+        
+        chunks.append(
+            {
+                "text": text,
+                "preview": text[:100] + ("..." if len(text) > 100 else ""),
+                "score": round(similarity, 3),
+                "distance": round(distance, 4),
+                "source": str(r.get("source", "unknown")),
+                "page": r.get("page"),
+            }
+        )
+    
+    return chunks
+
+
 def _get_json_body(request: HttpRequest) -> Dict[str, Any]:
     if not request.body:
         return {}
@@ -273,7 +305,25 @@ def root(request: HttpRequest) -> JsonResponse:
 
 @require_http_methods(["GET"])
 def index_page(request: HttpRequest) -> HttpResponse:
+    """Serve the Vue.js frontend application (SPA)."""
+    from django.conf import settings as django_settings
+    frontend_index = Path(django_settings.BASE_DIR) / "django_app" / "static" / "frontend" / "index.html"
+    
+    if frontend_index.exists():
+        html = frontend_index.read_text(encoding="utf-8")
+        # Fix asset paths to include /static/frontend/ prefix for Django
+        html = html.replace('src="/assets/', 'src="/static/frontend/assets/')
+        html = html.replace('href="/assets/', 'href="/static/frontend/assets/')
+        return HttpResponse(html, content_type="text/html; charset=utf-8")
+    
+    # Fallback to template if build doesn't exist
     return render(request, "index.html")
+
+
+@require_http_methods(["GET"])
+def app_page(request: HttpRequest) -> HttpResponse:
+    """Serve the Vue.js frontend application."""
+    return index_page(request)
 
 
 @require_http_methods(["GET"])
@@ -543,6 +593,7 @@ def ask_qwen(request: HttpRequest) -> JsonResponse:
             "answer": answer,
             "sources": source_files,
             "source_snippets": _build_source_snippets(retrieved_sources),
+            "retrieved_chunks": _build_retrieved_chunks(retrieved_sources),
         }
     )
 

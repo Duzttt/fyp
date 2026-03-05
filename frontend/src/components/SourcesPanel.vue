@@ -1,14 +1,18 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, defineEmits } from 'vue'
 import { uploadPDF, getFiles, deleteFile } from '../services/api'
 
+const emit = defineEmits(['selection-change', 'toggle-compare'])
+
 const sources = ref([])
+const selectedDocs = ref([])
 const showUploadModal = ref(false)
 const searchQuery = ref('')
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const uploadError = ref('')
 const uploadSuccess = ref(false)
+const compareMode = ref(false)
 
 const loadFiles = async () => {
   try {
@@ -22,23 +26,22 @@ const loadFiles = async () => {
 const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
-  
+
   if (!file.name.toLowerCase().endsWith('.pdf')) {
     uploadError.value = 'Please upload a PDF file'
     return
   }
-  
+
   uploading.value = true
   uploadError.value = ''
   uploadProgress.value = 0
   uploadSuccess.value = false
-  
+
   try {
     await uploadPDF(file, (progress) => {
       uploadProgress.value = progress
     })
     await loadFiles()
-    // Smooth transition animation before returning to main view
     uploadSuccess.value = true
     setTimeout(() => {
       uploadSuccess.value = false
@@ -55,17 +58,17 @@ const handleDrop = async (event) => {
   event.preventDefault()
   const file = event.dataTransfer.files[0]
   if (!file) return
-  
+
   if (!file.name.toLowerCase().endsWith('.pdf')) {
     uploadError.value = 'Please upload a PDF file'
     return
   }
-  
+
   uploading.value = true
   uploadError.value = ''
   uploadProgress.value = 0
   uploadSuccess.value = false
-  
+
   try {
     await uploadPDF(file, (progress) => {
       uploadProgress.value = progress
@@ -90,13 +93,37 @@ const handleDragOver = (event) => {
 const removeFile = async (fileId) => {
   const filename = fileId.name || fileId
   if (!confirm(`Delete ${filename}?`)) return
-  
+
   try {
     await deleteFile(filename)
     await loadFiles()
   } catch (err) {
     uploadError.value = err.response?.data?.error || 'Failed to delete file'
   }
+}
+
+const toggleDocSelection = (docName) => {
+  const idx = selectedDocs.value.indexOf(docName)
+  if (idx === -1) {
+    if (selectedDocs.value.length < 3) {
+      selectedDocs.value.push(docName)
+    } else {
+      alert('Maximum 3 documents can be compared at once')
+      return
+    }
+  } else {
+    selectedDocs.value.splice(idx, 1)
+  }
+  emit('selection-change', [...selectedDocs.value])
+}
+
+const isSelected = (docName) => {
+  return selectedDocs.value.includes(docName)
+}
+
+const toggleCompareMode = () => {
+  compareMode.value = !compareMode.value
+  emit('toggle-compare', compareMode.value)
 }
 
 onMounted(() => {
@@ -111,16 +138,26 @@ onMounted(() => {
         <span class="panel-header-title">Sources</span>
         <span class="panel-header-sub">{{ sources.length }} documents</span>
       </div>
-      <button class="sources-add" @click="showUploadModal = true">
-        <span>+</span> Add
-      </button>
+      <div class="panel-header-actions">
+        <button 
+          class="compare-mode-btn" 
+          :class="{ active: compareMode }"
+          @click="toggleCompareMode"
+          title="Toggle Compare Mode"
+        >
+          ⚖
+        </button>
+        <button class="sources-add" @click="showUploadModal = true">
+          <span>+</span> Add
+        </button>
+      </div>
     </div>
     <div class="sources-body">
       <div class="sources-search">
         <span>🔍</span>
-        <input 
-          v-model="searchQuery" 
-          type="text" 
+        <input
+          v-model="searchQuery"
+          type="text"
           placeholder="Search sources..."
         />
       </div>
@@ -128,15 +165,30 @@ onMounted(() => {
         <span class="chip">📄 PDF</span>
         <span class="chip">📝 Notes</span>
       </div>
+      <div v-if="compareMode && selectedDocs.length > 0" class="selected-info">
+        <span class="selected-count">{{ selectedDocs.length }}/3 selected</span>
+      </div>
       <div v-if="sources.length === 0" class="sources-empty">
         No sources yet. Add your first document!
       </div>
       <div v-else class="sources-list">
-        <div 
-          v-for="source in sources" 
-          :key="source.id || source.name" 
+        <div
+          v-for="source in sources"
+          :key="source.id || source.name"
           class="source-item"
+          :class="{ 
+            'selected': isSelected(source.name || source.filename),
+            'compare-mode': compareMode 
+          }"
+          @click="compareMode ? toggleDocSelection(source.name || source.filename) : null"
         >
+          <input
+            v-if="compareMode"
+            type="checkbox"
+            :checked="isSelected(source.name || source.filename)"
+            @change="toggleDocSelection(source.name || source.filename)"
+            class="source-checkbox"
+          />
           <span class="source-icon">📄</span>
           <span class="source-name">{{ source.name || source.filename }}</span>
           <button class="source-remove" @click.stop="removeFile(source.id)">✕</button>
@@ -227,6 +279,40 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
+}
+
+.panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.compare-mode-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.2s;
+}
+
+.compare-mode-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+  color: white;
+}
+
+.compare-mode-btn.active {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.5), rgba(168, 85, 247, 0.5));
+  border-color: var(--accent);
+  color: white;
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
 }
 
 .panel-header-title {
@@ -338,6 +424,41 @@ onMounted(() => {
 .source-item:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(99, 102, 241, 0.3);
+}
+
+.source-item.compare-mode {
+  cursor: pointer;
+}
+
+.source-item.selected {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+}
+
+.source-item.selected .source-name {
+  color: white;
+  font-weight: 600;
+}
+
+.source-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.selected-info {
+  padding: 6px 10px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  margin-bottom: 6px;
+}
+
+.selected-count {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
 }
 
 .source-icon {

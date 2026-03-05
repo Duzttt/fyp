@@ -1,39 +1,112 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import RetrievalChunks from './RetrievalChunks.vue'
+import PdfViewer from './PdfViewer.vue'
+import BidirectionalCitations from './BidirectionalCitations.vue'
 
 const messages = ref([])
 const question = ref('')
 const isLoading = ref(false)
 const error = ref('')
+const lastRetrievedChunks = ref([])
+const isRetrieving = ref(false)
+
+// PDF Viewer state
+const showPdfViewer = ref(false)
+const currentPdfUrl = ref('')
+const currentPdfPage = ref(1)
+const currentHighlightText = ref('')
+
+// Bidirectional citations state
+const showBidirectionalPanel = ref(false)
+const selectedCitation = ref({ source: '', page: null, text: '' })
+
+// Build bidirectional citations index
+const bidirectionalIndex = ref({})
 
 const sendMessage = async () => {
   if (!question.value.trim()) return
-  
+
   const userQuestion = question.value
-  messages.value.push({ role: 'user', content: userQuestion })
+  const userMsgIndex = messages.value.length
+
+  messages.value.push({
+    role: 'user',
+    content: userQuestion,
+    id: `msg_user_${Date.now()}_${userMsgIndex}`,
+  })
   question.value = ''
   isLoading.value = true
+  isRetrieving.value = true
   error.value = ''
-  
+  lastRetrievedChunks.value = []
+
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: userQuestion }),
     })
-    
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       throw new Error(errorData.detail || errorData.error || 'Failed to get response')
     }
-    
+
     const data = await response.json()
-    messages.value.push({ role: 'assistant', content: data.answer || data.response || 'No answer received.' })
+    const answer = data.answer || data.response || 'No answer received.'
+    const chunks = data.retrieved_chunks || []
+    
+    messages.value.push({
+      role: 'assistant',
+      content: answer,
+      chunks: chunks,
+      id: `msg_${Date.now()}`
+    })
+    
+    // Register citations for bidirectional tracing
+    registerCitations(messages.value[messages.value.length - 1].id, userQuestion, answer, chunks)
+    
+    lastRetrievedChunks.value = chunks
   } catch (err) {
     error.value = err.message
   } finally {
     isLoading.value = false
+    isRetrieving.value = false
   }
+}
+
+const getMessageCitationTitle = (msg) => {
+  if (!msg || msg.role !== 'assistant' || !msg.chunks || !msg.chunks.length) {
+    return ''
+  }
+  const sources = Array.from(
+    new Set(
+      msg.chunks
+        .map((c) => c.source)
+        .filter((s) => typeof s === 'string' && s.trim()),
+    ),
+  )
+  if (!sources.length) return ''
+  return `Supported by: ${sources.join(', ')}`
+}
+
+const registerCitations = (messageId, query, answer, chunks) => {
+  chunks.forEach(chunk => {
+    const key = `${chunk.source}_${chunk.page}_${(chunk.text || '').substring(0, 50)}`
+    if (!bidirectionalIndex.value[key]) {
+      bidirectionalIndex.value[key] = []
+    }
+    bidirectionalIndex.value[key].push({
+      messageId,
+      query,
+      answer: answer.substring(0, 150) + (answer.length > 150 ? '...' : ''),
+      timestamp: new Date().toLocaleTimeString(),
+      source: chunk.source,
+      page: chunk.page,
+      text: chunk.text
+    })
+  })
 }
 
 const handleKeyPress = (e) => {
@@ -42,6 +115,64 @@ const handleKeyPress = (e) => {
     sendMessage()
   }
 }
+
+const handleChunkHover = (chunk) => {
+  console.log('Chunk hover:', chunk)
+}
+
+const handleChunkClick = (chunk) => {
+  console.log('Chunk clicked:', chunk)
+  // Open PDF viewer with the chunk's source and page
+  if (chunk.source) {
+    currentPdfUrl.value = '/media/data_source/' + encodeURIComponent(chunk.source)
+    currentPdfPage.value = chunk.page || 1
+    currentHighlightText.value = chunk.text?.substring(0, 50) || ''
+    showPdfViewer.value = true
+  }
+}
+
+const handleChunkRightClick = (event, chunk) => {
+  event.preventDefault()
+  // Show bidirectional citations
+  const key = `${chunk.source}_${chunk.page}_${(chunk.text || '').substring(0, 50)}`
+  const citations = bidirectionalIndex.value[key] || []
+  if (citations.length > 0) {
+    selectedCitation.value = {
+      source: chunk.source,
+      page: chunk.page,
+      text: chunk.text
+    }
+    showBidirectionalPanel.value = true
+  }
+}
+
+const closePdfViewer = () => {
+  showPdfViewer.value = false
+  currentPdfUrl.value = ''
+  currentPdfPage.value = 1
+  currentHighlightText.value = ''
+}
+
+const closeBidirectionalPanel = () => {
+  showBidirectionalPanel.value = false
+  selectedCitation.value = { source: '', page: null, text: '' }
+}
+
+const navigateToMessage = (messageId) => {
+  // Scroll to the message
+  setTimeout(() => {
+    const element = document.querySelector(`[data-message-id="${messageId}"]`)
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      element.style.animation = 'none'
+      element.offsetHeight // trigger reflow
+      element.style.animation = 'highlightMessage 1s ease'
+    }
+  }, 100)
+}
+
+// Expose handleChunkRightClick to child components
+const onChunkRightClick = handleChunkRightClick
 </script>
 
 <template>
@@ -59,18 +190,44 @@ const handleKeyPress = (e) => {
         <div class="chat-empty-desc">Ask questions about your lecture notes</div>
       </div>
       <div v-else class="messages-list">
-        <div 
-          v-for="(msg, idx) in messages" 
-          :key="idx" 
-          class="message"
-          :class="msg.role"
+        <div
+          v-for="(msg, idx) in messages"
+          :key="idx"
+          class="message-group"
+          :data-message-id="msg.id"
         >
-          <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
-          <div class="message-content">{{ msg.content }}</div>
+          <div class="message" :class="msg.role">
+            <div class="message-avatar">{{ msg.role === 'user' ? '👤' : '🤖' }}</div>
+            <div
+              class="message-content"
+              :class="{
+                'has-citations': msg.role === 'assistant' && msg.chunks && msg.chunks.length > 0
+              }"
+              :title="getMessageCitationTitle(msg)"
+            >
+              {{ msg.content }}
+            </div>
+          </div>
+
+          <!-- Show retrieved chunks for assistant messages -->
+          <div v-if="msg.role === 'assistant' && msg.chunks && msg.chunks.length > 0" class="retrieval-section">
+            <RetrievalChunks
+              :chunks="msg.chunks"
+              :loading="false"
+              @chunk-hover="handleChunkHover"
+              @chunk-click="handleChunkClick"
+              @chunk-rightclick="handleChunkRightClick"
+            />
+          </div>
         </div>
-        <div v-if="isLoading" class="message assistant">
-          <div class="message-avatar">🤖</div>
-          <div class="message-content loading">Thinking...</div>
+        <div v-if="isLoading" class="message-group">
+          <div class="message assistant">
+            <div class="message-avatar">🤖</div>
+            <div class="message-content loading">Thinking...</div>
+          </div>
+          <div v-if="isRetrieving" class="retrieval-section">
+            <RetrievalChunks :chunks="[]" :loading="true" />
+          </div>
         </div>
       </div>
     </div>
@@ -83,8 +240,8 @@ const handleKeyPress = (e) => {
         placeholder="Ask a question..."
         :disabled="isLoading"
       />
-      <button 
-        class="chat-send-btn" 
+      <button
+        class="chat-send-btn"
         @click="sendMessage"
         :disabled="isLoading || !question.trim()"
       >
@@ -92,10 +249,36 @@ const handleKeyPress = (e) => {
       </button>
     </div>
     <div v-if="error" class="chat-error">{{ error }}</div>
+
+    <!-- PDF Viewer Panel -->
+    <PdfViewer
+      :show="showPdfViewer"
+      :pdf-url="currentPdfUrl"
+      :target-page="currentPdfPage"
+      :highlight-text="currentHighlightText"
+      @close="closePdfViewer"
+    />
+
+    <!-- Bidirectional Citations Panel -->
+    <BidirectionalCitations
+      :show="showBidirectionalPanel"
+      :source="selectedCitation.source"
+      :page="selectedCitation.page"
+      :text="selectedCitation.text"
+      :citations="bidirectionalIndex[selectedCitation.source + '_' + selectedCitation.page + '_' + (selectedCitation.text || '').substring(0, 50)] || []"
+      @close="closeBidirectionalPanel"
+      @navigate-to-message="navigateToMessage"
+    />
   </div>
 </template>
 
 <style scoped>
+/* Add highlight animation for bidirectional navigation */
+@keyframes highlightMessage {
+  0% { background: rgba(99, 102, 241, 0.3); }
+  100% { background: transparent; }
+}
+
 .chat-panel {
   position: relative;
   background: linear-gradient(
@@ -202,7 +385,13 @@ const handleKeyPress = (e) => {
 .messages-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+}
+
+.message-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .message {
@@ -237,9 +426,22 @@ const handleKeyPress = (e) => {
   color: var(--text-main);
 }
 
+.message-content.has-citations {
+  position: relative;
+  border-bottom: 1px dotted rgba(148, 163, 184, 0.8);
+  padding-bottom: 2px;
+  cursor: help;
+}
+
 .message-content.loading {
   color: var(--text-muted);
   font-style: italic;
+}
+
+.retrieval-section {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 8px;
 }
 
 .chat-input-wrap {

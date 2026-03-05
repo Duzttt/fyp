@@ -3,21 +3,55 @@ import Topbar from './components/Topbar.vue'
 import SourcesPanel from './components/SourcesPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import StudioPanel from './components/StudioPanel.vue'
+import ComparisonView from './components/ComparisonView.vue'
+import DashboardPanel from './components/DashboardPanel.vue'
 import SettingsModal from './components/SettingsModal.vue'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const showSettings = ref(false)
+const showDashboard = ref(false)
+const compareMode = ref(false)
+const selectedDocs = ref([])
+
+const showComparison = computed(() => {
+  return compareMode.value && selectedDocs.value.length >= 2
+})
+
+const handleSelectionChange = (docs) => {
+  selectedDocs.value = docs
+}
+
+const handleToggleCompare = (isActive) => {
+  compareMode.value = isActive
+  if (!isActive) {
+    selectedDocs.value = []
+  }
+}
+
+const handleCloseComparison = () => {
+  compareMode.value = false
+  selectedDocs.value = []
+}
 </script>
 
 <template>
   <div class="app-shell">
-    <Topbar @open-settings="showSettings = true" />
+    <Topbar @open-settings="showSettings = true" @open-dashboard="showDashboard = true" />
     <main class="main">
-      <SourcesPanel />
-      <ChatPanel />
+      <SourcesPanel 
+        @selection-change="handleSelectionChange"
+        @toggle-compare="handleToggleCompare"
+      />
+      <ChatPanel v-if="!showComparison" />
+      <ComparisonView 
+        v-else 
+        :selected-docs="selectedDocs"
+        @close="handleCloseComparison"
+      />
       <StudioPanel />
     </main>
     <SettingsModal v-model:show="showSettings" />
+    <DashboardPanel v-if="showDashboard" @close="showDashboard = false" />
   </div>
 </template>
 

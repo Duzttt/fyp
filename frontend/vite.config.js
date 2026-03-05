@@ -4,20 +4,22 @@ import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [vue()],
-  base: '/static/frontend/',
+  base: '/',
   build: {
     outDir: resolve(__dirname, '../django_app/static/frontend'),
     rollupOptions: {
       output: {
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]',
+        entryFileNames: 'assets/[name].[hash].js',
+        chunkFileNames: 'assets/[name].[hash].js',
+        assetFileNames: 'assets/[name].[hash].[ext]',
       },
     },
   },
   server: {
+    port: 5173,
     proxy: {
       '/api': 'http://localhost:8000',
+      '/media': 'http://localhost:8000',
     },
   },
 })
