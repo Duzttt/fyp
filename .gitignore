@@ -29,6 +29,8 @@ data/settings.json
 .pytest_cache/
 .coverage
 htmlcov/
+AGENTS.md
+QWEN.md
 
 # Frontend
 frontend/node_modules/

@@ -2,22 +2,21 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
       colors: {
-        primary: '#f97316',      // warm orange accent
-        secondary: '#fb923c',
-        cta: '#22C55E',
-        background: '#020617',   // near-black background
-        surface: '#0B1120',      // slightly lighter surface
-        text: '#E5E7EB',
-        muted: '#9CA3AF',
-      },
-      fontFamily: {
-        heading: ['Poppins', 'sans-serif'],
-        body: ['Open Sans', 'sans-serif'],
+        'bg-main': '#111827',
+        'bg-panel': '#111827',
+        'bg-panel-soft': '#020617',
+        'bg-chip': '#1f2937',
+        'border-subtle': '#1f2937',
+        'border-strong': '#374151',
+        'text-main': '#e5e7eb',
+        'text-muted': '#9ca3af',
+        'accent': '#6366f1',
+        'accent-soft': '#312e81',
       },
     },
   },

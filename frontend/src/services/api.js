@@ -1,161 +1,73 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+import axios from 'axios'
 
-export const uploadPDF = async (file) => {
-  const formData = new FormData();
-  formData.append('file', file);
+const api = axios.create({
+  baseURL: '/api',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+})
 
-  const response = await fetch(`${API_BASE_URL}/api/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to upload PDF');
-  }
-
-  return response.json();
-};
-
-export const getUploadStatus = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/upload/status`);
-  if (!response.ok) {
-    throw new Error('Failed to check upload status');
-  }
-  return response.json();
-};
-
-export const askQuestion = async (question, sources = null) => {
-  const response = await fetch(`${API_BASE_URL}/api/chat`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+export const uploadPDF = async (file, onProgress) => {
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  const response = await api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress) {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        )
+        onProgress(percentCompleted)
+      }
     },
-    body: JSON.stringify({ query: question, sources }),
-  });
+  })
+  
+  return response.data
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to get answer');
-  }
-
-  return response.json();
-};
-
-export const checkHealth = async () => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/health`);
-    return response.ok;
-  } catch {
-    return false;
-  }
-};
+export const askQuestion = async (question) => {
+  const response = await api.post('/chat', { query: question })
+  return response.data
+}
 
 export const getSettings = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/settings`);
-  if (!response.ok) {
-    throw new Error('Failed to get settings');
-  }
-  return response.json();
-};
+  const response = await api.get('/settings')
+  return response.data
+}
 
-export const updateSettings = async (settings) => {
-  const response = await fetch(`${API_BASE_URL}/api/settings`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(settings),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to update settings');
-  }
-
-  return response.json();
-};
-
-export const listFiles = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/files`);
-  if (!response.ok) {
-    throw new Error('Failed to list files');
-  }
-  return response.json();
-};
-
-export const summarizeDoc = async (filename) => {
-  const response = await fetch(`${API_BASE_URL}/api/summarize`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ filename }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to summarize document');
-  }
-
-  return response.json();
-};
-
-export const generatePodcast = async (filename) => {
-  const response = await fetch(`${API_BASE_URL}/api/podcast`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ filename }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to generate podcast');
-  }
-
-  return response.json();
-};
+export const saveSettings = async (settings) => {
+  const response = await api.post('/settings', {
+    provider: settings.llm_provider,
+    model: settings.model,
+    api_key: settings.api_key,
+  })
+  return response.data
+}
 
 export const getRagConfig = async () => {
-  const response = await fetch(`${API_BASE_URL}/api/rag-config`);
-  if (!response.ok) {
-    throw new Error('Failed to get RAG config');
-  }
-  return response.json();
-};
+  const response = await api.get('/rag-config')
+  return response.data
+}
 
 export const updateRagConfig = async (config) => {
-  const response = await fetch(`${API_BASE_URL}/api/rag-config/update`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(config),
-  });
+  const response = await api.post('/rag-config/update', config)
+  return response.data
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to update RAG config');
-  }
+export const resetIndex = async () => {
+  const response = await api.post('/index/reset')
+  return response.data
+}
 
-  return response.json();
-};
+export const getFiles = async () => {
+  const response = await api.get('/files')
+  return response.data
+}
 
-export const resetFaissIndex = async (confirmText) => {
-  const response = await fetch(`${API_BASE_URL}/api/index/reset`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ confirm: confirmText }),
-  });
+export const deleteFile = async (filename) => {
+  const response = await api.post('/documents/delete', { filename })
+  return response.data
+}
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.detail || 'Failed to reset FAISS index');
-  }
-
-  return response.json();
-};
+export default api
