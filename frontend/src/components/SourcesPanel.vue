@@ -1,11 +1,11 @@
 <script setup>
-import { ref, onMounted, defineEmits } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useDocumentStore } from '../stores/documentStore'
 import { uploadPDF, getFiles, deleteFile } from '../services/api'
 
-const emit = defineEmits(['selection-change', 'toggle-compare'])
+const documentStore = useDocumentStore()
 
 const sources = ref([])
-const selectedDocs = ref([])
 const showUploadModal = ref(false)
 const searchQuery = ref('')
 const uploading = ref(false)
@@ -13,11 +13,19 @@ const uploadProgress = ref(0)
 const uploadError = ref('')
 const uploadSuccess = ref(false)
 const compareMode = ref(false)
+const showSelectionTooltip = ref(false)
+
+// Computed from store
+const selectedDocs = computed(() => documentStore.selectedDocIds)
+const selectedCount = computed(() => documentStore.selectedCount)
+const allSelected = computed(() => documentStore.allSelected)
+const hasSelection = computed(() => documentStore.hasSelection)
 
 const loadFiles = async () => {
   try {
     const files = await getFiles()
     sources.value = files.files || []
+    documentStore.setAllDocuments(sources.value)
   } catch (err) {
     console.error('Failed to load files:', err)
   }
@@ -103,28 +111,31 @@ const removeFile = async (fileId) => {
 }
 
 const toggleDocSelection = (docName) => {
-  const idx = selectedDocs.value.indexOf(docName)
-  if (idx === -1) {
-    if (selectedDocs.value.length < 3) {
-      selectedDocs.value.push(docName)
-    } else {
-      alert('Maximum 3 documents can be compared at once')
-      return
-    }
-  } else {
-    selectedDocs.value.splice(idx, 1)
-  }
-  emit('selection-change', [...selectedDocs.value])
+  documentStore.toggleDocSelection(docName)
 }
 
 const isSelected = (docName) => {
-  return selectedDocs.value.includes(docName)
+  return documentStore.isDocSelected(docName)
+}
+
+const toggleSelectAll = () => {
+  documentStore.toggleSelectAll()
 }
 
 const toggleCompareMode = () => {
   compareMode.value = !compareMode.value
-  emit('toggle-compare', compareMode.value)
 }
+
+const filteredSources = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return sources.value
+  }
+  const query = searchQuery.value.toLowerCase()
+  return sources.value.filter(source => {
+    const name = source.name || source.filename
+    return name.toLowerCase().includes(query)
+  })
+})
 
 onMounted(() => {
   loadFiles()
@@ -139,8 +150,8 @@ onMounted(() => {
         <span class="panel-header-sub">{{ sources.length }} documents</span>
       </div>
       <div class="panel-header-actions">
-        <button 
-          class="compare-mode-btn" 
+        <button
+          class="compare-mode-btn"
           :class="{ active: compareMode }"
           @click="toggleCompareMode"
           title="Toggle Compare Mode"
@@ -161,41 +172,62 @@ onMounted(() => {
           placeholder="Search sources..."
         />
       </div>
+      
+      <!-- Selection Controls -->
+      <div class="selection-controls">
+        <button 
+          class="btn-select-all"
+          @click="toggleSelectAll"
+          :disabled="sources.length === 0"
+        >
+          {{ allSelected ? '✓ Deselect All' : '☐ Select All' }}
+        </button>
+        <div class="selected-count" :class="{ 'has-selection': hasSelection }">
+          <span class="count-icon">📄</span>
+          <span class="count-text">{{ selectedCount }} / {{ sources.length }} selected</span>
+        </div>
+      </div>
+      
       <div class="chip-row">
         <span class="chip">📄 PDF</span>
         <span class="chip">📝 Notes</span>
       </div>
-      <div v-if="compareMode && selectedDocs.length > 0" class="selected-info">
-        <span class="selected-count">{{ selectedDocs.length }}/3 selected</span>
-      </div>
+      
       <div v-if="sources.length === 0" class="sources-empty">
-        No sources yet. Add your first document!
+        <div class="empty-icon">📚</div>
+        <div class="empty-text">No sources yet</div>
+        <div class="empty-sub">Add your first document to start</div>
       </div>
+      
+      <div v-else-if="filteredSources.length === 0" class="sources-empty">
+        No documents match "{{ searchQuery }}"
+      </div>
+      
       <div v-else class="sources-list">
         <div
-          v-for="source in sources"
+          v-for="source in filteredSources"
           :key="source.id || source.name"
           class="source-item"
-          :class="{ 
+          :class="{
             'selected': isSelected(source.name || source.filename),
-            'compare-mode': compareMode 
+            'compare-mode': compareMode
           }"
-          @click="compareMode ? toggleDocSelection(source.name || source.filename) : null"
         >
           <input
-            v-if="compareMode"
             type="checkbox"
             :checked="isSelected(source.name || source.filename)"
             @change="toggleDocSelection(source.name || source.filename)"
             class="source-checkbox"
           />
           <span class="source-icon">📄</span>
-          <span class="source-name">{{ source.name || source.filename }}</span>
+          <span class="source-name" :title="source.name || source.filename">
+            {{ source.name || source.filename }}
+          </span>
           <button class="source-remove" @click.stop="removeFile(source.id)">✕</button>
         </div>
       </div>
     </div>
-    
+
     <!-- Upload Modal -->
     <div v-if="showUploadModal" class="upload-overlay" @click.self="showUploadModal = false">
       <div class="upload-modal" @drop="handleDrop" @dragover="handleDragOver">
@@ -204,10 +236,10 @@ onMounted(() => {
           <button class="upload-close" @click="showUploadModal = false">✕</button>
         </div>
         <div class="upload-body">
-          <label class="upload-area" :class="{ 'drag-over': false }">
-            <input 
-              type="file" 
-              accept=".pdf" 
+          <label class="upload-area">
+            <input
+              type="file"
+              accept=".pdf"
               @change="handleFileUpload"
               :disabled="uploading"
               hidden
@@ -371,6 +403,66 @@ onMounted(() => {
   font-size: 12px;
 }
 
+/* Selection Controls */
+.selection-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(2, 6, 23, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(55, 65, 81, 0.8);
+}
+
+.btn-select-all {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.1);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-select-all:hover:not(:disabled) {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+}
+
+.btn-select-all:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.selected-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.selected-count.has-selection {
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: var(--accent);
+}
+
+.count-icon {
+  font-size: 12px;
+}
+
+.count-text {
+  font-weight: 600;
+}
+
 .chip-row {
   display: flex;
   gap: 6px;
@@ -391,13 +483,32 @@ onMounted(() => {
 
 .sources-empty {
   margin-top: var(--spacing-unit);
-  padding: var(--spacing-unit) 10px;
+  padding: 20px 10px;
   border-radius: 10px;
   border: 1px dashed rgba(55, 65, 81, 0.9);
   background: rgba(15, 23, 42, 0.4);
   color: var(--text-muted);
   font-size: 11px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.empty-icon {
+  font-size: 24px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 12px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.empty-sub {
+  font-size: 10px;
 }
 
 .sources-list {
@@ -433,6 +544,7 @@ onMounted(() => {
 .source-item.selected {
   background: rgba(99, 102, 241, 0.2);
   border-color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
 }
 
 .source-item.selected .source-name {
@@ -445,24 +557,12 @@ onMounted(() => {
   height: 16px;
   cursor: pointer;
   accent-color: var(--accent);
-}
-
-.selected-info {
-  padding: 6px 10px;
-  background: rgba(99, 102, 241, 0.1);
-  border-radius: 6px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  margin-bottom: 6px;
-}
-
-.selected-count {
-  font-size: 11px;
-  color: var(--accent);
-  font-weight: 600;
+  flex-shrink: 0;
 }
 
 .source-icon {
   font-size: 16px;
+  flex-shrink: 0;
 }
 
 .source-name {

@@ -42,7 +42,10 @@ const handleCloseComparison = () => {
         @selection-change="handleSelectionChange"
         @toggle-compare="handleToggleCompare"
       />
-      <ChatPanel v-if="!showComparison" />
+      <ChatPanel 
+        v-if="!showComparison" 
+        :selected-sources="selectedDocs" 
+      />
       <ComparisonView 
         v-else 
         :selected-docs="selectedDocs"

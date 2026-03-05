@@ -57,6 +57,28 @@ urlpatterns = [
     path("api/dashboard/config/", views.dashboard_update_config),
     path("api/dashboard/reindex", views.dashboard_reindex),
     path("api/dashboard/reindex/", views.dashboard_reindex),
+    # Embedding Model Management endpoints
+    path("api/settings/embedding-models", views.list_embedding_models),
+    path("api/settings/embedding-models/", views.list_embedding_models),
+    path("api/settings/embedding-model", views.get_current_embedding_model),
+    path("api/settings/embedding-model/", views.get_current_embedding_model),
+    path("api/settings/embedding-model/switch", views.switch_embedding_model),
+    path("api/settings/embedding-model/switch/", views.switch_embedding_model),
+    path("api/settings/embedding-model/test", views.test_embedding_model),
+    path("api/settings/embedding-model/test/", views.test_embedding_model),
+    path("api/settings/embedding-model/metrics", views.get_embedding_model_metrics),
+    path("api/settings/embedding-model/metrics/", views.get_embedding_model_metrics),
+    path("api/settings/embedding-model/cache/clear", views.clear_embedding_model_cache),
+    path("api/settings/embedding-model/cache/clear/", views.clear_embedding_model_cache),
+    # Document Summarization endpoints
+    path("api/summary/generate", views.generate_summary),
+    path("api/summary/generate/", views.generate_summary),
+    path("api/summary/history", views.get_summary_history),
+    path("api/summary/history/", views.get_summary_history),
+    path("api/summary/<str:summary_id>/delete", views.delete_summary),
+    path("api/summary/<str:summary_id>/delete/", views.delete_summary),
+    path("api/summary/regenerate", views.regenerate_summary),
+    path("api/summary/regenerate/", views.regenerate_summary),
     # SPA catch-all: serve Vue frontend for any non-API route
     re_path(r"^(?!api/).*$", views.index_page),
 ]

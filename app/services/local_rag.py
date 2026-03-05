@@ -36,13 +36,18 @@ def retrieve_with_faiss(
         results = vector_store.search_with_metadata(query_embedding, top_k=search_k)
 
         if source_filter:
-            # Case-insensitive partial match to handle UUID prefixes
-            target_sources = [s.lower() for s in source_filter]
-            filtered = [
-                r
-                for r in results
-                if any(ts in str(r.get("source", "")).lower() for ts in target_sources)
-            ]
+            # Filter by source filename
+            # Support both exact match and partial match (for UUID prefixes)
+            normalized_filters = [str(s).lower().strip() for s in source_filter]
+            filtered = []
+            for r in results:
+                source = str(r.get("source", "")).lower().strip()
+                # Check if any filter matches this source
+                for f in normalized_filters:
+                    # Exact match or source starts with filter (handles UUID prefixes)
+                    if source == f or source.startswith(f) or f in source:
+                        filtered.append(r)
+                        break
             return filtered[:top_k]
 
         return results

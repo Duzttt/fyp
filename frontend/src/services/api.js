@@ -106,4 +106,69 @@ export const reindexDocuments = async () => {
   return response.data
 }
 
+// Embedding Model API
+export const getEmbeddingModels = async () => {
+  const response = await api.get('/settings/embedding-models')
+  return response.data
+}
+
+export const getCurrentEmbeddingModel = async () => {
+  const response = await api.get('/settings/embedding-model')
+  return response.data
+}
+
+export const switchEmbeddingModel = async (modelId, options = {}) => {
+  const response = await api.post('/settings/embedding-model/switch', {
+    model_id: modelId,
+    reindex: options.reindex || false,
+  })
+  return response.data
+}
+
+export const testEmbeddingModel = async (modelId, options = {}) => {
+  const response = await api.post('/settings/embedding-model/test', {
+    model_id: modelId,
+    query: options.query || 'test query',
+    top_k: options.top_k || 3,
+  })
+  return response.data
+}
+
+export const getEmbeddingModelMetrics = async () => {
+  const response = await api.get('/settings/embedding-model/metrics')
+  return response.data
+}
+
+export const clearEmbeddingModelCache = async () => {
+  const response = await api.post('/settings/embedding-model/cache/clear')
+  return response.data
+}
+
+// Document Summary API
+export const generateSummary = async (documentIds, config = {}) => {
+  const response = await api.post('/summary/generate', {
+    document_ids: documentIds,
+    config,
+  })
+  return response.data
+}
+
+export const getSummaryHistory = async (limit = 20) => {
+  const response = await api.get(`/summary/history?limit=${limit}`)
+  return response.data
+}
+
+export const deleteSummary = async (summaryId) => {
+  const response = await api.post(`/summary/${summaryId}/delete`)
+  return response.data
+}
+
+export const regenerateSummary = async (historyId, config = {}) => {
+  const response = await api.post('/summary/regenerate', {
+    history_id: historyId,
+    config,
+  })
+  return response.data
+}
+
 export default api

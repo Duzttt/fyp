@@ -1568,3 +1568,568 @@ def analyze_differences(answers: List[str]) -> tuple[List[str], List[str]]:
     different_points = different[:5]
 
     return common_points, different_points
+
+
+# ==========================================
+# Embedding Model Management Endpoints
+# ==========================================
+
+EMBEDDING_MODEL_SETTINGS_FILE = Path(__file__).resolve().parents[1] / "data" / "embedding_model_settings.json"
+
+
+def _load_embedding_model_settings() -> Dict[str, Any]:
+    """Load embedding model settings from file."""
+    default_settings = {
+        "current_model": settings.EMBEDDING_MODEL,
+        "model_cache": [],
+    }
+    
+    if not EMBEDDING_MODEL_SETTINGS_FILE.exists():
+        return default_settings
+    
+    try:
+        with EMBEDDING_MODEL_SETTINGS_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, dict):
+                return {**default_settings, **data}
+    except (OSError, json.JSONDecodeError):
+        pass
+    
+    return default_settings
+
+
+def _save_embedding_model_settings(data: Dict[str, Any]) -> None:
+    """Save embedding model settings to file."""
+    EMBEDDING_MODEL_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with EMBEDDING_MODEL_SETTINGS_FILE.open("w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+
+@require_http_methods(["GET"])
+def list_embedding_models(request: HttpRequest) -> JsonResponse:
+    """
+    Get list of all available embedding models with metadata.
+    """
+    from app.services.embedding_manager import get_embedding_manager
+    
+    try:
+        manager = get_embedding_manager()
+        models = manager.get_available_models()
+        
+        # Add cache stats
+        cache_stats = manager.get_cache_stats()
+        
+        return JsonResponse({
+            "models": models,
+            "cache_stats": cache_stats,
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to load models: {str(exc)}", status=500)
+
+
+@require_http_methods(["GET"])
+def get_current_embedding_model(request: HttpRequest) -> JsonResponse:
+    """
+    Get the currently active embedding model.
+    """
+    from app.services.embedding_manager import get_embedding_manager
+    
+    try:
+        manager = get_embedding_manager()
+        current_id = manager.get_current_model_id()
+        model_info = manager.AVAILABLE_MODELS.get(current_id, {})
+        
+        # Check if model is loaded in cache
+        cache_stats = manager.get_cache_stats()
+        is_loaded = current_id in cache_stats.get("cached_models", [])
+        
+        return JsonResponse({
+            "model_id": current_id,
+            "model_name": model_info.get("name", current_id),
+            "dimension": model_info.get("dimension", 384),
+            "speed": model_info.get("speed", "Unknown"),
+            "memory": model_info.get("memory", "Unknown"),
+            "is_loaded": is_loaded,
+            "recommended": model_info.get("recommended", False),
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to get current model: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def switch_embedding_model(request: HttpRequest) -> JsonResponse:
+    """
+    Switch to a different embedding model.
+    
+    Body:
+        model_id: str - The model ID to switch to
+        reindex: bool (optional) - Whether to reindex documents with new model
+    """
+    from app.services.embedding_manager import get_embedding_manager
+    
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+    
+    model_id = str(payload.get("model_id", "")).strip()
+    reindex = bool(payload.get("reindex", False))
+    
+    if not model_id:
+        return _error_response("model_id is required", status=400)
+    
+    try:
+        manager = get_embedding_manager()
+        
+        # Validate model exists
+        if model_id not in manager.AVAILABLE_MODELS:
+            return _error_response(f"Unknown model: {model_id}", status=400)
+        
+        # Switch model
+        result = manager.set_current_model(model_id)
+        
+        # Save to settings
+        saved_settings = _load_embedding_model_settings()
+        saved_settings["current_model"] = model_id
+        _save_embedding_model_settings(saved_settings)
+        
+        # If reindex requested, trigger background reindexing
+        if reindex:
+            # Check current indexing state
+            current_state = _get_upload_indexing_state()
+            if current_state["status"] != INDEXING_STATUS_RUNNING:
+                _enqueue_full_rebuild(uploaded_filename="model_switch_reindex")
+                result["reindex_status"] = "started"
+            else:
+                result["reindex_status"] = "already_running"
+        else:
+            result["reindex_status"] = "not_requested"
+        
+        return JsonResponse({
+            "success": True,
+            **result,
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to switch model: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def test_embedding_model(request: HttpRequest) -> JsonResponse:
+    """
+    Test an embedding model with a query.
+    
+    Body:
+        model_id: str - The model ID to test
+        query: str (optional) - Test query (default: "test query")
+        top_k: int (optional) - Number of results (default: 3)
+    """
+    from app.services.embedding_manager import get_embedding_manager
+    
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+    
+    model_id = str(payload.get("model_id", "")).strip()
+    query = str(payload.get("query", "test query")).strip()
+    top_k = int(payload.get("top_k", 3))
+    
+    if not model_id:
+        return _error_response("model_id is required", status=400)
+    
+    if not query:
+        return _error_response("query cannot be empty", status=400)
+    
+    try:
+        manager = get_embedding_manager()
+        
+        # Validate model exists
+        if model_id not in manager.AVAILABLE_MODELS:
+            return _error_response(f"Unknown model: {model_id}", status=400)
+        
+        # Test the model
+        result = manager.test_model(model_id, query, top_k=top_k)
+        
+        return JsonResponse({
+            "success": True,
+            **result,
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to test model: {str(exc)}", status=500)
+
+
+@require_http_methods(["GET"])
+def get_embedding_model_metrics(request: HttpRequest) -> JsonResponse:
+    """
+    Get performance metrics for embedding models.
+    """
+    from app.services.embedding_manager import get_embedding_manager
+    
+    try:
+        manager = get_embedding_manager()
+        
+        # Get recent metrics
+        metrics = manager.get_performance_metrics(limit=50)
+        
+        # Calculate averages per model
+        model_stats: Dict[str, Dict[str, Any]] = {}
+        for metric in metrics:
+            model_id = metric["model_id"]
+            if model_id not in model_stats:
+                model_stats[model_id] = {
+                    "count": 0,
+                    "total_time_ms": 0,
+                    "actions": {},
+                }
+            
+            model_stats[model_id]["count"] += 1
+            model_stats[model_id]["total_time_ms"] += metric["time_ms"]
+            
+            action = metric["action"]
+            if action not in model_stats[model_id]["actions"]:
+                model_stats[model_id]["actions"][action] = {
+                    "count": 0,
+                    "total_time_ms": 0,
+                }
+            model_stats[model_id]["actions"][action]["count"] += 1
+            model_stats[model_id]["actions"][action]["total_time_ms"] += metric["time_ms"]
+        
+        # Calculate averages
+        for model_id, stats in model_stats.items():
+            stats["avg_time_ms"] = round(stats["total_time_ms"] / stats["count"], 2) if stats["count"] > 0 else 0
+            
+            for action, action_stats in stats["actions"].items():
+                action_stats["avg_time_ms"] = round(
+                    action_stats["total_time_ms"] / action_stats["count"], 2
+                ) if action_stats["count"] > 0 else 0
+        
+        return JsonResponse({
+            "metrics": metrics,
+            "model_stats": model_stats,
+            "cache_stats": manager.get_cache_stats(),
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to get metrics: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def clear_embedding_model_cache(request: HttpRequest) -> JsonResponse:
+    """
+    Clear the embedding model cache.
+    """
+    from app.services.embedding_manager import get_embedding_manager
+
+    try:
+        manager = get_embedding_manager()
+        manager.clear_cache()
+
+        return JsonResponse({
+            "success": True,
+            "message": "Model cache cleared",
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to clear cache: {str(exc)}", status=500)
+
+
+# ==========================================
+# Document Summarization Endpoints
+# ==========================================
+
+SUMMARY_HISTORY_FILE = Path(__file__).resolve().parents[1] / "data" / "summary_history.json"
+
+
+def _load_summary_history() -> List[Dict[str, Any]]:
+    """Load summary history from file."""
+    if not SUMMARY_HISTORY_FILE.exists():
+        return []
+    
+    try:
+        with SUMMARY_HISTORY_FILE.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except (OSError, json.JSONDecodeError):
+        pass
+    
+    return []
+
+
+def _save_summary_history(history: List[Dict[str, Any]]) -> None:
+    """Save summary history to file."""
+    SUMMARY_HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with SUMMARY_HISTORY_FILE.open("w", encoding="utf-8") as f:
+        json.dump(history, f, indent=2, ensure_ascii=False)
+
+
+def _get_document_text(filename: str) -> Optional[str]:
+    """
+    Get full text content of a document from FAISS chunks.
+    
+    Args:
+        filename: Document filename
+        
+    Returns:
+        Full text content or None if not found
+    """
+    from app.services.vector_store import VectorStore
+    from app.config import settings
+    
+    try:
+        vector_store = VectorStore.get_cached(
+            index_path=settings.FAISS_INDEX_PATH,
+            embedding_dim=settings.EMBEDDING_DIM,
+        )
+        
+        # Find all chunks for this document
+        doc_chunks = []
+        for chunk in vector_store.chunks:
+            chunk_source = str(chunk.get("source", ""))
+            # Match by filename (handle UUID prefixes)
+            if filename in chunk_source or chunk_source.endswith(filename):
+                doc_chunks.append(chunk)
+        
+        if not doc_chunks:
+            return None
+        
+        # Sort by page and join text
+        doc_chunks.sort(key=lambda c: c.get("page", 0) or 0)
+        full_text = " ".join([str(c.get("text", "")) for c in doc_chunks])
+        
+        return full_text
+    except Exception:
+        return None
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def generate_summary(request: HttpRequest) -> JsonResponse:
+    """
+    Generate summary for selected documents.
+    
+    Body:
+        document_ids: List[str] - List of document filenames
+        config: Dict (optional) - Summary configuration:
+            - length: "short" | "medium" | "detailed"
+            - style: "bullets" | "narrative" | "academic" | "executive"
+            - language: "zh" | "en"
+            - include_citations: bool
+            - include_comparison: bool
+    """
+    from app.services.summarizer import DocumentSummarizer, SummarizerError
+    
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+    
+    document_ids = payload.get("document_ids", [])
+    config = payload.get("config", {})
+    
+    if not document_ids:
+        return _error_response("No documents selected", status=400)
+    
+    if not isinstance(document_ids, list):
+        return _error_response("document_ids must be a list", status=400)
+    
+    # Default configuration
+    default_config = {
+        "length": "medium",
+        "style": "narrative",
+        "language": "zh",
+        "include_citations": True,
+        "include_comparison": len(document_ids) > 1,
+    }
+    default_config.update(config)
+    
+    # Get document texts
+    documents = []
+    for doc_id in document_ids:
+        text = _get_document_text(doc_id)
+        if text:
+            documents.append({
+                "name": doc_id,
+                "text": text,
+            })
+    
+    if not documents:
+        return _error_response("No valid documents found", status=404)
+    
+    try:
+        # Generate summary
+        summarizer = DocumentSummarizer()
+        result = summarizer.generate_summary(documents, default_config)
+        
+        # Save to history
+        history = _load_summary_history()
+        history_entry = {
+            "id": f"summary_{int(time.time())}",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "documents": [doc["name"] for doc in documents],
+            "summary": result["text"],
+            "citations": result.get("citations", []),
+            "comparison": result.get("comparison", []),
+            "config": default_config,
+            "document_count": len(documents),
+        }
+        history.insert(0, history_entry)  # Add to beginning
+        
+        # Keep only last 50 summaries
+        if len(history) > 50:
+            history = history[:50]
+        
+        _save_summary_history(history)
+        
+        return JsonResponse({
+            "success": True,
+            "summary": result["text"],
+            "citations": result.get("citations", []),
+            "comparison": result.get("comparison", []),
+            "document_count": len(documents),
+            "documents": [doc["name"] for doc in documents],
+            "config": default_config,
+            "history_id": history_entry["id"],
+        })
+        
+    except SummarizerError as exc:
+        return _error_response(str(exc), status=500)
+    except Exception as exc:
+        return _error_response(f"Failed to generate summary: {str(exc)}", status=500)
+
+
+@require_http_methods(["GET"])
+def get_summary_history(request: HttpRequest) -> JsonResponse:
+    """
+    Get summary generation history.
+    
+    Query params:
+        limit: int (optional) - Maximum number of histories to return (default: 20)
+    """
+    try:
+        limit = int(request.GET.get("limit", 20))
+        limit = min(limit, 50)  # Max 50
+        
+        history = _load_summary_history()
+        
+        # Return most recent summaries
+        recent_history = history[:limit]
+        
+        return JsonResponse({
+            "history": recent_history,
+            "total": len(history),
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to load history: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_summary(request: HttpRequest, summary_id: str) -> JsonResponse:
+    """
+    Delete a summary from history.
+    
+    URL parameter:
+        summary_id: str - The summary ID to delete
+    """
+    try:
+        history = _load_summary_history()
+        
+        # Find and remove the summary
+        new_history = [h for h in history if h.get("id") != summary_id]
+        
+        if len(new_history) == len(history):
+            return _error_response("Summary not found", status=404)
+        
+        _save_summary_history(new_history)
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Summary deleted",
+        })
+    except Exception as exc:
+        return _error_response(f"Failed to delete summary: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def regenerate_summary(request: HttpRequest) -> JsonResponse:
+    """
+    Regenerate summary with different configuration.
+    
+    Body:
+        history_id: str - The summary history ID to regenerate
+        config: Dict - New configuration
+    """
+    from app.services.summarizer import DocumentSummarizer, SummarizerError
+    
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+    
+    history_id = payload.get("history_id")
+    new_config = payload.get("config", {})
+    
+    if not history_id:
+        return _error_response("history_id is required", status=400)
+    
+    # Find the original summary
+    history = _load_summary_history()
+    original = None
+    for h in history:
+        if h.get("id") == history_id:
+            original = h
+            break
+    
+    if not original:
+        return _error_response("Summary not found", status=404)
+    
+    # Merge old config with new
+    config = {**original.get("config", {}), **new_config}
+    
+    # Get document texts
+    documents = []
+    for doc_name in original.get("documents", []):
+        text = _get_document_text(doc_name)
+        if text:
+            documents.append({
+                "name": doc_name,
+                "text": text,
+            })
+    
+    if not documents:
+        return _error_response("Documents not found", status=404)
+    
+    try:
+        # Regenerate summary
+        summarizer = DocumentSummarizer()
+        result = summarizer.generate_summary(documents, config)
+        
+        # Update history
+        updated_entry = {
+            **original,
+            "summary": result["text"],
+            "citations": result.get("citations", []),
+            "comparison": result.get("comparison", []),
+            "config": config,
+            "regenerated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        
+        # Replace in history
+        new_history = [h if h.get("id") != history_id else updated_entry for h in history]
+        _save_summary_history(new_history)
+        
+        return JsonResponse({
+            "success": True,
+            "summary": result["text"],
+            "citations": result.get("citations", []),
+            "comparison": result.get("comparison", []),
+            "config": config,
+        })
+        
+    except SummarizerError as exc:
+        return _error_response(str(exc), status=500)
+    except Exception as exc:
+        return _error_response(f"Failed to regenerate summary: {str(exc)}", status=500)

@@ -1,8 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useDocumentStore } from '../stores/documentStore'
 import RetrievalChunks from './RetrievalChunks.vue'
 import PdfViewer from './PdfViewer.vue'
 import BidirectionalCitations from './BidirectionalCitations.vue'
+
+const documentStore = useDocumentStore()
 
 const messages = ref([])
 const question = ref('')
@@ -20,9 +23,16 @@ const currentHighlightText = ref('')
 // Bidirectional citations state
 const showBidirectionalPanel = ref(false)
 const selectedCitation = ref({ source: '', page: null, text: '' })
+const showDocumentListTooltip = ref(false)
 
 // Build bidirectional citations index
 const bidirectionalIndex = ref({})
+
+// Computed
+const selectedSources = computed(() => documentStore.selectedDocIds)
+const selectedCount = computed(() => documentStore.selectedCount)
+const selectedDocuments = computed(() => documentStore.selectedDocuments)
+const hasSelection = computed(() => documentStore.hasSelection)
 
 const sendMessage = async () => {
   if (!question.value.trim()) return
@@ -42,10 +52,17 @@ const sendMessage = async () => {
   lastRetrievedChunks.value = []
 
   try {
+    const payload = { query: userQuestion }
+    
+    // Add selected document sources for filtering
+    if (selectedSources.value && selectedSources.value.length > 0) {
+      payload.sources = selectedSources.value
+    }
+
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: userQuestion }),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
@@ -56,17 +73,17 @@ const sendMessage = async () => {
     const data = await response.json()
     const answer = data.answer || data.response || 'No answer received.'
     const chunks = data.retrieved_chunks || []
-    
+
     messages.value.push({
       role: 'assistant',
       content: answer,
       chunks: chunks,
       id: `msg_${Date.now()}`
     })
-    
+
     // Register citations for bidirectional tracing
     registerCitations(messages.value[messages.value.length - 1].id, userQuestion, answer, chunks)
-    
+
     lastRetrievedChunks.value = chunks
   } catch (err) {
     error.value = err.message
@@ -122,7 +139,6 @@ const handleChunkHover = (chunk) => {
 
 const handleChunkClick = (chunk) => {
   console.log('Chunk clicked:', chunk)
-  // Open PDF viewer with the chunk's source and page
   if (chunk.source) {
     currentPdfUrl.value = '/media/data_source/' + encodeURIComponent(chunk.source)
     currentPdfPage.value = chunk.page || 1
@@ -133,7 +149,6 @@ const handleChunkClick = (chunk) => {
 
 const handleChunkRightClick = (event, chunk) => {
   event.preventDefault()
-  // Show bidirectional citations
   const key = `${chunk.source}_${chunk.page}_${(chunk.text || '').substring(0, 50)}`
   const citations = bidirectionalIndex.value[key] || []
   if (citations.length > 0) {
@@ -159,7 +174,6 @@ const closeBidirectionalPanel = () => {
 }
 
 const navigateToMessage = (messageId) => {
-  // Scroll to the message
   setTimeout(() => {
     const element = document.querySelector(`[data-message-id="${messageId}"]`)
     if (element) {
@@ -171,7 +185,10 @@ const navigateToMessage = (messageId) => {
   }, 100)
 }
 
-// Expose handleChunkRightClick to child components
+const toggleDocumentListTooltip = () => {
+  showDocumentListTooltip.value = !showDocumentListTooltip.value
+}
+
 const onChunkRightClick = handleChunkRightClick
 </script>
 
@@ -182,12 +199,57 @@ const onChunkRightClick = handleChunkRightClick
         <span class="chat-title-main">Chat</span>
         <span class="chat-title-sub">Ask anything about your notes</span>
       </div>
+      
+      <!-- Retrieval Scope Indicator -->
+      <div v-if="hasSelection" class="retrieval-scope" @click="toggleDocumentListTooltip">
+        <span class="scope-icon">🔍</span>
+        <span class="scope-label">Retrieval scope:</span>
+        <span class="scope-value">
+          {{ selectedCount }} selected document{{ selectedCount > 1 ? 's' : '' }}
+          <svg class="scope-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path d="M6 9l6 6 6-6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        
+        <!-- Document List Tooltip -->
+        <div v-if="showDocumentListTooltip" class="document-tooltip" @click.stop>
+          <div class="tooltip-header">
+            <span>📄 Selected documents</span>
+            <button class="tooltip-close" @click="showDocumentListTooltip = false">✕</button>
+          </div>
+          <div class="tooltip-content">
+            <div 
+              v-for="doc in selectedDocuments" 
+              :key="doc.name || doc.filename"
+              class="tooltip-doc-item"
+            >
+              <span class="doc-icon">📄</span>
+              <span class="doc-name" :title="doc.name || doc.filename">
+                {{ doc.name || doc.filename }}
+              </span>
+            </div>
+          </div>
+          <div class="tooltip-footer">
+            <span class="footer-note">Click the Sources panel to change selection</span>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else class="retrieval-scope empty">
+        <span class="scope-icon">⚠️</span>
+        <span class="scope-label">No documents selected</span>
+      </div>
     </div>
+    
     <div class="chat-body">
       <div v-if="messages.length === 0" class="chat-empty-card">
         <div class="chat-empty-icon">💬</div>
         <div class="chat-empty-title">Start a Conversation</div>
         <div class="chat-empty-desc">Ask questions about your lecture notes</div>
+        <div v-if="!hasSelection" class="empty-warning">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-text">Please select documents to search on the left</span>
+        </div>
       </div>
       <div v-else class="messages-list">
         <div
@@ -273,7 +335,6 @@ const onChunkRightClick = handleChunkRightClick
 </template>
 
 <style scoped>
-/* Add highlight animation for bidirectional navigation */
 @keyframes highlightMessage {
   0% { background: rgba(99, 102, 241, 0.3); }
   100% { background: transparent; }
@@ -309,6 +370,7 @@ const onChunkRightClick = handleChunkRightClick
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
 }
 
 .chat-title {
@@ -325,6 +387,165 @@ const onChunkRightClick = handleChunkRightClick
 .chat-title-sub {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* Retrieval Scope Indicator */
+.retrieval-scope {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.retrieval-scope:hover {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: var(--accent);
+}
+
+.retrieval-scope.empty {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+  cursor: default;
+}
+
+.retrieval-scope.empty:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.scope-icon {
+  font-size: 12px;
+}
+
+.scope-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.scope-value {
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.scope-chevron {
+  width: 12px;
+  height: 12px;
+  color: var(--text-muted);
+  transition: transform 0.2s;
+}
+
+.retrieval-scope:hover .scope-chevron {
+  transform: rotate(180deg);
+}
+
+/* Document Tooltip */
+.document-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  max-height: 300px;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  z-index: 100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.2s ease;
+}
+
+.tooltip-header {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tooltip-close {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.tooltip-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.tooltip-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tooltip-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  color: var(--text-main);
+  transition: all 0.2s;
+}
+
+.tooltip-doc-item:hover {
+  background: rgba(99, 102, 241, 0.15);
+}
+
+.doc-icon {
+  font-size: 14px;
+}
+
+.doc-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-footer {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.footer-note {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .chat-body {
@@ -380,6 +601,27 @@ const onChunkRightClick = handleChunkRightClick
 .chat-empty-desc {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+.empty-warning {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.warning-icon {
+  font-size: 14px;
+}
+
+.warning-text {
+  font-size: 11px;
+  color: #fca5a5;
 }
 
 .messages-list {
@@ -515,5 +757,16 @@ const onChunkRightClick = handleChunkRightClick
   min-height: 1.2em;
   font-size: 11px;
   color: #fca5a5;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>
