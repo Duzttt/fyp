@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { getQuestionSuggestions, recordSuggestionClick } from '../services/api'
 
 const props = defineProps({
@@ -18,31 +18,42 @@ const emit = defineEmits(['question-select'])
 const suggestions = ref([])
 const isLoading = ref(false)
 const error = ref('')
-const isRefreshing = ref(false)
-const hasLoadedOnce = ref(false)
+const collapsed = ref(false)
 
-// Computed
+let debounceTimer = null
+
 const hasSuggestions = computed(() => suggestions.value.length > 0)
 const hasSelection = computed(() => props.selectedDocuments.length > 0)
 const canGenerate = computed(() => hasSelection.value && !isLoading.value && !props.disabled)
+const visible = computed(() => !collapsed.value && (hasSuggestions.value || isLoading.value))
 
-// Watch for document selection changes
-watch(
-  () => props.selectedDocuments,
-  async (newDocs, oldDocs) => {
-    // Only auto-generate if documents changed and we haven't loaded yet
-    if (newDocs.length > 0 && newDocs !== oldDocs && !hasLoadedOnce.value) {
-      await generateSuggestions()
-    } else if (newDocs.length === 0) {
-      // Clear suggestions when no documents selected
-      suggestions.value = []
-      error.value = ''
-    }
-  },
-  { deep: true }
-)
+// Stable string key derived from selected doc IDs — changes only when
+// the actual set of selected documents changes, not on every deep mutation.
+const docIdKey = computed(() => {
+  return props.selectedDocuments
+    .map(doc => doc.name || doc.filename)
+    .sort()
+    .join(',')
+})
 
-// Generate suggestions based on selected documents
+watch(docIdKey, (newKey, oldKey) => {
+  if (!newKey) {
+    suggestions.value = []
+    error.value = ''
+    collapsed.value = false
+    return
+  }
+  if (newKey !== oldKey) {
+    collapsed.value = false
+    debouncedGenerate()
+  }
+})
+
+function debouncedGenerate() {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => generateSuggestions(), 500)
+}
+
 const generateSuggestions = async () => {
   if (!canGenerate.value) return
 
@@ -51,222 +62,285 @@ const generateSuggestions = async () => {
 
   try {
     const docIds = props.selectedDocuments.map(doc => doc.name || doc.filename)
-    
     const response = await getQuestionSuggestions(docIds)
-    
+
     if (response.success && response.suggestions) {
       suggestions.value = response.suggestions.map((text, index) => ({
-        id: `suggestion_${Date.now()}_${index}`,
+        id: `s_${Date.now()}_${index}`,
         text,
         position: index,
       }))
-      hasLoadedOnce.value = true
     } else {
       error.value = response.message || 'Failed to generate suggestions'
     }
   } catch (err) {
     console.error('Failed to generate suggestions:', err)
     error.value = err.response?.data?.detail || err.message || 'Failed to generate suggestions'
-    
-    // Fallback: generate simple template-based suggestions
     generateFallbackSuggestions()
   } finally {
     isLoading.value = false
   }
 }
 
-// Fallback suggestions when LLM fails
 const generateFallbackSuggestions = () => {
   const docNames = props.selectedDocuments.map(doc => doc.name || doc.filename)
-  
   if (docNames.length === 0) return
-  
-  const mainDoc = docNames[0]
-  const docName = mainDoc.replace('.pdf', '')
-  
-  // Simple template-based fallback
+
+  const docName = docNames[0].replace('.pdf', '')
   suggestions.value = [
-    {
-      id: `fallback_${Date.now()}_0`,
-      text: `What is the main topic covered in ${docName}?`,
-      position: 0,
-    },
-    {
-      id: `fallback_${Date.now()}_1`,
-      text: `Explain the key concepts from ${docName}.`,
-      position: 1,
-    },
-    {
-      id: `fallback_${Date.now()}_2`,
-      text: `What are the most important points in ${docName}?`,
-      position: 2,
-    },
+    { id: `fb_${Date.now()}_0`, text: `What is the main topic covered in ${docName}?`, position: 0 },
+    { id: `fb_${Date.now()}_1`, text: `Explain the key concepts from ${docName}.`, position: 1 },
+    { id: `fb_${Date.now()}_2`, text: `What are the most important points in ${docName}?`, position: 2 },
   ]
-  hasLoadedOnce.value = true
 }
 
-// Handle suggestion click
-const handleSuggestionClick = async (suggestion) => {
-  // Emit the question to parent
+const handleChipClick = async (suggestion) => {
   emit('question-select', suggestion.text)
-  
-  // Record click for analytics
+  collapsed.value = true
+
   try {
     const docIds = props.selectedDocuments.map(doc => doc.name || doc.filename)
     await recordSuggestionClick(suggestion.text, docIds, suggestion.position)
-  } catch (err) {
-    console.error('Failed to record suggestion click:', err)
-    // Don't show error to user - this is just analytics
+  } catch (_) {
+    // analytics — don't surface errors
   }
 }
 
-// Refresh suggestions manually
 const handleRefresh = async () => {
   if (!canGenerate.value) return
-  
-  isRefreshing.value = true
+  collapsed.value = false
   await generateSuggestions()
-  isRefreshing.value = false
 }
 
-// Expose methods for parent component
-defineExpose({
-  generateSuggestions,
-  refresh: handleRefresh,
-})
+defineExpose({ generateSuggestions, refresh: handleRefresh })
 
 onMounted(() => {
-  // Auto-generate on mount if documents are selected
-  if (hasSelection.value) {
-    generateSuggestions()
-  }
+  if (hasSelection.value) generateSuggestions()
+})
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
 })
 </script>
 
 <template>
-  <div class="question-suggestions" :class="{ 'disabled': disabled || !hasSelection }">
-    <!-- Header -->
-    <div class="suggestions-header">
-      <div class="header-title">
-        <span class="title-icon">💡</span>
-        <span class="title-text">Suggested Questions</span>
+  <Transition name="suggestions-fade">
+    <div
+      v-if="hasSelection && (visible || error)"
+      class="question-suggestions"
+      :class="{ 'is-disabled': disabled }"
+    >
+      <div class="suggestions-row">
+        <!-- Label chip -->
+        <span class="label-chip">
+          <svg class="label-icon" viewBox="0 0 16 16" fill="none">
+            <path d="M8 2a1 1 0 0 1 .894.553l1.276 2.557 2.829.416a1 1 0 0 1 .554 1.705l-2.047 1.993.483 2.818a1 1 0 0 1-1.45 1.054L8 11.846l-2.539 1.25a1 1 0 0 1-1.45-1.054l.483-2.818L2.447 7.23a1 1 0 0 1 .554-1.705l2.829-.416L7.106 2.553A1 1 0 0 1 8 2z" fill="currentColor"/>
+          </svg>
+          Suggested
+        </span>
+
+        <!-- Skeleton loading -->
+        <template v-if="isLoading">
+          <span v-for="i in 3" :key="'skel_' + i" class="skeleton-chip" />
+        </template>
+
+        <!-- Suggestion chips -->
+        <TransitionGroup v-else name="chip" tag="div" class="chips-wrap">
+          <button
+            v-for="suggestion in suggestions"
+            :key="suggestion.id"
+            class="suggestion-chip"
+            @click="handleChipClick(suggestion)"
+            :disabled="disabled"
+          >
+            <span class="chip-text">{{ suggestion.text }}</span>
+            <svg class="chip-arrow" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </TransitionGroup>
+
+        <!-- Error inline -->
+        <span v-if="error && !hasSuggestions && !isLoading" class="error-chip">
+          {{ error }}
+        </span>
+
+        <!-- Refresh button -->
+        <button
+          v-if="hasSuggestions || isLoading"
+          class="refresh-btn"
+          @click="handleRefresh"
+          :disabled="isLoading || !hasSelection"
+          title="Refresh suggestions"
+        >
+          <svg
+            class="refresh-icon"
+            :class="{ spinning: isLoading }"
+            viewBox="0 0 16 16"
+            fill="none"
+          >
+            <path d="M13.65 2.35A7.958 7.958 0 0 0 8 0a8 8 0 1 0 7.745 6h-2.09A5.98 5.98 0 0 1 8 14 6 6 0 1 1 8 2c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/>
+          </svg>
+        </button>
       </div>
-      
-      <button
-        v-if="hasSuggestions || isLoading"
-        class="refresh-btn"
-        @click="handleRefresh"
-        :disabled="isRefreshing || !hasSelection"
-        title="Refresh suggestions"
-      >
-        <span class="refresh-icon" :class="{ 'spinning': isRefreshing }">↻</span>
-      </button>
     </div>
-    
-    <!-- Loading State -->
-    <div v-if="isLoading" class="suggestions-loading">
-      <div class="loading-spinner"></div>
-      <span class="loading-text">Generating smart questions...</span>
-    </div>
-    
-    <!-- Error State -->
-    <div v-else-if="error && !hasSuggestions" class="suggestions-error">
-      <span class="error-icon">⚠️</span>
-      <span class="error-text">{{ error }}</span>
-    </div>
-    
-    <!-- No Selection State -->
-    <div v-else-if="!hasSelection" class="suggestions-no-selection">
-      <span class="no-selection-icon">📄</span>
-      <span class="no-selection-text">Select documents to see suggestions</span>
-    </div>
-    
-    <!-- Suggestions List -->
-    <div v-else-if="hasSuggestions" class="suggestions-list">
-      <div
-        v-for="(suggestion, index) in suggestions"
-        :key="suggestion.id"
-        class="suggestion-card"
-        @click="handleSuggestionClick(suggestion)"
-        :style="{ animationDelay: `${index * 0.1}s` }"
-      >
-        <div class="suggestion-number">{{ index + 1 }}</div>
-        <div class="suggestion-text">{{ suggestion.text }}</div>
-        <div class="suggestion-hover-indicator">
-          <span>Click to ask →</span>
-        </div>
-      </div>
-    </div>
-    
-    <!-- Empty State (shouldn't normally show) -->
-    <div v-else class="suggestions-empty">
-      <span class="empty-icon">🤔</span>
-      <span class="empty-text">No suggestions available</span>
-    </div>
-  </div>
+  </Transition>
 </template>
 
 <style scoped>
 .question-suggestions {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 25, 45, 0.5) 0%,
-    rgba(25, 35, 60, 0.6) 100%
-  );
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(15px) saturate(180%);
-  -webkit-backdrop-filter: blur(15px) saturate(180%);
-  padding: 12px;
-  transition: all 0.3s ease;
+  padding: 8px 0 4px;
+  transition: opacity 0.3s ease;
 }
 
-.question-suggestions.disabled {
-  opacity: 0.6;
+.question-suggestions.is-disabled {
+  opacity: 0.5;
   pointer-events: none;
 }
 
-/* Header */
-.suggestions-header {
+/* --- Layout --- */
+.suggestions-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-  padding: 0 4px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.header-title {
-  display: flex;
+.chips-wrap {
+  display: contents;
+}
+
+/* --- Label chip --- */
+.label-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.label-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--accent, #6366f1);
+}
+
+/* --- Skeleton chips --- */
+.skeleton-chip {
+  display: inline-block;
+  height: 32px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite ease-in-out;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.skeleton-chip:nth-child(2) { width: 180px; }
+.skeleton-chip:nth-child(3) { width: 150px; }
+.skeleton-chip:nth-child(4) { width: 200px; }
+
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* --- Suggestion chip --- */
+.suggestion-chip {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-main, #e2e8f0);
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-main);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.title-icon {
-  font-size: 14px;
+.suggestion-chip:hover {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  box-shadow: 0 2px 12px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
+.suggestion-chip:active {
+  transform: translateY(0);
+}
+
+.chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-arrow {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--accent, #6366f1);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: all 0.2s ease;
+}
+
+.suggestion-chip:hover .chip-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* --- Error chip --- */
+.error-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+/* --- Refresh button --- */
 .refresh-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.03);
   color: var(--text-muted);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .refresh-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: var(--accent);
-  color: white;
+  background: rgba(99, 102, 241, 0.15);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: var(--accent, #6366f1);
 }
 
 .refresh-btn:disabled {
@@ -275,7 +349,8 @@ onMounted(() => {
 }
 
 .refresh-icon {
-  font-size: 14px;
+  width: 13px;
+  height: 13px;
   transition: transform 0.3s;
 }
 
@@ -283,170 +358,34 @@ onMounted(() => {
   animation: spin 1s linear infinite;
 }
 
-/* Loading State */
-.suggestions-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  gap: 10px;
+/* --- Transitions --- */
+.suggestions-fade-enter-active,
+.suggestions-fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.suggestions-fade-enter-from,
+.suggestions-fade-leave-to {
+  opacity: 0;
+  transform: translateY(6px);
 }
 
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 2px solid rgba(99, 102, 241, 0.3);
-  border-top-color: var(--accent);
-  animation: spin 1s linear infinite;
+.chip-enter-active {
+  transition: all 0.3s ease;
 }
-
-.loading-text {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-/* Error State */
-.suggestions-error {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 12px;
-  font-size: 11px;
-  color: #fca5a5;
-  background: rgba(239, 68, 68, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(239, 68, 68, 0.2);
-}
-
-.error-icon {
-  font-size: 14px;
-}
-
-/* No Selection State */
-.suggestions-no-selection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.no-selection-icon {
-  font-size: 20px;
-  opacity: 0.6;
-}
-
-/* Suggestions List */
-.suggestions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.suggestion-card {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 10px;
-  cursor: pointer;
+.chip-leave-active {
   transition: all 0.2s ease;
-  animation: slideIn 0.3s ease forwards;
-  animation-fill-mode: both;
+}
+.chip-enter-from {
   opacity: 0;
+  transform: translateY(8px) scale(0.95);
 }
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.suggestion-card:hover {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: var(--accent);
-  transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-}
-
-.suggestion-number {
-  flex-shrink: 0;
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.4));
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent);
-}
-
-.suggestion-text {
-  flex: 1;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-main);
-  padding-top: 2px;
-}
-
-.suggestion-hover-indicator {
-  position: absolute;
-  right: 12px;
-  bottom: 8px;
-  font-size: 10px;
-  color: var(--accent);
+.chip-leave-to {
   opacity: 0;
-  transform: translateX(-5px);
-  transition: all 0.2s;
-}
-
-.suggestion-card:hover .suggestion-hover-indicator {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* Empty State */
-.suggestions-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.empty-icon {
-  font-size: 20px;
-  opacity: 0.5;
+  transform: scale(0.9);
 }
 
 @keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 </style>

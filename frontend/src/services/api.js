@@ -243,4 +243,73 @@ export const getAdminIndexingStatus = async () => {
   return response.data
 }
 
+// Admin Analytics API (Phase 2)
+export const getAdminDocumentAnalytics = async (docId) => {
+  const response = await api.get(`/admin/analytics/document/${encodeURIComponent(docId)}`)
+  return response.data
+}
+
+export const getAdminQueryClusters = async (days = 30, limit = 1000) => {
+  const response = await api.get(`/admin/analytics/query-clusters?days=${days}&limit=${limit}`)
+  return response.data
+}
+
+export const getAdminFailureAnalysis = async (timeRange = 24) => {
+  const response = await api.get(`/admin/analytics/failures?time_range=${timeRange}`)
+  return response.data
+}
+
+export const getAdminEmbeddingVisualization = async (method = 'pca', perplexity = 30, sampleSize = 500) => {
+  const response = await api.get(`/admin/visualization/embeddings?method=${method}&perplexity=${perplexity}&sample_size=${sampleSize}`)
+  return response.data
+}
+
+export const getAdminChunkQuality = async () => {
+  const response = await api.get('/admin/analytics/chunk-quality')
+  return response.data
+}
+
+export const traceRetrieval = async (query, topK = 5) => {
+  const response = await api.post('/admin/debug/trace', {
+    query,
+    top_k: topK,
+  })
+  return response.data
+}
+
+// A/B Testing API
+export const getABTests = async () => {
+  const response = await api.get('/admin/abtests')
+  return response.data
+}
+
+export const createABTest = async (testData) => {
+  const response = await api.post('/admin/abtest/create', testData)
+  return response.data
+}
+
+export const startABTest = async (testId) => {
+  const response = await api.post(`/admin/abtest/${testId}/start`)
+  return response.data
+}
+
+export const stopABTest = async (testId) => {
+  const response = await api.post(`/admin/abtest/${testId}/stop`)
+  return response.data
+}
+
+export const recordABTest = async (testId, variant, metrics) => {
+  const response = await api.post('/admin/abtest/record', {
+    test_id: testId,
+    variant,
+    metrics,
+  })
+  return response.data
+}
+
+export const getABTestResults = async (testId) => {
+  const response = await api.get(`/admin/abtest/${testId}/results`)
+  return response.data
+}
+
 export default api

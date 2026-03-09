@@ -1,8 +1,9 @@
 """
 Question Suggestion Service for generating intelligent question suggestions
-based on selected documents using a hybrid approach.
+based on selected documents using an LLM-first approach with template fallback.
 """
 
+import logging
 import re
 import string
 from collections import Counter
@@ -12,23 +13,25 @@ import httpx
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class QuestionSuggestionError(Exception):
     """Custom exception for question suggestion errors."""
+
     pass
 
 
 class QuestionSuggestionService:
     """
     Service for generating smart question suggestions based on document content.
-    
-    Uses a hybrid approach:
+
+    Uses an LLM-first approach with template fallback:
     1. Extract keywords and key phrases from documents
-    2. Generate candidate questions using templates
-    3. Use LLM to optimize and select the best questions
+    2. Ask the LLM to directly generate diverse, specific questions
+    3. Fall back to template-based candidates if LLM is unavailable
     """
-    
-    # Question templates by type
+
     QUESTION_TEMPLATES = {
         "concept": [
             "What is {keyword}?",
@@ -58,8 +61,7 @@ class QuestionSuggestionService:
             "How is {keyword} used in real applications?",
         ],
     }
-    
-    # Stop words for English
+
     STOP_WORDS = {
         "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
         "of", "with", "by", "from", "is", "are", "was", "were", "be", "been",
@@ -71,14 +73,8 @@ class QuestionSuggestionService:
         "just", "also", "now", "here", "there", "when", "where", "why", "how",
         "all", "about", "into", "over", "after", "before", "between", "under",
     }
-    
+
     def __init__(self, llm_provider: str = "local_qwen"):
-        """
-        Initialize the question suggestion service.
-        
-        Args:
-            llm_provider: LLM provider to use ("local_qwen", "gemini", "openrouter")
-        """
         self.llm_provider = llm_provider
         self._http_client: Optional[httpx.Client] = None
     
@@ -287,97 +283,82 @@ class QuestionSuggestionService:
         # Limit to num_candidates
         return candidates[:num_candidates]
     
-    def optimize_questions_with_llm(
+    def generate_questions_with_llm(
         self,
-        candidates: List[Dict[str, Any]],
         document_context: str,
-        num_final: int = 3
+        doc_names: List[str],
+        keywords: List[Tuple[str, float]],
+        num_final: int = 3,
     ) -> List[str]:
         """
-        Use LLM to optimize and select the best questions.
-        
-        Args:
-            candidates: List of candidate question dictionaries
-            document_context: Context from selected documents
-            num_final: Number of final questions to return
-            
-        Returns:
-            List of optimized question strings
+        Use LLM to directly generate questions from document content.
+
+        Falls back to template-based selection if LLM is unavailable.
         """
-        if not candidates:
-            return []
-        
-        # Prepare candidate questions list
-        candidate_texts = [c["text"] for c in candidates]
-        
-        # Build prompt for LLM
-        prompt = self._build_optimization_prompt(
-            candidate_texts, 
-            document_context,
-            num_final
+        prompt = self._build_direct_generation_prompt(
+            document_context, doc_names, keywords, num_final
         )
-        
+
         try:
-            if self.llm_provider == "local_qwen":
-                response = self._call_local_qwen(prompt)
-            elif self.llm_provider == "gemini":
-                response = self._call_gemini(prompt)
-            elif self.llm_provider == "openrouter":
-                response = self._call_openrouter(prompt)
-            else:
-                # Fallback to template-based selection
-                return self._select_diverse_questions(candidates, num_final)
-            
-            # Parse LLM response
+            response = self._call_llm(prompt)
             questions = self._parse_llm_response(response, num_final)
-            
             if questions:
                 return questions
-            
-        except Exception as e:
-            # Fallback to template-based selection
-            print(f"LLM optimization failed: {e}")
-        
-        # Fallback: select diverse questions without LLM
-        return self._select_diverse_questions(candidates, num_final)
-    
-    def _build_optimization_prompt(
-        self,
-        candidates: List[str],
-        context: str,
-        num_final: int
-    ) -> str:
-        """Build the prompt for LLM optimization."""
-        candidates_str = "\n".join([f"{i+1}. {q}" for i, q in enumerate(candidates[:10])])
-        
-        context_preview = context[:1000] + "..." if len(context) > 1000 else context
-        
-        prompt = f"""You are helping generate good question suggestions for a lecture note Q&A system.
+        except Exception as exc:
+            logger.warning("LLM question generation failed: %s", exc)
 
-Based on the following lecture content, select EXACTLY {num_final} diverse and high-quality questions from the candidate list.
+        return []
+
+    def _call_llm(self, prompt: str) -> str:
+        """Dispatch to the configured LLM provider."""
+        if self.llm_provider == "local_qwen":
+            return self._call_local_qwen(prompt)
+        elif self.llm_provider == "gemini":
+            return self._call_gemini(prompt)
+        elif self.llm_provider == "openrouter":
+            return self._call_openrouter(prompt)
+        raise QuestionSuggestionError(
+            f"Unknown LLM provider: {self.llm_provider}"
+        )
+
+    def _build_direct_generation_prompt(
+        self,
+        context: str,
+        doc_names: List[str],
+        keywords: List[Tuple[str, float]],
+        num_final: int,
+    ) -> str:
+        """Build a prompt that asks the LLM to generate questions directly."""
+        context_preview = context[:2000]
+        if len(context) > 2000:
+            context_preview += "\n..."
+
+        keyword_hints = ", ".join(kw for kw, _ in keywords[:10])
+        doc_list = ", ".join(doc_names)
+
+        return f"""You are a teaching assistant helping students study lecture notes.
+
+Based ONLY on the following lecture content from: {doc_list}
+Generate EXACTLY {num_final} diverse study questions that a student would find useful.
 
 Requirements:
-1. Questions should be diverse (different types: definition, process, comparison, example)
-2. Questions should be directly relevant to the lecture content
-3. Questions should be clear and concise (under 15 words each)
-4. Avoid similar or duplicate questions
-5. Prioritize questions about key concepts
+1. Each question must be answerable from the provided content
+2. Cover different cognitive levels: definition, explanation, comparison, application
+3. Be specific — reference actual concepts, terms, or processes from the text
+4. Keep each question under 20 words
+5. Questions must be in English
+
+Key topics found in the documents: {keyword_hints}
 
 Lecture Content:
 {context_preview}
 
-Candidate Questions:
-{candidates_str}
+Respond with EXACTLY {num_final} questions, one per line, numbered like:
+1. <question>
+2. <question>
+3. <question>
 
-Respond with ONLY the numbers of your selected questions (one per line), like:
-1
-3
-5
-
-Or if you want to slightly modify a question, respond with the modified version:
-Modified: What is the difference between X and Y?
-"""
-        return prompt
+Do NOT add any other text, explanation, or commentary."""
     
     def _call_local_qwen(self, prompt: str) -> str:
         """Call local Qwen model via Ollama."""
@@ -455,32 +436,41 @@ Modified: What is the difference between X and Y?
             raise QuestionSuggestionError(f"OpenRouter call failed: {e}")
     
     def _parse_llm_response(self, response: str, num_final: int) -> List[str]:
-        """Parse LLM response to extract selected questions."""
-        questions = []
-        
+        """Parse LLM response to extract generated questions.
+
+        Handles formats like:
+        - ``1. What is X?``
+        - ``1) What is X?``
+        - ``- What is X?``
+        - Plain question lines ending with ``?``
+        """
+        questions: List[str] = []
+
+        numbered_re = re.compile(r"^\s*\d+[\.\)]\s*(.+)")
+
         for line in response.strip().split("\n"):
             line = line.strip()
             if not line:
                 continue
-            
-            # Check for modified questions
-            if line.lower().startswith("modified:"):
-                question = line[9:].strip()
-                if question and question not in questions:
-                    questions.append(question)
+
+            # Strip leading bullet/dash
+            if line.startswith("- "):
+                line = line[2:].strip()
+
+            # Try numbered format: "1. Question text" or "1) Question text"
+            match = numbered_re.match(line)
+            if match:
+                question = match.group(1).strip()
+            elif line.endswith("?") and len(line) < 150:
+                question = line
+            else:
                 continue
-            
-            # Check for number selection
-            if line.isdigit():
-                # This would need the original candidates to map back
-                # For simplicity, skip in this implementation
-                continue
-            
-            # Treat as a question directly
-            if line.endswith("?") and len(line) < 100:
-                if line not in questions:
-                    questions.append(line)
-        
+
+            # Clean up trailing/leading quotes
+            question = question.strip("\"'")
+            if question and question not in questions:
+                questions.append(question)
+
         return questions[:num_final]
     
     def _select_diverse_questions(
@@ -569,94 +559,85 @@ Modified: What is the difference between X and Y?
     def generate_suggestions(
         self,
         documents: List[Dict[str, Any]],
-        num_suggestions: int = 3
+        num_suggestions: int = 3,
     ) -> Dict[str, Any]:
         """
-        Main method to generate question suggestions for selected documents.
-        
-        Args:
-            documents: List of document dictionaries with 'name', 'content', 'chunks'
-            num_suggestions: Number of suggestions to generate
-            
-        Returns:
-            Dictionary with 'suggestions' list and 'generated_from' document names
+        Generate question suggestions for *exactly* the selected documents.
+
+        Uses an LLM-first approach: ask the LLM to generate questions directly
+        from the document content.  Falls back to template-based candidate
+        selection when the LLM is unavailable or returns an unusable response.
         """
         if not documents:
             return {"suggestions": [], "generated_from": []}
-        
-        # Combine document content
-        all_text = []
-        doc_names = []
-        
+
+        all_text: List[str] = []
+        doc_names: List[str] = []
+
         for doc in documents:
             doc_name = doc.get("name") or doc.get("filename", "Unknown")
             doc_names.append(doc_name)
-            
-            # Combine content from chunks or direct content
+
             content = doc.get("content", "")
             chunks = doc.get("chunks", [])
-            
             if chunks:
-                chunk_texts = [c.get("text", "") for c in chunks[:10]]  # Limit chunks
+                chunk_texts = [c.get("text", "") for c in chunks[:10]]
                 content = "\n".join(chunk_texts)
-            
+
             if content:
                 all_text.append(f"=== {doc_name} ===\n{content}")
-        
+
         combined_text = "\n\n".join(all_text)
-        
         if not combined_text.strip():
             return {"suggestions": [], "generated_from": doc_names}
-        
-        # Step 1: Extract keywords
+
         keywords = self.extract_keywords(combined_text, top_k=15)
-        
-        # Step 2: Extract key phrases
         keyphrases = self.extract_keyphrases(combined_text, top_k=10)
-        
-        # Step 3: Generate candidate questions
-        candidates = self.generate_candidate_questions(keywords, keyphrases, num_candidates=15)
-        
-        # Step 4: Optimize and select final questions
-        final_questions = self.optimize_questions_with_llm(
-            candidates, 
-            combined_text, 
-            num_final=num_suggestions
+
+        # LLM-first: ask the LLM to generate questions directly
+        final_questions = self.generate_questions_with_llm(
+            combined_text, doc_names, keywords, num_final=num_suggestions
         )
-        
+
+        if not final_questions:
+            # Fallback: template candidates + diverse selection
+            candidates = self.generate_candidate_questions(
+                keywords, keyphrases, num_candidates=15
+            )
+            final_questions = self._select_diverse_questions(
+                candidates, num_suggestions
+            )
+
         return {
             "suggestions": final_questions,
             "generated_from": doc_names,
         }
 
 
-# Singleton instance for reuse
 _service_instance: Optional[QuestionSuggestionService] = None
 
 
 def get_question_suggestion_service(
-    llm_provider: str = "local_qwen"
+    llm_provider: Optional[str] = None,
 ) -> QuestionSuggestionService:
-    """Get or create the question suggestion service instance."""
+    """Get or create the question suggestion service instance.
+
+    Re-creates the instance when the requested provider differs from the
+    current one so runtime provider changes take effect immediately.
+    """
     global _service_instance
-    if _service_instance is None:
-        _service_instance = QuestionSuggestionService(llm_provider)
+    provider = llm_provider or getattr(settings, "LLM_PROVIDER", "local_qwen")
+
+    if _service_instance is None or _service_instance.llm_provider != provider:
+        _service_instance = QuestionSuggestionService(provider)
+
     return _service_instance
 
 
 def generate_question_suggestions(
     documents: List[Dict[str, Any]],
-    num_suggestions: int = 3
+    num_suggestions: int = 3,
 ) -> Dict[str, Any]:
-    """
-    Convenience function to generate question suggestions.
-    
-    Args:
-        documents: List of document dictionaries
-        num_suggestions: Number of suggestions to generate
-        
-    Returns:
-        Dictionary with suggestions list and source documents
-    """
+    """Convenience function to generate question suggestions."""
     service = get_question_suggestion_service()
     return service.generate_suggestions(documents, num_suggestions)

@@ -726,9 +726,7 @@ const handleSuggestionSelect = (questionText) => {
 }
 
 .chat-suggestions-wrap {
-  max-height: 190px;
-  overflow-y: auto;
-  padding: 0 14px 10px;
+  padding: 0 14px;
 }
 
 .chat-input-wrap {

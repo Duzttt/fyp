@@ -22,7 +22,18 @@ import {
   getAdminDocumentChunks,
   deleteAdminDocument,
   reindexAdminDocument,
-  getAdminIndexingStatus
+  getAdminIndexingStatus,
+  getAdminDocumentAnalytics,
+  getAdminQueryClusters,
+  getAdminFailureAnalysis,
+  getAdminEmbeddingVisualization,
+  getAdminChunkQuality,
+  traceRetrieval,
+  getABTests,
+  createABTest,
+  startABTest,
+  stopABTest,
+  getABTestResults
 } from '../../services/api'
 
 ChartJS.register(
@@ -80,10 +91,41 @@ const totalChunks = ref(0)
 // Indexing status
 const indexingStatus = ref({ status: 'idle', progress: 0, current_file: '' })
 
+// Phase 2: Analytics data
+const selectedDocForAnalytics = ref(null)
+const docAnalytics = ref(null)
+const queryClusters = ref({ clusters: [], total_queries: 0 })
+const failureAnalysis = ref({ failure_rate: 0, breakdown: [], suggestions: [] })
+const embeddingViz = ref({ points: [], documents: [] })
+const chunkQuality = ref({ top_chunks: [], low_quality_chunks: [], overall_score: 0 })
+const traceResults = ref(null)
+const abTests = ref([])
+const abTestResults = ref(null)
+
+// Phase 2: Loading states
+const analyticsLoading = ref(false)
+const vizMethod = ref('pca')
+const traceQuery = ref('')
+const traceLoading = ref(false)
+
+// New test form
+const newTestForm = ref({
+  name: '',
+  description: '',
+  variants: [{ name: 'control', config: {} }, { name: 'variant_a', config: {} }],
+})
+
 const tabs = [
   { id: 'overview', label: 'System Overview', icon: '📊' },
   { id: 'retrieval', label: 'Retrieval Debug', icon: '🔍' },
   { id: 'documents', label: 'Documents', icon: '📄' },
+  { id: 'analytics', label: 'Analytics', icon: '📈' },
+  { id: 'clusters', label: 'Query Clusters', icon: '🔮' },
+  { id: 'failures', label: 'Failures', icon: '⚠️' },
+  { id: 'viz', label: 'Vector Viz', icon: '🌌' },
+  { id: 'quality', label: 'Chunk Quality', icon: '⭐' },
+  { id: 'trace', label: 'Trace', icon: '🔎' },
+  { id: 'abtest', label: 'A/B Test', icon: '🔬' },
 ]
 
 const chartOptions = computed(() => ({
@@ -184,6 +226,12 @@ const handleViewChunks = (doc) => {
   loadChunks(doc.id, 1)
 }
 
+const handleViewDocAnalytics = async (doc) => {
+  selectedDocForAnalytics.value = doc
+  await loadDocumentAnalytics(doc.id)
+  activeTab.value = 'analytics'
+}
+
 const handleCloseChunks = () => {
   selectedDoc.value = null
   documentChunks.value = []
@@ -212,9 +260,130 @@ const loadIndexingStatus = async () => {
   }
 }
 
+// Phase 2: Analytics functions
+const loadDocumentAnalytics = async (docId) => {
+  analyticsLoading.value = true
+  try {
+    const data = await getAdminDocumentAnalytics(docId)
+    docAnalytics.value = data
+  } catch (err) {
+    console.error('Failed to load document analytics:', err)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+const loadQueryClusters = async () => {
+  analyticsLoading.value = true
+  try {
+    const data = await getAdminQueryClusters(30, 1000)
+    queryClusters.value = data
+  } catch (err) {
+    console.error('Failed to load query clusters:', err)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+const loadFailureAnalysis = async () => {
+  analyticsLoading.value = true
+  try {
+    const data = await getAdminFailureAnalysis(24)
+    failureAnalysis.value = data
+  } catch (err) {
+    console.error('Failed to load failure analysis:', err)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+const loadEmbeddingViz = async () => {
+  analyticsLoading.value = true
+  try {
+    const data = await getAdminEmbeddingVisualization(vizMethod.value, 30, 500)
+    embeddingViz.value = data
+  } catch (err) {
+    console.error('Failed to load embedding viz:', err)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+const loadChunkQuality = async () => {
+  analyticsLoading.value = true
+  try {
+    const data = await getAdminChunkQuality()
+    chunkQuality.value = data
+  } catch (err) {
+    console.error('Failed to load chunk quality:', err)
+  } finally {
+    analyticsLoading.value = false
+  }
+}
+
+const handleTrace = async () => {
+  if (!traceQuery.value.trim()) return
+  traceLoading.value = true
+  try {
+    const data = await traceRetrieval(traceQuery.value, 5)
+    traceResults.value = data
+  } catch (err) {
+    console.error('Trace failed:', err)
+  } finally {
+    traceLoading.value = false
+  }
+}
+
+const loadABTests = async () => {
+  try {
+    const data = await getABTests()
+    abTests.value = data.tests || []
+  } catch (err) {
+    console.error('Failed to load AB tests:', err)
+  }
+}
+
+const handleCreateTest = async () => {
+  try {
+    await createABTest(newTestForm.value)
+    await loadABTests()
+    newTestForm.value = { name: '', description: '', variants: [{ name: 'control', config: {} }, { name: 'variant_a', config: {} }] }
+    alert('Test created!')
+  } catch (err) {
+    alert('Failed to create test: ' + err.message)
+  }
+}
+
+const handleStartTest = async (testId) => {
+  try {
+    await startABTest(testId)
+    await loadABTests()
+  } catch (err) {
+    alert('Failed to start test: ' + err.message)
+  }
+}
+
+const handleStopTest = async (testId) => {
+  try {
+    await stopABTest(testId)
+    await loadABTests()
+  } catch (err) {
+    alert('Failed to stop test: ' + err.message)
+  }
+}
+
+const handleViewResults = async (testId) => {
+  try {
+    const data = await getABTestResults(testId)
+    abTestResults.value = data
+  } catch (err) {
+    console.error('Failed to load results:', err)
+  }
+}
+
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus()])
+  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus(), loadABTests()])
   loading.value = false
   
   // Poll indexing status
@@ -484,7 +653,8 @@ onMounted(async () => {
                 <div class="doc-date">{{ new Date(doc.created_at).toLocaleString() }}</div>
               </div>
               <div class="doc-actions">
-                <button class="action-btn view" @click="handleViewChunks(doc)">View Chunks</button>
+                <button class="action-btn view" @click="handleViewChunks(doc)">Chunks</button>
+                <button class="action-btn analytics" @click="handleViewDocAnalytics(doc)">Analytics</button>
                 <button class="action-btn reindex" @click="handleReindexDocument(doc.id)">Reindex</button>
                 <button class="action-btn delete" @click="handleDeleteDocument(doc.id)">Delete</button>
               </div>
@@ -534,6 +704,277 @@ onMounted(async () => {
             >
               Next
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics Tab -->
+      <div v-else-if="activeTab === 'analytics'" class="tab-content">
+        <div class="analytics-section">
+          <div v-if="selectedDocForAnalytics" class="doc-analytics">
+            <div class="section-header">
+              <button class="back-btn" @click="selectedDocForAnalytics = null">← Back</button>
+              <h3>{{ selectedDocForAnalytics.name }}</h3>
+            </div>
+            
+            <div v-if="docAnalytics" class="analytics-stats">
+              <div class="stat-card">
+                <div class="stat-value">{{ docAnalytics.retrieval_stats.appearance_count }}</div>
+                <div class="stat-label">Appearance Count</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ docAnalytics.retrieval_stats.avg_score }}</div>
+                <div class="stat-label">Avg Score</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ docAnalytics.retrieval_stats.click_count }}</div>
+                <div class="stat-label">Click Count</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value">{{ (docAnalytics.retrieval_stats.click_rate * 100).toFixed(1) }}%</div>
+                <div class="stat-label">Click Rate</div>
+              </div>
+            </div>
+            
+            <div class="top-queries">
+              <h4>Top Queries</h4>
+              <div v-for="q in docAnalytics.top_queries" :key="q.query" class="query-item">
+                <span class="query-text">{{ q.query }}</span>
+                <span class="query-count">{{ q.count }} times</span>
+              </div>
+            </div>
+          </div>
+          
+          <div v-else class="select-doc">
+            <h3>Select a Document</h3>
+            <p>Choose a document from the Documents tab to view analytics</p>
+            <button class="action-btn" @click="activeTab = 'documents'">Go to Documents</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Query Clusters Tab -->
+      <div v-else-if="activeTab === 'clusters'" class="tab-content">
+        <div class="clusters-section">
+          <div class="section-header">
+            <h3>Query Semantic Clusters</h3>
+            <button class="refresh-btn" @click="loadQueryClusters">↻</button>
+          </div>
+          
+          <div v-if="queryClusters.clusters?.length" class="clusters-list">
+            <div v-for="cluster in queryClusters.clusters" :key="cluster.name" class="cluster-item">
+              <div class="cluster-header">
+                <span class="cluster-color" :style="{ background: cluster.color }"></span>
+                <span class="cluster-name">{{ cluster.name.replace('_', ' ') }}</span>
+                <span class="cluster-pct">{{ cluster.percentage }}%</span>
+              </div>
+              <div class="cluster-patterns">
+                <span v-for="p in cluster.patterns" :key="p" class="pattern-tag">{{ p }}</span>
+              </div>
+              <div class="cluster-sample">
+                <strong>Representative:</strong> {{ cluster.representative }}
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">No cluster data available</div>
+        </div>
+      </div>
+
+      <!-- Failures Tab -->
+      <div v-else-if="activeTab === 'failures'" class="tab-content">
+        <div class="failures-section">
+          <div class="section-header">
+            <h3>Retrieval Failure Analysis</h3>
+            <button class="refresh-btn" @click="loadFailureAnalysis">↻</button>
+          </div>
+          
+          <div class="failure-rate">
+            <span class="rate-value">{{ (failureAnalysis.failure_rate * 100).toFixed(1) }}%</span>
+            <span class="rate-label">Failure Rate (24h)</span>
+          </div>
+          
+          <div v-if="failureAnalysis.breakdown?.length" class="breakdown">
+            <div v-for="item in failureAnalysis.breakdown" :key="item.type" class="breakdown-item">
+              <span class="breakdown-type">{{ item.type.replace('_', ' ') }}</span>
+              <span class="breakdown-pct">{{ item.percentage }}%</span>
+              <span class="breakdown-count">({{ item.count }} queries)</span>
+            </div>
+          </div>
+          
+          <div v-if="failureAnalysis.suggestions?.length" class="suggestions">
+            <h4>Suggestions</h4>
+            <ul>
+              <li v-for="s in failureAnalysis.suggestions" :key="s">{{ s }}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vector Viz Tab -->
+      <div v-else-if="activeTab === 'viz'" class="tab-content">
+        <div class="viz-section">
+          <div class="section-header">
+            <h3>Embedding Visualization</h3>
+            <div class="viz-controls">
+              <select v-model="vizMethod" @change="loadEmbeddingViz">
+                <option value="pca">PCA</option>
+                <option value="tsne">t-SNE</option>
+              </select>
+              <button class="refresh-btn" @click="loadEmbeddingViz">↻</button>
+            </div>
+          </div>
+          
+          <div v-if="embeddingViz.points?.length" class="viz-container">
+            <div class="viz-stats">
+              <span>{{ embeddingViz.points.length }} points</span>
+              <span>{{ embeddingViz.documents?.length }} documents</span>
+            </div>
+            <div class="viz-canvas">
+              <div v-for="(point, i) in embeddingViz.points" :key="i" 
+                class="viz-point"
+                :style="{ 
+                  left: ((point.x - Math.min(...embeddingViz.points.map(p => p.x))) / (Math.max(...embeddingViz.points.map(p => p.x)) - Math.min(...embeddingViz.points.map(p => p.x))) * 100) + '%',
+                  top: ((point.y - Math.min(...embeddingViz.points.map(p => p.y))) / (Math.max(...embeddingViz.points.map(p => p.y)) - Math.min(...embeddingViz.points.map(p => p.y))) * 100) + '%',
+                  background: point.document_color
+                }"
+                :title="point.text_preview"
+              ></div>
+            </div>
+            <div class="viz-legend">
+              <div v-for="doc in embeddingViz.documents" :key="doc" class="legend-item">
+                <span class="legend-color" :style="{ background: embeddingViz.points.find(p => p.document === doc)?.document_color }"></span>
+                <span>{{ doc }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-else class="empty-state">No visualization data available</div>
+        </div>
+      </div>
+
+      <!-- Chunk Quality Tab -->
+      <div v-else-if="activeTab === 'quality'" class="tab-content">
+        <div class="quality-section">
+          <div class="section-header">
+            <h3>Chunk Quality Assessment</h3>
+            <button class="refresh-btn" @click="loadChunkQuality">↻</button>
+          </div>
+          
+          <div class="overall-score">
+            <span class="score-value">{{ chunkQuality.overall_score || 0 }}</span>
+            <span class="score-label">/ 100 Overall Score</span>
+          </div>
+          
+          <div class="quality-list">
+            <h4>Top Quality Chunks</h4>
+            <div v-for="chunk in chunkQuality.top_chunks" :key="chunk.index" class="quality-item high">
+              <div class="quality-header">
+                <span class="quality-score">{{ chunk.quality_score }}</span>
+                <span class="quality-source">{{ chunk.source }}</span>
+              </div>
+              <div class="quality-text">{{ chunk.text_preview }}</div>
+              <div class="quality-meta">Hits: {{ chunk.retrieval_hits }} · Issues: {{ chunk.issues?.length || 0 }}</div>
+            </div>
+          </div>
+          
+          <div class="quality-list">
+            <h4>Low Quality Chunks (Needs Fix)</h4>
+            <div v-for="chunk in chunkQuality.low_quality_chunks" :key="chunk.index" class="quality-item low">
+              <div class="quality-header">
+                <span class="quality-score">{{ chunk.quality_score }}</span>
+                <span class="quality-source">{{ chunk.source }}</span>
+              </div>
+              <div class="quality-text">{{ chunk.text_preview }}</div>
+              <div v-if="chunk.issues?.length" class="quality-issues">
+                <span v-for="issue in chunk.issues" :key="issue" class="issue-tag">{{ issue }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trace Tab -->
+      <div v-else-if="activeTab === 'trace'" class="tab-content">
+        <div class="trace-section">
+          <div class="trace-input">
+            <input
+              v-model="traceQuery"
+              type="text"
+              placeholder="Enter query to trace..."
+              class="query-input"
+              @keyup.enter="handleTrace"
+            />
+            <button class="search-btn" @click="handleTrace" :disabled="traceLoading">
+              {{ traceLoading ? 'Tracing...' : 'Trace' }}
+            </button>
+          </div>
+          
+          <div v-if="traceResults" class="trace-results">
+            <div class="trace-summary">
+              <span class="total-time">{{ traceResults.total_time }}ms</span>
+              <span class="bottleneck">Bottleneck: {{ traceResults.bottleneck }}</span>
+            </div>
+            
+            <div v-for="stage in traceResults.stages" :key="stage.name" class="trace-stage">
+              <div class="stage-header">
+                <span class="stage-name">{{ stage.name }}</span>
+                <span class="stage-time">{{ stage.time_ms }}ms</span>
+              </div>
+              <div v-if="stage.results" class="stage-results">
+                <div v-for="(r, i) in stage.results.slice(0, 3)" :key="i" class="result-preview">
+                  {{ r.source || r.id }}: {{ r.score }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A/B Test Tab -->
+      <div v-else-if="activeTab === 'abtest'" class="tab-content">
+        <div class="abtest-section">
+          <div class="create-test">
+            <h3>Create New A/B Test</h3>
+            <div class="form-group">
+              <label>Test Name</label>
+              <input v-model="newTestForm.name" type="text" placeholder="Test name..." />
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea v-model="newTestForm.description" placeholder="Description..."></textarea>
+            </div>
+            <div class="form-group">
+              <label>Variants</label>
+              <div v-for="(v, i) in newTestForm.variants" :key="i" class="variant-input">
+                <input v-model="v.name" type="text" :placeholder="'Variant ' + (i + 1)" />
+              </div>
+            </div>
+            <button class="btn btn-primary" @click="handleCreateTest">Create Test</button>
+          </div>
+          
+          <div class="tests-list">
+            <h3>Existing Tests</h3>
+            <div v-for="test in abTests" :key="test.id" class="test-item">
+              <div class="test-info">
+                <span class="test-name">{{ test.name }}</span>
+                <span class="test-status" :class="test.status">{{ test.status }}</span>
+              </div>
+              <div class="test-actions">
+                <button v-if="test.status === 'draft'" class="action-btn" @click="handleStartTest(test.id)">Start</button>
+                <button v-if="test.status === 'running'" class="action-btn" @click="handleStopTest(test.id)">Stop</button>
+                <button class="action-btn" @click="handleViewResults(test.id)">Results</button>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="abTestResults" class="results-modal">
+            <h4>Test Results</h4>
+            <div v-for="r in abTestResults.results" :key="r.variant" class="result-row">
+              <span>{{ r.variant }}</span>
+              <span>{{ r.samples }} samples</span>
+              <span>Score: {{ r.avg_score }}</span>
+              <span>Latency: {{ r.avg_latency_ms }}ms</span>
+              <span>Feedback: {{ (r.positive_feedback_rate * 100).toFixed(1) }}%</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1233,5 +1674,572 @@ onMounted(async () => {
   .health-grid {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* Phase 2 Styles */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+/* Analytics Section */
+.analytics-section {
+  max-width: 800px;
+}
+
+.analytics-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.analytics-stats .stat-card {
+  text-align: center;
+}
+
+.analytics-stats .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: white;
+}
+
+.analytics-stats .stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.top-queries {
+  margin-top: 20px;
+}
+
+.top-queries h4 {
+  font-size: 13px;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.query-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.query-text {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.query-count {
+  font-size: 12px;
+  color: #6366f1;
+}
+
+.select-doc {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-muted);
+}
+
+/* Clusters Section */
+.clusters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cluster-item {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+
+.cluster-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cluster-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.cluster-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+}
+
+.cluster-pct {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6366f1;
+  margin-left: auto;
+}
+
+.cluster-patterns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.pattern-tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.cluster-sample {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Failures Section */
+.failure-rate {
+  text-align: center;
+  padding: 30px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.rate-value {
+  font-size: 48px;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.rate-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.breakdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+}
+
+.breakdown-type {
+  font-size: 13px;
+  color: white;
+  text-transform: capitalize;
+}
+
+.breakdown-pct {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+
+.breakdown-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.suggestions {
+  padding: 16px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 10px;
+}
+
+.suggestions h4 {
+  font-size: 13px;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.suggestions ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.suggestions li {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* Visualization Section */
+.viz-section {
+  height: 100%;
+}
+
+.viz-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.viz-controls select {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(55, 65, 81, 0.8);
+  background: rgba(2, 6, 23, 0.8);
+  color: white;
+  font-size: 12px;
+}
+
+.viz-container {
+  position: relative;
+  height: 400px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.viz-stats {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+  z-index: 10;
+}
+
+.viz-canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.viz-point {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.viz-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+/* Quality Section */
+.overall-score {
+  text-align: center;
+  padding: 30px;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.score-value {
+  font-size: 48px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.score-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+
+.quality-list {
+  margin-bottom: 20px;
+}
+
+.quality-list h4 {
+  font-size: 13px;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.quality-item {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.quality-item.high {
+  border-left: 3px solid #22c55e;
+}
+
+.quality-item.low {
+  border-left: 3px solid #ef4444;
+}
+
+.quality-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.quality-score {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+}
+
+.quality-source {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.quality-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.quality-meta {
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.quality-issues {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.issue-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  color: #ef4444;
+}
+
+/* Trace Section */
+.trace-input {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.trace-results {
+  max-width: 700px;
+}
+
+.trace-summary {
+  display: flex;
+  justify-content: space-between;
+  padding: 16px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.total-time {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+}
+
+.bottleneck {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.trace-stage {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+}
+
+.stage-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+}
+
+.stage-time {
+  font-size: 12px;
+  color: #6366f1;
+}
+
+.stage-results {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* A/B Test Section */
+.abtest-section {
+  max-width: 800px;
+}
+
+.create-test {
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(55, 65, 81, 0.8);
+  background: rgba(2, 6, 23, 0.8);
+  color: white;
+  font-size: 13px;
+}
+
+.variant-input {
+  margin-bottom: 6px;
+}
+
+.tests-list {
+  margin-bottom: 24px;
+}
+
+.tests-list h3 {
+  font-size: 14px;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.test-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.test-name {
+  font-size: 13px;
+  color: white;
+}
+
+.test-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+}
+
+.test-status.draft {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.test-status.running {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.test-status.completed {
+  background: rgba(99, 102, 241, 0.2);
+  color: #6366f1;
+}
+
+.test-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.results-modal {
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+
+.results-modal h4 {
+  font-size: 13px;
+  color: white;
+  margin-bottom: 12px;
+}
+
+.result-row {
+  display: flex;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  color: white;
 }
 </style>
