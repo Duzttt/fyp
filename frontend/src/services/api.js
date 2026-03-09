@@ -312,4 +312,59 @@ export const getABTestResults = async (testId) => {
   return response.data
 }
 
+// Phase 3: Smart Operations API
+export const getCurrentAlerts = async () => {
+  const response = await api.get('/admin/alerts/current')
+  return response.data
+}
+
+export const acknowledgeAlert = async (alertId, action = 'acknowledge') => {
+  const response = await api.post('/admin/alerts/acknowledge', {
+    alert_id: alertId,
+    action,
+  })
+  return response.data
+}
+
+export const getCapacityForecast = async (months = 3) => {
+  const response = await api.get(`/admin/capacity/forecast?months=${months}`)
+  return response.data
+}
+
+export const getSelfHealingEvents = async () => {
+  const response = await api.get('/admin/selfhealing/events')
+  return response.data
+}
+
+export const updateSelfHealingConfig = async (policies) => {
+  const response = await api.put('/admin/selfhealing/config', { policies })
+  return response.data
+}
+
+export const getCostAnalysis = async (month = '') => {
+  const url = month ? `/admin/cost/analysis?month=${month}` : '/admin/cost/analysis'
+  const response = await api.get(url)
+  return response.data
+}
+
+export const getUserBehavior = async (period = 7) => {
+  const response = await api.get(`/admin/analytics/users?period=${period}`)
+  return response.data
+}
+
+export const generateReport = async (reportData) => {
+  const response = await api.post('/admin/reports/generate', reportData)
+  return response.data
+}
+
+export const getReportsHistory = async () => {
+  const response = await api.get('/admin/reports/history')
+  return response.data
+}
+
+export const getHealthScore = async () => {
+  const response = await api.get('/admin/health/score')
+  return response.data
+}
+
 export default api

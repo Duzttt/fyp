@@ -33,7 +33,17 @@ import {
   createABTest,
   startABTest,
   stopABTest,
-  getABTestResults
+  getABTestResults,
+  getCurrentAlerts,
+  acknowledgeAlert,
+  getCapacityForecast,
+  getSelfHealingEvents,
+  updateSelfHealingConfig,
+  getCostAnalysis,
+  getUserBehavior,
+  generateReport,
+  getReportsHistory,
+  getHealthScore
 } from '../../services/api'
 
 ChartJS.register(
@@ -100,6 +110,21 @@ const embeddingViz = ref({ points: [], documents: [] })
 const chunkQuality = ref({ top_chunks: [], low_quality_chunks: [], overall_score: 0 })
 const traceResults = ref(null)
 const abTests = ref([])
+
+// Phase 3: Smart Operations data
+const alerts = ref({ active_alerts: [], history: [] })
+const capacityForecast = ref({ historical: {}, forecast: {}, recommendations: [] })
+const selfHealingEvents = ref({ events: [], policies: [] })
+const costAnalysis = ref({ total: 0, breakdown: [], recommendations: [] })
+const userBehavior = ref({ active_users: 0, segments: [], user_paths: [] })
+const reportsHistory = ref([])
+const healthScore = ref({ overall_score: 0, dimensions: {}, issues: [] })
+
+// Phase 3: Form data
+const reportForm = ref({
+  type: 'daily',
+  sections: ['overview', 'performance'],
+})
 const abTestResults = ref(null)
 
 // Phase 2: Loading states
@@ -126,6 +151,13 @@ const tabs = [
   { id: 'quality', label: 'Chunk Quality', icon: '⭐' },
   { id: 'trace', label: 'Trace', icon: '🔎' },
   { id: 'abtest', label: 'A/B Test', icon: '🔬' },
+  { id: 'alerts', label: 'Alerts', icon: '🔔' },
+  { id: 'capacity', label: 'Capacity', icon: '📈' },
+  { id: 'selfheal', label: 'Self-Heal', icon: '🔧' },
+  { id: 'cost', label: 'Cost', icon: '💰' },
+  { id: 'users', label: 'Users', icon: '👥' },
+  { id: 'reports', label: 'Reports', icon: '📑' },
+  { id: 'health', label: 'Health', icon: '❤️' },
 ]
 
 const chartOptions = computed(() => ({
@@ -381,13 +413,89 @@ const handleViewResults = async (testId) => {
   }
 }
 
+// Phase 3: Load functions
+const loadAlerts = async () => {
+  try {
+    const data = await getCurrentAlerts()
+    alerts.value = data
+  } catch (err) {
+    console.error('Failed to load alerts:', err)
+  }
+}
+
+const loadCapacityForecast = async () => {
+  try {
+    const data = await getCapacityForecast(3)
+    capacityForecast.value = data
+  } catch (err) {
+    console.error('Failed to load forecast:', err)
+  }
+}
+
+const loadSelfHealing = async () => {
+  try {
+    const data = await getSelfHealingEvents()
+    selfHealingEvents.value = data
+  } catch (err) {
+    console.error('Failed to load self-healing:', err)
+  }
+}
+
+const loadCostAnalysis = async () => {
+  try {
+    const data = await getCostAnalysis()
+    costAnalysis.value = data
+  } catch (err) {
+    console.error('Failed to load cost analysis:', err)
+  }
+}
+
+const loadUserBehavior = async () => {
+  try {
+    const data = await getUserBehavior(7)
+    userBehavior.value = data
+  } catch (err) {
+    console.error('Failed to load user behavior:', err)
+  }
+}
+
+const loadReports = async () => {
+  try {
+    const data = await getReportsHistory()
+    reportsHistory.value = data.reports || []
+  } catch (err) {
+    console.error('Failed to load reports:', err)
+  }
+}
+
+const loadHealthScore = async () => {
+  try {
+    const data = await getHealthScore()
+    healthScore.value = data
+  } catch (err) {
+    console.error('Failed to load health score:', err)
+  }
+}
+
+const handleGenerateReport = async () => {
+  try {
+    const data = await generateReport(reportForm.value)
+    alert('Report generated!')
+    await loadReports()
+  } catch (err) {
+    alert('Failed to generate report: ' + err.message)
+  }
+}
+
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus(), loadABTests()])
+  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus(), loadABTests(), loadAlerts(), loadCapacityForecast(), loadSelfHealing(), loadCostAnalysis(), loadUserBehavior(), loadReports(), loadHealthScore()])
   loading.value = false
   
   // Poll indexing status
   setInterval(loadIndexingStatus, 3000)
+  // Poll alerts
+  setInterval(loadAlerts, 60000)
 })
 </script>
 
@@ -974,6 +1082,213 @@ onMounted(async () => {
               <span>Score: {{ r.avg_score }}</span>
               <span>Latency: {{ r.avg_latency_ms }}ms</span>
               <span>Feedback: {{ (r.positive_feedback_rate * 100).toFixed(1) }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Alerts Tab -->
+      <div v-else-if="activeTab === 'alerts'" class="tab-content">
+        <div class="alerts-section">
+          <div class="section-header">
+            <h3>🔔 Smart Alerts</h3>
+            <button class="refresh-btn" @click="loadAlerts">↻</button>
+          </div>
+          
+          <div class="active-alerts">
+            <h4>Active Alerts ({{ alerts.active_alerts?.length || 0 }})</h4>
+            <div v-for="alert in alerts.active_alerts" :key="alert.id" class="alert-item" :class="alert.severity">
+              <div class="alert-header">
+                <span class="alert-type">{{ alert.type }}</span>
+                <span class="alert-time">{{ alert.start_time }}</span>
+              </div>
+              <div class="alert-message">{{ alert.message }}</div>
+              <div class="alert-details">
+                <span>Current: {{ alert.current_value }}</span>
+                <span>Baseline: {{ alert.baseline?.avg }}</span>
+              </div>
+              <div class="alert-actions">
+                <button class="action-btn" @click="acknowledgeAlert(alert.id, 'acknowledge')">Acknowledge</button>
+                <button class="action-btn" @click="acknowledgeAlert(alert.id, 'ignore')">Ignore</button>
+              </div>
+            </div>
+            <div v-if="!alerts.active_alerts?.length" class="empty-state">No active alerts</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Capacity Tab -->
+      <div v-else-if="activeTab === 'capacity'" class="tab-content">
+        <div class="capacity-section">
+          <div class="section-header">
+            <h3>📈 Capacity Forecast</h3>
+            <button class="refresh-btn" @click="loadCapacityForecast">↻</button>
+          </div>
+          
+          <div class="forecast-stats">
+            <div class="forecast-card">
+              <div class="forecast-label">Documents</div>
+              <div class="forecast-value">{{ capacityForecast.forecast?.documents?.value || 0 }}</div>
+              <div class="forecast-range">({{ capacityForecast.forecast?.documents?.lower }} - {{ capacityForecast.forecast?.documents?.upper }})</div>
+            </div>
+            <div class="forecast-card">
+              <div class="forecast-label">Queries/Day</div>
+              <div class="forecast-value">{{ capacityForecast.forecast?.queries_per_day?.value || 0 }}</div>
+              <div class="forecast-range">({{ capacityForecast.forecast?.queries_per_day?.lower }} - {{ capacityForecast.forecast?.queries_per_day?.upper }})</div>
+            </div>
+          </div>
+          
+          <div v-if="capacityForecast.recommendations?.length" class="recommendations">
+            <h4>Recommendations</h4>
+            <div v-for="rec in capacityForecast.recommendations" :key="rec.date" class="rec-item">
+              <span class="rec-date">{{ rec.date }}</span>
+              <span class="rec-action">{{ rec.action }}</span>
+              <span class="rec-details">{{ rec.details }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Self-Heal Tab -->
+      <div v-else-if="activeTab === 'selfheal'" class="tab-content">
+        <div class="selfheal-section">
+          <div class="section-header">
+            <h3>🔧 Self-Healing Events</h3>
+            <button class="refresh-btn" @click="loadSelfHealing">↻</button>
+          </div>
+          
+          <div class="events-list">
+            <div v-for="event in selfHealingEvents.events" :key="event.id" class="event-item">
+              <div class="event-time">{{ event.timestamp }}</div>
+              <div class="event-trigger">{{ event.trigger }}</div>
+              <div class="event-action">{{ event.action_taken }}</div>
+              <div class="event-result">{{ event.result }}</div>
+            </div>
+            <div v-if="!selfHealingEvents.events?.length" class="empty-state">No self-healing events</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cost Tab -->
+      <div v-else-if="activeTab === 'cost'" class="tab-content">
+        <div class="cost-section">
+          <div class="section-header">
+            <h3>💰 Cost Analysis</h3>
+            <button class="refresh-btn" @click="loadCostAnalysis">↻</button>
+          </div>
+          
+          <div class="cost-summary">
+            <div class="cost-total">
+              <span class="cost-value">${{ costAnalysis.total || 0 }}</span>
+              <span class="cost-label">Total Cost</span>
+            </div>
+          </div>
+          
+          <div class="cost-breakdown">
+            <div v-for="item in costAnalysis.breakdown" :key="item.category" class="cost-item">
+              <span class="cost-name">{{ item.name }}</span>
+              <div class="cost-bar">
+                <div class="cost-bar-fill" :style="{ width: item.percentage + '%' }"></div>
+              </div>
+              <span class="cost-amount">${{ item.cost }}</span>
+              <span class="cost-pct">{{ item.percentage }}%</span>
+            </div>
+          </div>
+          
+          <div v-if="costAnalysis.recommendations?.length" class="cost-recs">
+            <h4>Optimization Suggestions</h4>
+            <div v-for="rec in costAnalysis.recommendations" :key="rec" class="rec-text">{{ rec }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users Tab -->
+      <div v-else-if="activeTab === 'users'" class="tab-content">
+        <div class="users-section">
+          <div class="section-header">
+            <h3>👥 User Behavior</h3>
+            <button class="refresh-btn" @click="loadUserBehavior">↻</button>
+          </div>
+          
+          <div class="user-stats">
+            <div class="user-stat">
+              <span class="user-value">{{ userBehavior.active_users || 0 }}</span>
+              <span class="user-label">Active Users</span>
+            </div>
+            <div class="user-stat">
+              <span class="user-value">{{ userBehavior.sessions?.avg_queries || 0 }}</span>
+              <span class="user-label">Avg Queries/Session</span>
+            </div>
+          </div>
+          
+          <div class="user-segments">
+            <h4>User Segments</h4>
+            <div v-for="seg in userBehavior.segments" :key="seg.name" class="segment-item">
+              <span class="seg-name">{{ seg.name }}</span>
+              <span class="seg-pct">{{ seg.percentage }}%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reports Tab -->
+      <div v-else-if="activeTab === 'reports'" class="tab-content">
+        <div class="reports-section">
+          <div class="section-header">
+            <h3>📑 Reports</h3>
+          </div>
+          
+          <div class="report-form">
+            <div class="form-group">
+              <label>Report Type</label>
+              <select v-model="reportForm.type">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" @click="handleGenerateReport">Generate Report</button>
+          </div>
+          
+          <div class="reports-list">
+            <h4>Recent Reports</h4>
+            <div v-for="report in reportsHistory" :key="report.id" class="report-item">
+              <span class="report-type">{{ report.type }}</span>
+              <span class="report-date">{{ new Date(report.generated_at).toLocaleString() }}</span>
+            </div>
+            <div v-if="!reportsHistory.length" class="empty-state">No reports generated yet</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health Tab -->
+      <div v-else-if="activeTab === 'health'" class="tab-content">
+        <div class="health-section">
+          <div class="section-header">
+            <h3>❤️ Knowledge Base Health</h3>
+            <button class="refresh-btn" @click="loadHealthScore">↻</button>
+          </div>
+          
+          <div class="health-score">
+            <span class="score-big">{{ healthScore.overall_score || 0 }}</span>
+            <span class="score-label">/ 100</span>
+          </div>
+          
+          <div class="dimension-scores">
+            <div v-for="(dim, key) in healthScore.dimensions" :key="key" class="dim-item">
+              <span class="dim-name">{{ dim.label }}</span>
+              <div class="dim-bar">
+                <div class="dim-bar-fill" :style="{ width: dim.score + '%' }"></div>
+              </div>
+              <span class="dim-score">{{ dim.score }}</span>
+            </div>
+          </div>
+          
+          <div v-if="healthScore.issues?.length" class="health-issues">
+            <h4>Issues to Address</h4>
+            <div v-for="issue in healthScore.issues" :key="issue.message" class="issue-item" :class="issue.priority">
+              <span class="issue-priority">{{ issue.priority }}</span>
+              <span class="issue-message">{{ issue.message }}</span>
             </div>
           </div>
         </div>
@@ -2242,4 +2557,93 @@ onMounted(async () => {
   background: linear-gradient(135deg, #6366f1, #a855f7);
   color: white;
 }
+
+/* Phase 3: Alerts */
+.alerts-section { max-width: 800px; }
+.alert-item { padding: 16px; background: rgba(255,255,255,0.02); border-radius: 10px; margin-bottom: 12px; border-left: 3px solid; }
+.alert-item.warning { border-color: #fbbf24; }
+.alert-item.critical { border-color: #ef4444; }
+.alert-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.alert-type { font-size: 13px; font-weight: 600; color: white; text-transform: capitalize; }
+.alert-time { font-size: 11px; color: var(--text-muted); }
+.alert-message { font-size: 14px; color: white; margin-bottom: 8px; }
+.alert-details { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.alert-actions { display: flex; gap: 8px; }
+
+/* Phase 3: Capacity */
+.capacity-section { max-width: 800px; }
+.forecast-stats { display: flex; gap: 24px; margin-bottom: 24px; }
+.forecast-card { padding: 20px; background: rgba(255,255,255,0.02); border-radius: 12px; text-align: center; flex: 1; }
+.forecast-label { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.forecast-value { font-size: 32px; font-weight: 700; color: white; }
+.forecast-range { font-size: 11px; color: var(--text-muted); }
+.recommendations { padding: 16px; background: rgba(99,102,241,0.1); border-radius: 10px; }
+.rec-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+.rec-date { color: #6366f1; }
+.rec-action { color: white; font-weight: 600; }
+.rec-details { color: var(--text-muted); }
+
+/* Phase 3: Self-Heal */
+.selfheal-section { max-width: 800px; }
+.event-item { padding: 12px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 8px; display: grid; grid-template-columns: 80px 1fr 1fr 1fr; gap: 12px; font-size: 12px; align-items: center; }
+.event-time { color: var(--text-muted); }
+.event-trigger { color: #fbbf24; }
+.event-action { color: #22c55e; }
+.event-result { color: var(--text-muted); }
+
+/* Phase 3: Cost */
+.cost-section { max-width: 800px; }
+.cost-summary { text-align: center; padding: 30px; background: rgba(34,197,94,0.1); border-radius: 12px; margin-bottom: 20px; }
+.cost-value { font-size: 48px; font-weight: 700; color: #22c55e; }
+.cost-label { display: block; font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+.cost-breakdown { margin-bottom: 20px; }
+.cost-item { display: grid; grid-template-columns: 150px 1fr 80px 60px; gap: 12px; align-items: center; margin-bottom: 12px; }
+.cost-name { font-size: 13px; color: white; }
+.cost-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+.cost-bar-fill { height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7); }
+.cost-amount { font-size: 13px; color: white; text-align: right; }
+.cost-pct { font-size: 12px; color: var(--text-muted); }
+.cost-recs { padding: 16px; background: rgba(251,191,36,0.1); border-radius: 10px; }
+.cost-recs h4 { font-size: 13px; color: white; margin-bottom: 12px; }
+.rec-text { font-size: 12px; color: var(--text-muted); padding: 6px 0; }
+
+/* Phase 3: Users */
+.users-section { max-width: 800px; }
+.user-stats { display: flex; gap: 24px; margin-bottom: 24px; }
+.user-stat { padding: 20px; background: rgba(255,255,255,0.02); border-radius: 12px; text-align: center; flex: 1; }
+.user-value { display: block; font-size: 32px; font-weight: 700; color: white; }
+.user-label { font-size: 12px; color: var(--text-muted); }
+.user-segments h4 { font-size: 13px; color: white; margin-bottom: 12px; }
+.segment-item { display: flex; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 6px; }
+.seg-name { font-size: 13px; color: white; }
+.seg-pct { font-size: 13px; color: #6366f1; font-weight: 600; }
+
+/* Phase 3: Reports */
+.reports-section { max-width: 800px; }
+.report-form { display: flex; gap: 16px; align-items: flex-end; margin-bottom: 24px; padding: 16px; background: rgba(255,255,255,0.02); border-radius: 10px; }
+.report-form .form-group { margin: 0; }
+.report-form select { padding: 8px 14px; border-radius: 8px; border: 1px solid rgba(55,65,81,0.8); background: rgba(2,6,23,0.8); color: white; font-size: 13px; }
+.reports-list h4 { font-size: 13px; color: white; margin-bottom: 12px; }
+.report-item { display: flex; justify-content: space-between; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 6px; font-size: 12px; }
+.report-type { color: #6366f1; text-transform: capitalize; }
+.report-date { color: var(--text-muted); }
+
+/* Phase 3: Health */
+.health-section { max-width: 800px; }
+.health-score { text-align: center; padding: 30px; background: rgba(34,197,94,0.1); border-radius: 12px; margin-bottom: 24px; }
+.score-big { font-size: 64px; font-weight: 700; color: #22c55e; }
+.score-label { font-size: 18px; color: var(--text-muted); }
+.dimension-scores { margin-bottom: 24px; }
+.dim-item { display: grid; grid-template-columns: 100px 1fr 50px; gap: 12px; align-items: center; margin-bottom: 12px; }
+.dim-name { font-size: 13px; color: white; }
+.dim-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+.dim-bar-fill { height: 100%; background: #22c55e; }
+.dim-score { font-size: 13px; color: white; text-align: right; }
+.health-issues h4 { font-size: 13px; color: white; margin-bottom: 12px; }
+.issue-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; margin-bottom: 6px; }
+.issue-priority { font-size: 10px; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; }
+.issue-priority.high { background: rgba(239,68,68,0.2); color: #ef4444; }
+.issue-priority.medium { background: rgba(251,191,36,0.2); color: #fbbf24; }
+.issue-priority.low { background: rgba(107,114,128,0.2); color: #9ca3af; }
+.issue-message { font-size: 12px; color: var(--text-muted); }
 </style>
