@@ -79,6 +79,13 @@ urlpatterns = [
     path("api/summary/<str:summary_id>/delete/", views.delete_summary),
     path("api/summary/regenerate", views.regenerate_summary),
     path("api/summary/regenerate/", views.regenerate_summary),
+    # Question Suggestion endpoints
+    path("api/suggestions", views.get_question_suggestions),
+    path("api/suggestions/", views.get_question_suggestions),
+    path("api/suggestions/click", views.record_suggestion_click),
+    path("api/suggestions/click/", views.record_suggestion_click),
+    path("api/suggestions/history", views.get_suggestion_history),
+    path("api/suggestions/history/", views.get_suggestion_history),
     # SPA catch-all: serve Vue frontend for any non-API route
     re_path(r"^(?!api/).*$", views.index_page),
 ]

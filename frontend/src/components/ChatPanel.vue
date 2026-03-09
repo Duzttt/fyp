@@ -4,6 +4,7 @@ import { useDocumentStore } from '../stores/documentStore'
 import RetrievalChunks from './RetrievalChunks.vue'
 import PdfViewer from './PdfViewer.vue'
 import BidirectionalCitations from './BidirectionalCitations.vue'
+import QuestionSuggestions from './QuestionSuggestions.vue'
 
 const documentStore = useDocumentStore()
 
@@ -190,6 +191,13 @@ const toggleDocumentListTooltip = () => {
 }
 
 const onChunkRightClick = handleChunkRightClick
+
+// Handle suggested question click
+const handleSuggestionSelect = (questionText) => {
+  // Fill the question into input and send
+  question.value = questionText
+  sendMessage()
+}
 </script>
 
 <template>
@@ -293,6 +301,14 @@ const onChunkRightClick = handleChunkRightClick
         </div>
       </div>
     </div>
+    
+    <!-- Question Suggestions -->
+    <QuestionSuggestions
+      :selected-documents="selectedDocuments"
+      :disabled="isLoading"
+      @question-select="handleSuggestionSelect"
+    />
+    
     <div class="chat-input-wrap">
       <input
         v-model="question"

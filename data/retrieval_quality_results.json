@@ -1,0 +1,112 @@
+{
+  "query": "What is deep learning?",
+  "bm25_results": [
+    {
+      "id": "lecture1_chunk2",
+      "score": 2.2598811267050976
+    },
+    {
+      "id": "lecture3_chunk2",
+      "score": 0.7396728315928058
+    },
+    {
+      "id": "lecture1_chunk1",
+      "score": 0.651596435855215
+    },
+    {
+      "id": "lecture3_chunk1",
+      "score": 0.34654480255979003
+    },
+    {
+      "id": "lecture2_chunk2",
+      "score": 0.3393417928068152
+    }
+  ],
+  "dense_results": [
+    {
+      "id": "lecture1_chunk2",
+      "score": 0.7765029668807983
+    },
+    {
+      "id": "lecture1_chunk1",
+      "score": 0.5616043210029602
+    },
+    {
+      "id": "lecture4_chunk2",
+      "score": 0.47478365898132324
+    },
+    {
+      "id": "lecture2_chunk1",
+      "score": 0.45216089487075806
+    },
+    {
+      "id": "lecture3_chunk2",
+      "score": 0.4450738728046417
+    }
+  ],
+  "hybrid_results": [
+    {
+      "id": "lecture1_chunk2",
+      "score": 0.03278688524590164,
+      "source": "lecture1.pdf",
+      "metadata": {
+        "page": 2,
+        "heading": "Deep Learning Basics"
+      },
+      "text_preview": "Deep learning is a subset of machine learning that uses neural networks with multiple layers to prog"
+    },
+    {
+      "id": "lecture1_chunk1",
+      "score": 0.03200204813108039,
+      "source": "lecture1.pdf",
+      "metadata": {
+        "page": 1,
+        "heading": "Introduction to ML"
+      },
+      "text_preview": "Machine learning is a subset of artificial intelligence that enables systems to learn and improve fr"
+    },
+    {
+      "id": "lecture3_chunk2",
+      "score": 0.0315136476426799,
+      "source": "lecture3.pdf",
+      "metadata": {
+        "page": 2,
+        "heading": "Reinforcement Learning"
+      },
+      "text_preview": "Reinforcement learning is a type of machine learning where an agent learns to make decisions by taki"
+    },
+    {
+      "id": "lecture4_chunk2",
+      "score": 0.030798389007344232,
+      "source": "lecture4.pdf",
+      "metadata": {
+        "page": 3,
+        "heading": "Computer Vision"
+      },
+      "text_preview": "Computer vision is a field of artificial intelligence that trains computers to interpret and underst"
+    },
+    {
+      "id": "lecture2_chunk2",
+      "score": 0.030536130536130537,
+      "source": "lecture2.pdf",
+      "metadata": {
+        "page": 3,
+        "heading": "Supervised Learning"
+      },
+      "text_preview": "Supervised learning uses labeled training data where the algorithm learns to map inputs to desired o"
+    }
+  ],
+  "summary": {
+    "bm25_top": "lecture1_chunk2",
+    "dense_top": "lecture1_chunk2",
+    "hybrid_top": "lecture1_chunk2",
+    "bm25_unique": [
+      "lecture3_chunk1",
+      "lecture2_chunk2"
+    ],
+    "dense_unique": [
+      "lecture2_chunk1",
+      "lecture4_chunk2"
+    ]
+  }
+}

@@ -31,6 +31,7 @@ data/settings.json
 htmlcov/
 AGENTS.md
 QWEN.md
+CLAUDE.md
 
 # Frontend
 frontend/node_modules/

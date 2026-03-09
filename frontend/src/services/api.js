@@ -171,4 +171,31 @@ export const regenerateSummary = async (historyId, config = {}) => {
   return response.data
 }
 
+// Question Suggestions API
+export const getQuestionSuggestions = async (documentIds, numSuggestions = 3) => {
+  const docIdsParam = documentIds.join(',')
+  const response = await api.get(
+    `/suggestions?doc_ids=${encodeURIComponent(docIdsParam)}&num_suggestions=${numSuggestions}`
+  )
+  return response.data
+}
+
+export const recordSuggestionClick = async (question, documentIds, position = 0) => {
+  const response = await api.post('/suggestions/click', {
+    question,
+    doc_ids: documentIds,
+    position,
+  })
+  return response.data
+}
+
+export const getSuggestionHistory = async (limit = 20, docId = '') => {
+  const params = new URLSearchParams()
+  if (limit) params.append('limit', limit)
+  if (docId) params.append('doc_id', docId)
+  
+  const response = await api.get(`/suggestions/history?${params.toString()}`)
+  return response.data
+}
+
 export default api
