@@ -198,4 +198,49 @@ export const getSuggestionHistory = async (limit = 20, docId = '') => {
   return response.data
 }
 
+// Admin Dashboard API (Phase 1)
+export const getAdminStats = async () => {
+  const response = await api.get('/admin/stats')
+  return response.data
+}
+
+export const getAdminQueryStats = async (hours = 24) => {
+  const response = await api.get(`/admin/query-stats?hours=${hours}`)
+  return response.data
+}
+
+export const debugRetrieval = async (query, params = {}) => {
+  const response = await api.post('/admin/debug/retrieval', {
+    query,
+    params,
+  })
+  return response.data
+}
+
+export const getAdminDocuments = async (search = '') => {
+  const url = search ? `/admin/documents?search=${encodeURIComponent(search)}` : '/admin/documents'
+  const response = await api.get(url)
+  return response.data
+}
+
+export const getAdminDocumentChunks = async (docId, page = 1, pageSize = 20) => {
+  const response = await api.get(`/admin/documents/${encodeURIComponent(docId)}/chunks?page=${page}&page_size=${pageSize}`)
+  return response.data
+}
+
+export const deleteAdminDocument = async (docId) => {
+  const response = await api.post(`/admin/documents/${encodeURIComponent(docId)}/delete`)
+  return response.data
+}
+
+export const reindexAdminDocument = async (docId) => {
+  const response = await api.post(`/admin/documents/${encodeURIComponent(docId)}/reindex`)
+  return response.data
+}
+
+export const getAdminIndexingStatus = async () => {
+  const response = await api.get('/admin/indexing-status')
+  return response.data
+}
+
 export default api

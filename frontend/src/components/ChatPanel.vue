@@ -5,6 +5,7 @@ import RetrievalChunks from './RetrievalChunks.vue'
 import PdfViewer from './PdfViewer.vue'
 import BidirectionalCitations from './BidirectionalCitations.vue'
 import QuestionSuggestions from './QuestionSuggestions.vue'
+import CitationAnswer from './CitationAnswer.vue'
 
 const documentStore = useDocumentStore()
 
@@ -54,13 +55,13 @@ const sendMessage = async () => {
 
   try {
     const payload = { query: userQuestion }
-    
+
     // Add selected document sources for filtering
     if (selectedSources.value && selectedSources.value.length > 0) {
       payload.sources = selectedSources.value
     }
 
-    const response = await fetch('/api/chat', {
+    const response = await fetch('/api/chat/citations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -72,18 +73,26 @@ const sendMessage = async () => {
     }
 
     const data = await response.json()
-    const answer = data.answer || data.response || 'No answer received.'
+    
+    // Handle new citation format
+    const sentences = data.sentences || []
+    const sources = data.sources || {}
     const chunks = data.retrieved_chunks || []
+
+    // Build answer text from sentences for display
+    const answerText = sentences.map(s => s.text).join(' ') || 'No answer received.'
 
     messages.value.push({
       role: 'assistant',
-      content: answer,
+      content: answerText,
+      sentences: sentences,
+      sources: sources,
       chunks: chunks,
       id: `msg_${Date.now()}`
     })
 
     // Register citations for bidirectional tracing
-    registerCitations(messages.value[messages.value.length - 1].id, userQuestion, answer, chunks)
+    registerCitations(messages.value[messages.value.length - 1].id, userQuestion, answerText, chunks)
 
     lastRetrievedChunks.value = chunks
   } catch (err) {
@@ -275,7 +284,17 @@ const handleSuggestionSelect = (questionText) => {
               }"
               :title="getMessageCitationTitle(msg)"
             >
-              {{ msg.content }}
+              <!-- Use CitationAnswer component if sentences are available -->
+              <CitationAnswer
+                v-if="msg.role === 'assistant' && msg.sentences && msg.sentences.length > 0"
+                :sentences="msg.sentences"
+                :sources="msg.sources"
+                :show-tooltip="true"
+              />
+              <!-- Fallback to plain text -->
+              <template v-else>
+                {{ msg.content }}
+              </template>
             </div>
           </div>
 
@@ -303,11 +322,13 @@ const handleSuggestionSelect = (questionText) => {
     </div>
     
     <!-- Question Suggestions -->
-    <QuestionSuggestions
-      :selected-documents="selectedDocuments"
-      :disabled="isLoading"
-      @question-select="handleSuggestionSelect"
-    />
+    <div class="chat-suggestions-wrap">
+      <QuestionSuggestions
+        :selected-documents="selectedDocuments"
+        :disabled="isLoading"
+        @question-select="handleSuggestionSelect"
+      />
+    </div>
     
     <div class="chat-input-wrap">
       <input
@@ -371,6 +392,8 @@ const handleSuggestionSelect = (questionText) => {
   flex-direction: column;
   overflow: hidden;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   backdrop-filter: blur(15px) saturate(180%);
   -webkit-backdrop-filter: blur(15px) saturate(180%);
   box-shadow:
@@ -569,7 +592,7 @@ const handleSuggestionSelect = (questionText) => {
   padding: 14px;
   overflow-y: auto;
   position: relative;
-  max-height: calc(100vh - 220px);
+  min-height: 0;
 }
 
 .chat-empty-card {
@@ -702,12 +725,24 @@ const handleSuggestionSelect = (questionText) => {
   margin-top: 8px;
 }
 
+.chat-suggestions-wrap {
+  max-height: 190px;
+  overflow-y: auto;
+  padding: 0 14px 10px;
+}
+
 .chat-input-wrap {
   padding: 10px 14px 12px;
   border-top: 1px solid rgba(31, 41, 55, 0.9);
   display: flex;
   gap: 8px;
   align-items: center;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .chat-input {

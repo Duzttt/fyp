@@ -1,8 +1,6 @@
 import json
 import asyncio
-from typing import Any, Dict
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.layers import get_channel_layer
 
 
 class DashboardConsumer(AsyncWebsocketConsumer):

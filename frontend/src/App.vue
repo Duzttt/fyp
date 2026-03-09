@@ -4,12 +4,12 @@ import SourcesPanel from './components/SourcesPanel.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import StudioPanel from './components/StudioPanel.vue'
 import ComparisonView from './components/ComparisonView.vue'
-import DashboardPanel from './components/DashboardPanel.vue'
 import SettingsModal from './components/SettingsModal.vue'
+import AdminDashboard from './components/admin/AdminDashboard.vue'
 import { ref, computed } from 'vue'
 
 const showSettings = ref(false)
-const showDashboard = ref(false)
+const showAdmin = ref(false)
 const compareMode = ref(false)
 const selectedDocs = ref([])
 
@@ -36,7 +36,7 @@ const handleCloseComparison = () => {
 
 <template>
   <div class="app-shell">
-    <Topbar @open-settings="showSettings = true" @open-dashboard="showDashboard = true" />
+    <Topbar @open-settings="showSettings = true" @open-admin="showAdmin = true" />
     <main class="main">
       <SourcesPanel 
         @selection-change="handleSelectionChange"
@@ -54,7 +54,7 @@ const handleCloseComparison = () => {
       <StudioPanel />
     </main>
     <SettingsModal v-model:show="showSettings" />
-    <DashboardPanel v-if="showDashboard" @close="showDashboard = false" />
+    <AdminDashboard v-if="showAdmin" @close="showAdmin = false" />
   </div>
 </template>
 
@@ -76,11 +76,13 @@ const handleCloseComparison = () => {
   flex: 1;
   display: grid;
   grid-template-columns: 260px minmax(0, 1.4fr) 270px;
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--spacing-unit);
   padding: calc(var(--spacing-unit) + 2px) var(--spacing-unit)
     calc(var(--spacing-unit) * 1.75);
   background: radial-gradient(circle at top, #020617 0, #020617 45%, #000 90%);
   min-width: 0;
+  min-height: 0;
 }
 
 @media (max-width: 1024px) {

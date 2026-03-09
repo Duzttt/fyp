@@ -194,11 +194,11 @@ def _build_retrieved_chunks(sources: Any) -> List[Dict[str, Any]]:
     for r in sources:
         if not isinstance(r, dict):
             continue
-        
+
         distance = r.get("distance", 0)
         similarity = max(0.0, 1.0 - (distance / max_distance))
         text = r.get("text", "")
-        
+
         chunks.append(
             {
                 "text": text,
@@ -209,7 +209,7 @@ def _build_retrieved_chunks(sources: Any) -> List[Dict[str, Any]]:
                 "page": r.get("page"),
             }
         )
-    
+
     return chunks
 
 
@@ -307,15 +307,22 @@ def root(request: HttpRequest) -> JsonResponse:
 def index_page(request: HttpRequest) -> HttpResponse:
     """Serve the Vue.js frontend application (SPA)."""
     from django.conf import settings as django_settings
-    frontend_index = Path(django_settings.BASE_DIR) / "django_app" / "static" / "frontend" / "index.html"
-    
+
+    frontend_index = (
+        Path(django_settings.BASE_DIR)
+        / "django_app"
+        / "static"
+        / "frontend"
+        / "index.html"
+    )
+
     if frontend_index.exists():
         html = frontend_index.read_text(encoding="utf-8")
         # Fix asset paths to include /static/frontend/ prefix for Django
         html = html.replace('src="/assets/', 'src="/static/frontend/assets/')
         html = html.replace('href="/assets/', 'href="/static/frontend/assets/')
         return HttpResponse(html, content_type="text/html; charset=utf-8")
-    
+
     # Fallback to template if build doesn't exist
     return render(request, "index.html")
 
@@ -594,6 +601,98 @@ def ask_qwen(request: HttpRequest) -> JsonResponse:
             "sources": source_files,
             "source_snippets": _build_source_snippets(retrieved_sources),
             "retrieved_chunks": _build_retrieved_chunks(retrieved_sources),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def ask_with_citations(request: HttpRequest) -> JsonResponse:
+    """
+    Ask a question and get an answer with sentence-level citations.
+
+    Returns structured JSON where each sentence has a citations array
+    referencing the source chunks that support it.
+
+    Response format:
+    {
+        "sentences": [
+            {"text": "...", "citations": [1, 2]},
+            {"text": "...", "citations": [1]},
+            {"text": "...", "citations": []}
+        ],
+        "sources": {
+            "1": {"file": "lecture.pdf", "page": 24},
+            "2": {"file": "lecture.pdf", "page": 3}
+        },
+        "retrieved_chunks": [...]
+    }
+    """
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    query = str(payload.get("query") or "").strip()
+    source_filter = payload.get("sources")
+    if isinstance(source_filter, str):
+        source_filter = [source_filter]
+
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
+
+    # Load configuration
+    rag_config = _load_rag_config()
+    top_k = rag_config.get("top_k", 3)
+    llm_model = rag_config.get("llm_model", settings.LOCAL_QWEN_MODEL)
+
+    try:
+        # Use the citation-aware RAG pipeline
+        from app.services.citation_rag import CitationRAGPipeline, CitationRAGError
+
+        pipeline = CitationRAGPipeline(model=llm_model)
+        result = pipeline.query(
+            question=query,
+            top_k=top_k,
+            source_filter=source_filter,
+        )
+    except httpx.TimeoutException:
+        return _error_response(
+            (
+                "Local Qwen model request timed out "
+                f"(timeout={settings.LOCAL_QWEN_TIMEOUT_SECONDS}s)"
+            ),
+            status=504,
+        )
+    except httpx.RequestError as exc:
+        return _error_response(
+            f"Failed to call local Qwen model: {str(exc)}", status=503
+        )
+    except CitationRAGError as exc:
+        return _error_response(str(exc), status=503)
+    except Exception as exc:  # noqa: BLE001
+        return _error_response(f"Failed to process query: {str(exc)}", status=500)
+
+    # Build retrieved chunks for visualization
+    # Extract chunks from sources in the result
+    retrieved_chunks = []
+    for chunk_id, source_info in result.get("sources", {}).items():
+        retrieved_chunks.append(
+            {
+                "chunk_id": int(chunk_id),
+                "text": source_info.get("text", ""),
+                "source": source_info.get("file", "unknown"),
+                "page": source_info.get("page"),
+            }
+        )
+
+    return JsonResponse(
+        {
+            "sentences": result.get("sentences", []),
+            "sources": result.get("sources", {}),
+            "retrieved_chunks": _build_retrieved_chunks(retrieved_chunks)
+            if retrieved_chunks
+            else [],
         }
     )
 
@@ -1183,34 +1282,34 @@ def compare_documents(request: HttpRequest) -> JsonResponse:
 # Dashboard API Endpoints
 # ==========================================
 
+
 @require_http_methods(["GET"])
 def dashboard_stats(request: HttpRequest) -> JsonResponse:
     """
     Get dashboard statistics including document stats, vector info, and storage info.
     """
-    from app.services.vector_store import VectorStore
-    
+
     # Document statistics
     doc_path = Path(settings.DOCUMENTS_PATH)
     pdf_files = list(doc_path.glob("*.pdf")) if doc_path.exists() else []
     total_documents = len(pdf_files)
-    
+
     # Vector store statistics
     index_path = Path(settings.FAISS_INDEX_PATH)
     index_file = index_path / "index.faiss"
     chunks_file = index_path / "chunks.npy"
-    
+
     total_vectors = 0
     embedding_dim = settings.EMBEDDING_DIM
     index_type = "IndexFlatL2"
     total_pages = 0
     total_chunks = 0
-    
+
     if index_file.exists() and chunks_file.exists():
         try:
             index = faiss.read_index(str(index_file))
             total_vectors = index.ntotal
-            
+
             chunks = np.load(chunks_file, allow_pickle=True).tolist()
             if isinstance(chunks, list):
                 total_chunks = len(chunks)
@@ -1225,33 +1324,35 @@ def dashboard_stats(request: HttpRequest) -> JsonResponse:
                 total_pages = len(pages) or total_documents
         except Exception:
             pass
-    
+
     # Storage information
     faiss_size_kb = 0
     docs_size_kb = 0
-    
+
     if index_file.exists():
         faiss_size_kb = index_file.stat().st_size / 1024
-    
+
     for pdf in pdf_files:
         docs_size_kb += pdf.stat().st_size / 1024
-    
-    return JsonResponse({
-        "documents": {
-            "total": total_documents,
-            "total_pages": total_pages,
-            "total_chunks": total_chunks,
-        },
-        "vectors": {
-            "dimension": embedding_dim,
-            "index_type": index_type,
-            "total_vectors": total_vectors,
-        },
-        "storage": {
-            "faiss_index_size_kb": round(faiss_size_kb, 2),
-            "documents_size_kb": round(docs_size_kb, 2),
-        },
-    })
+
+    return JsonResponse(
+        {
+            "documents": {
+                "total": total_documents,
+                "total_pages": total_pages,
+                "total_chunks": total_chunks,
+            },
+            "vectors": {
+                "dimension": embedding_dim,
+                "index_type": index_type,
+                "total_vectors": total_vectors,
+            },
+            "storage": {
+                "faiss_index_size_kb": round(faiss_size_kb, 2),
+                "documents_size_kb": round(docs_size_kb, 2),
+            },
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -1261,7 +1362,7 @@ def dashboard_metrics(request: HttpRequest) -> JsonResponse:
     """
     from app.services.embedding import EmbeddingService
     from app.services.vector_store import VectorStore
-    
+
     # Measure embedding time
     embedding_time_ms = 0
     try:
@@ -1272,11 +1373,13 @@ def dashboard_metrics(request: HttpRequest) -> JsonResponse:
         embedding_time_ms = (time.perf_counter() - start) * 1000
     except Exception:
         pass
-    
+
     # Measure retrieval time
     retrieval_time_ms = 0
     try:
-        vector_store = VectorStore.get_cached(settings.FAISS_INDEX_PATH, settings.EMBEDDING_DIM)
+        vector_store = VectorStore.get_cached(
+            settings.FAISS_INDEX_PATH, settings.EMBEDDING_DIM
+        )
         if vector_store.index and vector_store.index.ntotal > 0:
             embedding_service = EmbeddingService()
             query_embedding = embedding_service.embed_query("test query")
@@ -1285,7 +1388,7 @@ def dashboard_metrics(request: HttpRequest) -> JsonResponse:
             retrieval_time_ms = (time.perf_counter() - start) * 1000
     except Exception:
         pass
-    
+
     # Quality metrics (placeholder - would need test set for real accuracy)
     quality_metrics = {
         "top_1_accuracy": None,
@@ -1293,14 +1396,16 @@ def dashboard_metrics(request: HttpRequest) -> JsonResponse:
         "top_5_accuracy": None,
         "note": "Requires test set for accuracy calculation",
     }
-    
-    return JsonResponse({
-        "performance": {
-            "avg_retrieval_time_ms": round(retrieval_time_ms, 2),
-            "avg_embedding_time_ms": round(embedding_time_ms, 2),
-        },
-        "quality": quality_metrics,
-    })
+
+    return JsonResponse(
+        {
+            "performance": {
+                "avg_retrieval_time_ms": round(retrieval_time_ms, 2),
+                "avg_embedding_time_ms": round(embedding_time_ms, 2),
+            },
+            "quality": quality_metrics,
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -1308,11 +1413,10 @@ def dashboard_chunks_distribution(request: HttpRequest) -> JsonResponse:
     """
     Get chunk length distribution data for histogram.
     """
-    from app.services.vector_store import VectorStore
-    
+
     index_path = Path(settings.FAISS_INDEX_PATH)
     chunks_file = index_path / "chunks.npy"
-    
+
     chunk_lengths = []
     if chunks_file.exists():
         try:
@@ -1326,24 +1430,26 @@ def dashboard_chunks_distribution(request: HttpRequest) -> JsonResponse:
                     chunk_lengths.append(len(text))
         except Exception:
             pass
-    
+
     # Create histogram bins
     if chunk_lengths:
         min_len = min(chunk_lengths)
         max_len = max(chunk_lengths)
         bin_count = min(20, len(chunk_lengths))
         bin_width = (max_len - min_len) / bin_count if bin_count > 0 else 1
-        
+
         bins = []
         for i in range(bin_count):
             bin_start = min_len + i * bin_width
             bin_end = min_len + (i + 1) * bin_width
             count = sum(1 for length in chunk_lengths if bin_start <= length < bin_end)
-            bins.append({
-                "range": f"{int(bin_start)}-{int(bin_end)}",
-                "count": count,
-            })
-        
+            bins.append(
+                {
+                    "range": f"{int(bin_start)}-{int(bin_end)}",
+                    "count": count,
+                }
+            )
+
         stats = {
             "min": min_len,
             "max": max_len,
@@ -1353,12 +1459,14 @@ def dashboard_chunks_distribution(request: HttpRequest) -> JsonResponse:
     else:
         bins = []
         stats = {"min": 0, "max": 0, "mean": 0, "median": 0}
-    
-    return JsonResponse({
-        "histogram": bins,
-        "statistics": stats,
-        "total_chunks": len(chunk_lengths),
-    })
+
+    return JsonResponse(
+        {
+            "histogram": bins,
+            "statistics": stats,
+            "total_chunks": len(chunk_lengths),
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -1368,21 +1476,23 @@ def dashboard_similarity_distribution(request: HttpRequest) -> JsonResponse:
     """
     from app.services.embedding import EmbeddingService
     from app.services.vector_store import VectorStore
-    
+
     similarity_scores = []
-    
+
     try:
-        vector_store = VectorStore.get_cached(settings.FAISS_INDEX_PATH, settings.EMBEDDING_DIM)
+        vector_store = VectorStore.get_cached(
+            settings.FAISS_INDEX_PATH, settings.EMBEDDING_DIM
+        )
         if vector_store.index and vector_store.index.ntotal > 0:
             embedding_service = EmbeddingService()
-            
+
             # Sample some queries and collect similarity scores
             test_queries = ["what is", "explain", "describe", "define", "list"]
-            
+
             for query in test_queries:
                 query_embedding = embedding_service.embed_query(query)
                 results = vector_store.search_with_metadata(query_embedding, top_k=10)
-                
+
                 for result in results:
                     distance = result.get("distance", 0)
                     # Convert L2 distance to similarity (approximate)
@@ -1390,19 +1500,23 @@ def dashboard_similarity_distribution(request: HttpRequest) -> JsonResponse:
                     similarity_scores.append(round(similarity, 3))
     except Exception:
         pass
-    
+
     # Create distribution bins
     if similarity_scores:
         bins = []
         for i in range(10):
             bin_start = i * 0.1
             bin_end = (i + 1) * 0.1
-            count = sum(1 for score in similarity_scores if bin_start <= score < bin_end)
-            bins.append({
-                "range": f"{bin_start:.1f}-{bin_end:.1f}",
-                "count": count,
-            })
-        
+            count = sum(
+                1 for score in similarity_scores if bin_start <= score < bin_end
+            )
+            bins.append(
+                {
+                    "range": f"{bin_start:.1f}-{bin_end:.1f}",
+                    "count": count,
+                }
+            )
+
         stats = {
             "min": round(min(similarity_scores), 3),
             "max": round(max(similarity_scores), 3),
@@ -1411,12 +1525,14 @@ def dashboard_similarity_distribution(request: HttpRequest) -> JsonResponse:
     else:
         bins = []
         stats = {"min": 0, "max": 0, "mean": 0}
-    
-    return JsonResponse({
-        "histogram": bins,
-        "statistics": stats,
-        "sample_size": len(similarity_scores),
-    })
+
+    return JsonResponse(
+        {
+            "histogram": bins,
+            "statistics": stats,
+            "sample_size": len(similarity_scores),
+        }
+    )
 
 
 @require_http_methods(["GET"])
@@ -1426,28 +1542,38 @@ def dashboard_documents_timeline(request: HttpRequest) -> JsonResponse:
     """
     doc_path = Path(settings.DOCUMENTS_PATH)
     documents = []
-    
+
     if doc_path.exists():
         for pdf in doc_path.glob("*.pdf"):
             try:
                 stats = pdf.stat()
-                documents.append({
-                    "name": pdf.name,
-                    "display_name": "_".join(pdf.name.split("_")[1:]) if "_" in pdf.name else pdf.name,
-                    "size_kb": round(stats.st_size / 1024, 2),
-                    "created_at": datetime.fromtimestamp(stats.st_ctime, tz=timezone.utc).isoformat(),
-                    "modified_at": datetime.fromtimestamp(stats.st_mtime, tz=timezone.utc).isoformat(),
-                })
+                documents.append(
+                    {
+                        "name": pdf.name,
+                        "display_name": "_".join(pdf.name.split("_")[1:])
+                        if "_" in pdf.name
+                        else pdf.name,
+                        "size_kb": round(stats.st_size / 1024, 2),
+                        "created_at": datetime.fromtimestamp(
+                            stats.st_ctime, tz=timezone.utc
+                        ).isoformat(),
+                        "modified_at": datetime.fromtimestamp(
+                            stats.st_mtime, tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
             except Exception:
                 pass
-    
+
     # Sort by creation date
     documents.sort(key=lambda x: x["created_at"], reverse=True)
-    
-    return JsonResponse({
-        "documents": documents,
-        "total": len(documents),
-    })
+
+    return JsonResponse(
+        {
+            "documents": documents,
+            "total": len(documents),
+        }
+    )
 
 
 @csrf_exempt
@@ -1460,13 +1586,13 @@ def dashboard_update_config(request: HttpRequest) -> JsonResponse:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     chunk_size = payload.get("chunk_size")
     chunk_overlap = payload.get("chunk_overlap")
-    
+
     # Update .env file or settings (for now, just validate)
     errors = []
-    
+
     if chunk_size is not None:
         try:
             chunk_size = int(chunk_size)
@@ -1474,7 +1600,7 @@ def dashboard_update_config(request: HttpRequest) -> JsonResponse:
                 errors.append("chunk_size must be between 100 and 2000")
         except (ValueError, TypeError):
             errors.append("chunk_size must be an integer")
-    
+
     if chunk_overlap is not None:
         try:
             chunk_overlap = int(chunk_overlap)
@@ -1482,25 +1608,27 @@ def dashboard_update_config(request: HttpRequest) -> JsonResponse:
                 errors.append("chunk_overlap must be between 0 and 500")
         except (ValueError, TypeError):
             errors.append("chunk_overlap must be an integer")
-    
+
     if errors:
         return _error_response("; ".join(errors), status=400)
-    
+
     # Save to rag_config.json
     config = _load_rag_config()
-    
+
     if chunk_size is not None:
         config["chunk_size"] = chunk_size
     if chunk_overlap is not None:
         config["chunk_overlap"] = chunk_overlap
-    
+
     _save_rag_config(config)
-    
-    return JsonResponse({
-        "status": "success",
-        "config": config,
-        "message": "Configuration updated. Reindex required for chunking changes to take effect.",
-    })
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "config": config,
+            "message": "Configuration updated. Reindex required for chunking changes to take effect.",
+        }
+    )
 
 
 @csrf_exempt
@@ -1513,22 +1641,24 @@ def dashboard_reindex(request: HttpRequest) -> JsonResponse:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     force = payload.get("force", False)
-    
+
     # Check current indexing state
     current_state = _get_upload_indexing_state()
     if current_state["status"] == INDEXING_STATUS_RUNNING:
         return _error_response("Indexing is already in progress", status=409)
-    
+
     # Trigger full rebuild
     state = _enqueue_full_rebuild(uploaded_filename="manual_reindex")
-    
-    return JsonResponse({
-        "status": "success",
-        "message": "Reindexing started",
-        "indexing_state": state,
-    })
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": "Reindexing started",
+            "indexing_state": state,
+        }
+    )
 
 
 def analyze_differences(answers: List[str]) -> tuple[List[str], List[str]]:
@@ -1571,10 +1701,508 @@ def analyze_differences(answers: List[str]) -> tuple[List[str], List[str]]:
 
 
 # ==========================================
+# Admin Dashboard API Endpoints (Phase 1)
+# ==========================================
+
+
+@require_http_methods(["GET"])
+def admin_stats(request: HttpRequest) -> JsonResponse:
+    """
+    Get comprehensive system statistics for admin dashboard.
+    """
+    from django_app.models import QueryLog
+    from django.db.models import Avg, Max
+    from datetime import timedelta
+
+    doc_path = Path(settings.DOCUMENTS_PATH)
+    pdf_files = list(doc_path.glob("*.pdf")) if doc_path.exists() else []
+    total_documents = len(pdf_files)
+
+    index_path = Path(settings.FAISS_INDEX_PATH)
+    index_file = index_path / "index.faiss"
+    chunks_file = index_path / "chunks.npy"
+
+    total_vectors = 0
+    total_chunks = 0
+    unique_pages = set()
+
+    if index_file.exists() and chunks_file.exists():
+        try:
+            index = faiss.read_index(str(index_file))
+            total_vectors = index.ntotal
+
+            chunks = np.load(chunks_file, allow_pickle=True).tolist()
+            if isinstance(chunks, list):
+                total_chunks = len(chunks)
+                for chunk in chunks:
+                    if isinstance(chunk, dict):
+                        page = chunk.get("page")
+                        if page is not None:
+                            unique_pages.add(page)
+        except Exception:
+            pass
+
+    faiss_size_kb = index_file.stat().st_size / 1024 if index_file.exists() else 0
+    docs_size_kb = sum(f.stat().st_size / 1024 for f in pdf_files)
+
+    now = datetime.now(timezone.utc)
+    today_start = now - timedelta(days=1)
+    week_start = now - timedelta(days=7)
+
+    today_queries = QueryLog.objects.filter(created_at__gte=today_start).count()
+    week_queries = QueryLog.objects.filter(created_at__gte=week_start).count()
+
+    latency_stats = QueryLog.objects.filter(created_at__gte=week_start).aggregate(
+        avg_latency=Avg("latency_ms"),
+        p95_latency=Max("latency_ms"),
+    )
+
+    cache_hits = QueryLog.objects.filter(
+        created_at__gte=week_start, cache_hit=True
+    ).count()
+    cache_total = QueryLog.objects.filter(created_at__gte=week_start).count()
+    cache_hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else 0
+
+    health_status = {
+        "faiss_index": "healthy" if total_vectors > 0 else "empty",
+        "llm_service": "unknown",
+        "disk_space": "healthy" if faiss_size_kb < 500000 else "warning",
+        "memory": "unknown",
+    }
+
+    return JsonResponse(
+        {
+            "documents": {
+                "total": total_documents,
+                "chunks": total_chunks,
+                "pages": len(unique_pages),
+            },
+            "vectors": {
+                "dimension": settings.EMBEDDING_DIM,
+                "count": total_vectors,
+                "index_type": "IndexFlatL2",
+            },
+            "storage": {
+                "faiss_size_kb": round(faiss_size_kb, 2),
+                "docs_size_kb": round(docs_size_kb, 2),
+            },
+            "queries": {
+                "today": today_queries,
+                "week": week_queries,
+                "avg_latency_ms": round(latency_stats.get("avg_latency") or 0, 2),
+                "p95_latency_ms": latency_stats.get("p95_latency") or 0,
+                "cache_hit_rate": round(cache_hit_rate, 2),
+            },
+            "health": health_status,
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def admin_query_stats(request: HttpRequest) -> JsonResponse:
+    """
+    Get query statistics for admin dashboard.
+    """
+    from django_app.models import QueryLog
+    from django.db.models import Avg, Count
+    from datetime import timedelta
+
+    hours = int(request.GET.get("hours", 24))
+    now = datetime.now(timezone.utc)
+    start_time = now - timedelta(hours=hours)
+
+    query_stats = QueryLog.objects.filter(created_at__gte=start_time).aggregate(
+        total=Count("id"),
+        avg_latency=Avg("latency_ms"),
+    )
+
+    type_dist = (
+        QueryLog.objects.filter(created_at__gte=start_time)
+        .values("query_type")
+        .annotate(count=Count("id"))
+    )
+
+    return JsonResponse(
+        {
+            "total_queries": query_stats["total"] or 0,
+            "avg_latency_ms": round(query_stats["avg_latency"] or 0, 2),
+            "type_distribution": list(type_dist),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_debug_retrieval(request: HttpRequest) -> JsonResponse:
+    """
+    Debug retrieval by comparing BM25, dense, and hybrid retrieval results.
+    """
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    query = str(payload.get("query", "")).strip()
+    if not query:
+        return _error_response("Query is required", status=400)
+
+    params = payload.get("params", {})
+    alpha = float(params.get("alpha", 0.3))
+    fusion_method = params.get("fusion", "rrf")
+    top_k = int(params.get("top_k", 5))
+    rrf_k = int(params.get("rrf_k", 60))
+
+    if not query:
+        return _error_response("Query cannot be empty", status=400)
+
+    from app.services.embedding import EmbeddingService
+    from app.services.vector_store import VectorStore
+
+    result = {
+        "bm25": {"results": [], "time_ms": 0},
+        "dense": {"results": [], "time_ms": 0},
+        "hybrid": {"results": [], "time_ms": 0},
+    }
+
+    try:
+        vector_store = VectorStore.get_cached(
+            index_path=settings.FAISS_INDEX_PATH,
+            embedding_dim=settings.EMBEDDING_DIM,
+        )
+        embedding_service = EmbeddingService()
+
+        if not vector_store.chunks:
+            return _error_response("No indexed documents found", status=400)
+
+        all_chunks = vector_store.chunks
+        if not isinstance(all_chunks, list):
+            all_chunks = []
+
+        if fusion_method == "rrf":
+            from retrieval.hybrid_retriever import (
+                HybridRetriever,
+                FusionMethod as HMFusion,
+            )
+
+            docs_for_hybrid = []
+            for i, chunk in enumerate(all_chunks):
+                text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                source = (
+                    chunk.get("source", "unknown")
+                    if isinstance(chunk, dict)
+                    else "unknown"
+                )
+                docs_for_hybrid.append(
+                    {
+                        "id": f"chunk_{i}",
+                        "text": text,
+                        "source": source,
+                        "metadata": chunk if isinstance(chunk, dict) else {},
+                    }
+                )
+
+            if docs_for_hybrid:
+                hybrid_retriever = HybridRetriever(
+                    documents=docs_for_hybrid,
+                    fusion_method=HMFusion.RRF,
+                )
+
+                start = time.perf_counter()
+                hybrid_results = hybrid_retriever.retrieve(
+                    query=query,
+                    top_k=top_k,
+                    rrf_k=rrf_k,
+                )
+                hybrid_time = (time.perf_counter() - start) * 1000
+
+                result["hybrid"] = {
+                    "results": [
+                        {
+                            "id": r.get("id"),
+                            "text": r.get("text", "")[:200] + "...",
+                            "source": r.get("source"),
+                            "score": round(r.get("score", 0), 4),
+                        }
+                        for r in hybrid_results
+                    ],
+                    "time_ms": round(hybrid_time, 2),
+                    "fusion_method": "rrf",
+                }
+
+        start = time.perf_counter()
+        query_embedding = embedding_service.embed_query(query)
+        dense_results = vector_store.search_with_metadata(query_embedding, top_k=top_k)
+        dense_time = (time.perf_counter() - start) * 1000
+
+        result["dense"] = {
+            "results": [
+                {
+                    "id": f"chunk_{i}",
+                    "text": r.get("text", "")[:200] + "...",
+                    "source": r.get("source"),
+                    "score": round(1 - r.get("distance", 0) / 2, 4),
+                    "distance": round(r.get("distance", 0), 4),
+                }
+                for i, r in enumerate(dense_results)
+            ],
+            "time_ms": round(dense_time, 2),
+        }
+
+        from retrieval.bm25_index import BM25Index
+
+        if all_chunks:
+            docs_for_bm25 = []
+            for i, chunk in enumerate(all_chunks):
+                text = chunk.get("text", "") if isinstance(chunk, dict) else str(chunk)
+                docs_for_bm25.append({"id": f"chunk_{i}", "text": text})
+
+            if docs_for_bm25:
+                bm25_idx = BM25Index(docs_for_bm25)
+
+                start = time.perf_counter()
+                bm25_results = bm25_idx.search(query, top_k=top_k)
+                bm25_time = (time.perf_counter() - start) * 1000
+
+                result["bm25"] = {
+                    "results": [
+                        {
+                            "id": doc_id,
+                            "text": docs_for_bm25[int(doc_id.split("_")[1])]["text"][
+                                :200
+                            ]
+                            + "..."
+                            if "_" in doc_id
+                            else "",
+                            "source": all_chunks[int(doc_id.split("_")[1])].get(
+                                "source", "unknown"
+                            )
+                            if "_" in doc_id
+                            and int(doc_id.split("_")[1]) < len(all_chunks)
+                            else "unknown",
+                            "score": round(score, 4),
+                        }
+                        for doc_id, score in bm25_results
+                    ],
+                    "time_ms": round(bm25_time, 2),
+                }
+
+    except Exception as exc:
+        return _error_response(f"Retrieval failed: {str(exc)}", status=500)
+
+    return JsonResponse(result)
+
+
+@require_http_methods(["GET"])
+def admin_documents(request: HttpRequest) -> JsonResponse:
+    """
+    Get list of all indexed documents with metadata.
+    """
+    doc_path = Path(settings.DOCUMENTS_PATH)
+    index_path = Path(settings.FAISS_INDEX_PATH)
+    chunks_file = index_path / "chunks.npy"
+
+    all_chunks = []
+    if chunks_file.exists():
+        try:
+            all_chunks = np.load(chunks_file, allow_pickle=True).tolist()
+            if not isinstance(all_chunks, list):
+                all_chunks = []
+        except Exception:
+            all_chunks = []
+
+    source_chunks = {}
+    for chunk in all_chunks:
+        if isinstance(chunk, dict):
+            source = str(chunk.get("source", "unknown"))
+            if source not in source_chunks:
+                source_chunks[source] = []
+            source_chunks[source].append(chunk)
+
+    documents = []
+    if doc_path.exists():
+        for pdf in doc_path.glob("*.pdf"):
+            try:
+                stats = pdf.stat()
+                source_name = pdf.name
+
+                chunks_for_doc = source_chunks.get(source_name, [])
+
+                documents.append(
+                    {
+                        "id": source_name,
+                        "name": pdf.name,
+                        "size_kb": round(stats.st_size / 1024, 2),
+                        "chunk_count": len(chunks_for_doc),
+                        "created_at": datetime.fromtimestamp(
+                            stats.st_ctime, tz=timezone.utc
+                        ).isoformat(),
+                        "modified_at": datetime.fromtimestamp(
+                            stats.st_mtime, tz=timezone.utc
+                        ).isoformat(),
+                    }
+                )
+            except Exception:
+                pass
+
+    documents.sort(key=lambda x: x["created_at"], reverse=True)
+
+    search = request.GET.get("search", "").strip().lower()
+    if search:
+        documents = [d for d in documents if search in d["name"].lower()]
+
+    return JsonResponse(
+        {
+            "documents": documents,
+            "total": len(documents),
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def admin_document_chunks(request: HttpRequest, doc_id: str) -> JsonResponse:
+    """
+    Get chunks for a specific document with pagination.
+    """
+    try:
+        page = int(request.GET.get("page", 1))
+        page_size = int(request.GET.get("page_size", 20))
+    except ValueError:
+        page = 1
+        page_size = 20
+
+    index_path = Path(settings.FAISS_INDEX_PATH)
+    chunks_file = index_path / "chunks.npy"
+
+    if not chunks_file.exists():
+        return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+
+    try:
+        all_chunks = np.load(chunks_file, allow_pickle=True).tolist()
+        if not isinstance(all_chunks, list):
+            return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+    except Exception:
+        return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+
+    doc_chunks = []
+    for i, chunk in enumerate(all_chunks):
+        if isinstance(chunk, dict):
+            source = str(chunk.get("source", ""))
+            if source == doc_id or source.endswith(doc_id):
+                chunk_data = {
+                    "index": i,
+                    "text": chunk.get("text", ""),
+                    "page": chunk.get("page"),
+                    "source": chunk.get("source", ""),
+                }
+
+                embedding = chunk.get("embedding")
+                if embedding and isinstance(embedding, list):
+                    chunk_data["embedding_preview"] = embedding[:5]
+
+                doc_chunks.append(chunk_data)
+
+    total = len(doc_chunks)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated_chunks = doc_chunks[start:end]
+
+    return JsonResponse(
+        {
+            "chunks": paginated_chunks,
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": (total + page_size - 1) // page_size,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_delete_document(request: HttpRequest, doc_id: str) -> JsonResponse:
+    """
+    Delete a document and rebuild index.
+    """
+
+    doc_path = Path(settings.DOCUMENTS_PATH)
+    file_path = doc_path / doc_id
+
+    if not file_path.exists():
+        return _error_response("Document not found", status=404)
+
+    try:
+        file_path.unlink()
+    except OSError as exc:
+        return _error_response(f"Failed to delete file: {str(exc)}", status=500)
+
+    try:
+        index_stats = index_pdf_directory(
+            data_source_dir=settings.DOCUMENTS_PATH,
+            chunk_size=settings.CHUNK_SIZE,
+            index_path=settings.FAISS_INDEX_PATH,
+            model_name=settings.EMBEDDING_MODEL,
+            clear_existing=True,
+        )
+    except Exception as exc:
+        return _error_response(f"Index rebuild failed: {str(exc)}", status=500)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f"Document {doc_id} deleted",
+            "chunks_created": index_stats["chunks_created"],
+            "total_chunks": index_stats["total_chunks_in_index"],
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_reindex_document(request: HttpRequest, doc_id: str) -> JsonResponse:
+    """
+    Reindex a specific document.
+    """
+    doc_path = Path(settings.DOCUMENTS_PATH)
+    file_path = doc_path / doc_id
+
+    if not file_path.exists():
+        return _error_response("Document not found", status=404)
+
+    try:
+        index_stats = index_pdf_file(
+            pdf_path=str(file_path),
+            chunk_size=settings.CHUNK_SIZE,
+            model_name=settings.EMBEDDING_MODEL,
+            clear_existing=False,
+        )
+    except Exception as exc:
+        return _error_response(f"Reindex failed: {str(exc)}", status=500)
+
+    return JsonResponse(
+        {
+            "success": True,
+            "message": f"Document {doc_id} reindexed",
+            "chunks_created": index_stats["chunks_created"],
+        }
+    )
+
+
+@require_http_methods(["GET"])
+def admin_indexing_status(request: HttpRequest) -> JsonResponse:
+    """
+    Get current indexing status.
+    """
+    state = _get_upload_indexing_state()
+    return JsonResponse(state)
+
+
+# ==========================================
 # Embedding Model Management Endpoints
 # ==========================================
 
-EMBEDDING_MODEL_SETTINGS_FILE = Path(__file__).resolve().parents[1] / "data" / "embedding_model_settings.json"
+EMBEDDING_MODEL_SETTINGS_FILE = (
+    Path(__file__).resolve().parents[1] / "data" / "embedding_model_settings.json"
+)
 
 
 def _load_embedding_model_settings() -> Dict[str, Any]:
@@ -1583,10 +2211,10 @@ def _load_embedding_model_settings() -> Dict[str, Any]:
         "current_model": settings.EMBEDDING_MODEL,
         "model_cache": [],
     }
-    
+
     if not EMBEDDING_MODEL_SETTINGS_FILE.exists():
         return default_settings
-    
+
     try:
         with EMBEDDING_MODEL_SETTINGS_FILE.open("r", encoding="utf-8") as f:
             data = json.load(f)
@@ -1594,7 +2222,7 @@ def _load_embedding_model_settings() -> Dict[str, Any]:
                 return {**default_settings, **data}
     except (OSError, json.JSONDecodeError):
         pass
-    
+
     return default_settings
 
 
@@ -1611,18 +2239,20 @@ def list_embedding_models(request: HttpRequest) -> JsonResponse:
     Get list of all available embedding models with metadata.
     """
     from app.services.embedding_manager import get_embedding_manager
-    
+
     try:
         manager = get_embedding_manager()
         models = manager.get_available_models()
-        
+
         # Add cache stats
         cache_stats = manager.get_cache_stats()
-        
-        return JsonResponse({
-            "models": models,
-            "cache_stats": cache_stats,
-        })
+
+        return JsonResponse(
+            {
+                "models": models,
+                "cache_stats": cache_stats,
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to load models: {str(exc)}", status=500)
 
@@ -1633,25 +2263,27 @@ def get_current_embedding_model(request: HttpRequest) -> JsonResponse:
     Get the currently active embedding model.
     """
     from app.services.embedding_manager import get_embedding_manager
-    
+
     try:
         manager = get_embedding_manager()
         current_id = manager.get_current_model_id()
         model_info = manager.AVAILABLE_MODELS.get(current_id, {})
-        
+
         # Check if model is loaded in cache
         cache_stats = manager.get_cache_stats()
         is_loaded = current_id in cache_stats.get("cached_models", [])
-        
-        return JsonResponse({
-            "model_id": current_id,
-            "model_name": model_info.get("name", current_id),
-            "dimension": model_info.get("dimension", 384),
-            "speed": model_info.get("speed", "Unknown"),
-            "memory": model_info.get("memory", "Unknown"),
-            "is_loaded": is_loaded,
-            "recommended": model_info.get("recommended", False),
-        })
+
+        return JsonResponse(
+            {
+                "model_id": current_id,
+                "model_name": model_info.get("name", current_id),
+                "dimension": model_info.get("dimension", 384),
+                "speed": model_info.get("speed", "Unknown"),
+                "memory": model_info.get("memory", "Unknown"),
+                "is_loaded": is_loaded,
+                "recommended": model_info.get("recommended", False),
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to get current model: {str(exc)}", status=500)
 
@@ -1661,39 +2293,39 @@ def get_current_embedding_model(request: HttpRequest) -> JsonResponse:
 def switch_embedding_model(request: HttpRequest) -> JsonResponse:
     """
     Switch to a different embedding model.
-    
+
     Body:
         model_id: str - The model ID to switch to
         reindex: bool (optional) - Whether to reindex documents with new model
     """
     from app.services.embedding_manager import get_embedding_manager
-    
+
     try:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     model_id = str(payload.get("model_id", "")).strip()
     reindex = bool(payload.get("reindex", False))
-    
+
     if not model_id:
         return _error_response("model_id is required", status=400)
-    
+
     try:
         manager = get_embedding_manager()
-        
+
         # Validate model exists
         if model_id not in manager.AVAILABLE_MODELS:
             return _error_response(f"Unknown model: {model_id}", status=400)
-        
+
         # Switch model
         result = manager.set_current_model(model_id)
-        
+
         # Save to settings
         saved_settings = _load_embedding_model_settings()
         saved_settings["current_model"] = model_id
         _save_embedding_model_settings(saved_settings)
-        
+
         # If reindex requested, trigger background reindexing
         if reindex:
             # Check current indexing state
@@ -1705,11 +2337,13 @@ def switch_embedding_model(request: HttpRequest) -> JsonResponse:
                 result["reindex_status"] = "already_running"
         else:
             result["reindex_status"] = "not_requested"
-        
-        return JsonResponse({
-            "success": True,
-            **result,
-        })
+
+        return JsonResponse(
+            {
+                "success": True,
+                **result,
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to switch model: {str(exc)}", status=500)
 
@@ -1719,43 +2353,45 @@ def switch_embedding_model(request: HttpRequest) -> JsonResponse:
 def test_embedding_model(request: HttpRequest) -> JsonResponse:
     """
     Test an embedding model with a query.
-    
+
     Body:
         model_id: str - The model ID to test
         query: str (optional) - Test query (default: "test query")
         top_k: int (optional) - Number of results (default: 3)
     """
     from app.services.embedding_manager import get_embedding_manager
-    
+
     try:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     model_id = str(payload.get("model_id", "")).strip()
     query = str(payload.get("query", "test query")).strip()
     top_k = int(payload.get("top_k", 3))
-    
+
     if not model_id:
         return _error_response("model_id is required", status=400)
-    
+
     if not query:
         return _error_response("query cannot be empty", status=400)
-    
+
     try:
         manager = get_embedding_manager()
-        
+
         # Validate model exists
         if model_id not in manager.AVAILABLE_MODELS:
             return _error_response(f"Unknown model: {model_id}", status=400)
-        
+
         # Test the model
         result = manager.test_model(model_id, query, top_k=top_k)
-        
-        return JsonResponse({
-            "success": True,
-            **result,
-        })
+
+        return JsonResponse(
+            {
+                "success": True,
+                **result,
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to test model: {str(exc)}", status=500)
 
@@ -1766,13 +2402,13 @@ def get_embedding_model_metrics(request: HttpRequest) -> JsonResponse:
     Get performance metrics for embedding models.
     """
     from app.services.embedding_manager import get_embedding_manager
-    
+
     try:
         manager = get_embedding_manager()
-        
+
         # Get recent metrics
         metrics = manager.get_performance_metrics(limit=50)
-        
+
         # Calculate averages per model
         model_stats: Dict[str, Dict[str, Any]] = {}
         for metric in metrics:
@@ -1783,10 +2419,10 @@ def get_embedding_model_metrics(request: HttpRequest) -> JsonResponse:
                     "total_time_ms": 0,
                     "actions": {},
                 }
-            
+
             model_stats[model_id]["count"] += 1
             model_stats[model_id]["total_time_ms"] += metric["time_ms"]
-            
+
             action = metric["action"]
             if action not in model_stats[model_id]["actions"]:
                 model_stats[model_id]["actions"][action] = {
@@ -1794,22 +2430,32 @@ def get_embedding_model_metrics(request: HttpRequest) -> JsonResponse:
                     "total_time_ms": 0,
                 }
             model_stats[model_id]["actions"][action]["count"] += 1
-            model_stats[model_id]["actions"][action]["total_time_ms"] += metric["time_ms"]
-        
+            model_stats[model_id]["actions"][action]["total_time_ms"] += metric[
+                "time_ms"
+            ]
+
         # Calculate averages
         for model_id, stats in model_stats.items():
-            stats["avg_time_ms"] = round(stats["total_time_ms"] / stats["count"], 2) if stats["count"] > 0 else 0
-            
+            stats["avg_time_ms"] = (
+                round(stats["total_time_ms"] / stats["count"], 2)
+                if stats["count"] > 0
+                else 0
+            )
+
             for action, action_stats in stats["actions"].items():
-                action_stats["avg_time_ms"] = round(
-                    action_stats["total_time_ms"] / action_stats["count"], 2
-                ) if action_stats["count"] > 0 else 0
-        
-        return JsonResponse({
-            "metrics": metrics,
-            "model_stats": model_stats,
-            "cache_stats": manager.get_cache_stats(),
-        })
+                action_stats["avg_time_ms"] = (
+                    round(action_stats["total_time_ms"] / action_stats["count"], 2)
+                    if action_stats["count"] > 0
+                    else 0
+                )
+
+        return JsonResponse(
+            {
+                "metrics": metrics,
+                "model_stats": model_stats,
+                "cache_stats": manager.get_cache_stats(),
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to get metrics: {str(exc)}", status=500)
 
@@ -1826,10 +2472,12 @@ def clear_embedding_model_cache(request: HttpRequest) -> JsonResponse:
         manager = get_embedding_manager()
         manager.clear_cache()
 
-        return JsonResponse({
-            "success": True,
-            "message": "Model cache cleared",
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Model cache cleared",
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to clear cache: {str(exc)}", status=500)
 
@@ -1838,14 +2486,16 @@ def clear_embedding_model_cache(request: HttpRequest) -> JsonResponse:
 # Document Summarization Endpoints
 # ==========================================
 
-SUMMARY_HISTORY_FILE = Path(__file__).resolve().parents[1] / "data" / "summary_history.json"
+SUMMARY_HISTORY_FILE = (
+    Path(__file__).resolve().parents[1] / "data" / "summary_history.json"
+)
 
 
 def _load_summary_history() -> List[Dict[str, Any]]:
     """Load summary history from file."""
     if not SUMMARY_HISTORY_FILE.exists():
         return []
-    
+
     try:
         with SUMMARY_HISTORY_FILE.open("r", encoding="utf-8") as f:
             data = json.load(f)
@@ -1853,7 +2503,7 @@ def _load_summary_history() -> List[Dict[str, Any]]:
                 return data
     except (OSError, json.JSONDecodeError):
         pass
-    
+
     return []
 
 
@@ -1867,22 +2517,22 @@ def _save_summary_history(history: List[Dict[str, Any]]) -> None:
 def _get_document_text(filename: str) -> Optional[str]:
     """
     Get full text content of a document from FAISS chunks.
-    
+
     Args:
         filename: Document filename
-        
+
     Returns:
         Full text content or None if not found
     """
     from app.services.vector_store import VectorStore
     from app.config import settings
-    
+
     try:
         vector_store = VectorStore.get_cached(
             index_path=settings.FAISS_INDEX_PATH,
             embedding_dim=settings.EMBEDDING_DIM,
         )
-        
+
         # Find all chunks for this document
         doc_chunks = []
         for chunk in vector_store.chunks:
@@ -1890,14 +2540,14 @@ def _get_document_text(filename: str) -> Optional[str]:
             # Match by filename (handle UUID prefixes)
             if filename in chunk_source or chunk_source.endswith(filename):
                 doc_chunks.append(chunk)
-        
+
         if not doc_chunks:
             return None
-        
+
         # Sort by page and join text
         doc_chunks.sort(key=lambda c: c.get("page", 0) or 0)
         full_text = " ".join([str(c.get("text", "")) for c in doc_chunks])
-        
+
         return full_text
     except Exception:
         return None
@@ -1908,7 +2558,7 @@ def _get_document_text(filename: str) -> Optional[str]:
 def generate_summary(request: HttpRequest) -> JsonResponse:
     """
     Generate summary for selected documents.
-    
+
     Body:
         document_ids: List[str] - List of document filenames
         config: Dict (optional) - Summary configuration:
@@ -1919,21 +2569,21 @@ def generate_summary(request: HttpRequest) -> JsonResponse:
             - include_comparison: bool
     """
     from app.services.summarizer import DocumentSummarizer, SummarizerError
-    
+
     try:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     document_ids = payload.get("document_ids", [])
     config = payload.get("config", {})
-    
+
     if not document_ids:
         return _error_response("No documents selected", status=400)
-    
+
     if not isinstance(document_ids, list):
         return _error_response("document_ids must be a list", status=400)
-    
+
     # Default configuration
     default_config = {
         "length": "medium",
@@ -1943,25 +2593,27 @@ def generate_summary(request: HttpRequest) -> JsonResponse:
         "include_comparison": len(document_ids) > 1,
     }
     default_config.update(config)
-    
+
     # Get document texts
     documents = []
     for doc_id in document_ids:
         text = _get_document_text(doc_id)
         if text:
-            documents.append({
-                "name": doc_id,
-                "text": text,
-            })
-    
+            documents.append(
+                {
+                    "name": doc_id,
+                    "text": text,
+                }
+            )
+
     if not documents:
         return _error_response("No valid documents found", status=404)
-    
+
     try:
         # Generate summary
         summarizer = DocumentSummarizer()
         result = summarizer.generate_summary(documents, default_config)
-        
+
         # Save to history
         history = _load_summary_history()
         history_entry = {
@@ -1975,24 +2627,26 @@ def generate_summary(request: HttpRequest) -> JsonResponse:
             "document_count": len(documents),
         }
         history.insert(0, history_entry)  # Add to beginning
-        
+
         # Keep only last 50 summaries
         if len(history) > 50:
             history = history[:50]
-        
+
         _save_summary_history(history)
-        
-        return JsonResponse({
-            "success": True,
-            "summary": result["text"],
-            "citations": result.get("citations", []),
-            "comparison": result.get("comparison", []),
-            "document_count": len(documents),
-            "documents": [doc["name"] for doc in documents],
-            "config": default_config,
-            "history_id": history_entry["id"],
-        })
-        
+
+        return JsonResponse(
+            {
+                "success": True,
+                "summary": result["text"],
+                "citations": result.get("citations", []),
+                "comparison": result.get("comparison", []),
+                "document_count": len(documents),
+                "documents": [doc["name"] for doc in documents],
+                "config": default_config,
+                "history_id": history_entry["id"],
+            }
+        )
+
     except SummarizerError as exc:
         return _error_response(str(exc), status=500)
     except Exception as exc:
@@ -2003,23 +2657,25 @@ def generate_summary(request: HttpRequest) -> JsonResponse:
 def get_summary_history(request: HttpRequest) -> JsonResponse:
     """
     Get summary generation history.
-    
+
     Query params:
         limit: int (optional) - Maximum number of histories to return (default: 20)
     """
     try:
         limit = int(request.GET.get("limit", 20))
         limit = min(limit, 50)  # Max 50
-        
+
         history = _load_summary_history()
-        
+
         # Return most recent summaries
         recent_history = history[:limit]
-        
-        return JsonResponse({
-            "history": recent_history,
-            "total": len(history),
-        })
+
+        return JsonResponse(
+            {
+                "history": recent_history,
+                "total": len(history),
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to load history: {str(exc)}", status=500)
 
@@ -2029,25 +2685,27 @@ def get_summary_history(request: HttpRequest) -> JsonResponse:
 def delete_summary(request: HttpRequest, summary_id: str) -> JsonResponse:
     """
     Delete a summary from history.
-    
+
     URL parameter:
         summary_id: str - The summary ID to delete
     """
     try:
         history = _load_summary_history()
-        
+
         # Find and remove the summary
         new_history = [h for h in history if h.get("id") != summary_id]
-        
+
         if len(new_history) == len(history):
             return _error_response("Summary not found", status=404)
-        
+
         _save_summary_history(new_history)
-        
-        return JsonResponse({
-            "success": True,
-            "message": "Summary deleted",
-        })
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Summary deleted",
+            }
+        )
     except Exception as exc:
         return _error_response(f"Failed to delete summary: {str(exc)}", status=500)
 
@@ -2057,24 +2715,24 @@ def delete_summary(request: HttpRequest, summary_id: str) -> JsonResponse:
 def regenerate_summary(request: HttpRequest) -> JsonResponse:
     """
     Regenerate summary with different configuration.
-    
+
     Body:
         history_id: str - The summary history ID to regenerate
         config: Dict - New configuration
     """
     from app.services.summarizer import DocumentSummarizer, SummarizerError
-    
+
     try:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     history_id = payload.get("history_id")
     new_config = payload.get("config", {})
-    
+
     if not history_id:
         return _error_response("history_id is required", status=400)
-    
+
     # Find the original summary
     history = _load_summary_history()
     original = None
@@ -2082,31 +2740,33 @@ def regenerate_summary(request: HttpRequest) -> JsonResponse:
         if h.get("id") == history_id:
             original = h
             break
-    
+
     if not original:
         return _error_response("Summary not found", status=404)
-    
+
     # Merge old config with new
     config = {**original.get("config", {}), **new_config}
-    
+
     # Get document texts
     documents = []
     for doc_name in original.get("documents", []):
         text = _get_document_text(doc_name)
         if text:
-            documents.append({
-                "name": doc_name,
-                "text": text,
-            })
-    
+            documents.append(
+                {
+                    "name": doc_name,
+                    "text": text,
+                }
+            )
+
     if not documents:
         return _error_response("Documents not found", status=404)
-    
+
     try:
         # Regenerate summary
         summarizer = DocumentSummarizer()
         result = summarizer.generate_summary(documents, config)
-        
+
         # Update history
         updated_entry = {
             **original,
@@ -2116,19 +2776,23 @@ def regenerate_summary(request: HttpRequest) -> JsonResponse:
             "config": config,
             "regenerated_at": datetime.now(timezone.utc).isoformat(),
         }
-        
+
         # Replace in history
-        new_history = [h if h.get("id") != history_id else updated_entry for h in history]
+        new_history = [
+            h if h.get("id") != history_id else updated_entry for h in history
+        ]
         _save_summary_history(new_history)
-        
-        return JsonResponse({
-            "success": True,
-            "summary": result["text"],
-            "citations": result.get("citations", []),
-            "comparison": result.get("comparison", []),
-            "config": config,
-        })
-        
+
+        return JsonResponse(
+            {
+                "success": True,
+                "summary": result["text"],
+                "citations": result.get("citations", []),
+                "comparison": result.get("comparison", []),
+                "config": config,
+            }
+        )
+
     except SummarizerError as exc:
         return _error_response(str(exc), status=500)
     except Exception as exc:
@@ -2144,7 +2808,7 @@ def regenerate_summary(request: HttpRequest) -> JsonResponse:
 def get_question_suggestions(request: HttpRequest) -> JsonResponse:
     """
     Generate question suggestions based on selected documents.
-    
+
     Query params:
         doc_ids: Comma-separated list of document filenames
         num_suggestions: Number of suggestions to generate (default: 3)
@@ -2154,51 +2818,57 @@ def get_question_suggestions(request: HttpRequest) -> JsonResponse:
         generate_question_suggestions,
         QuestionSuggestionError,
     )
-    
+
     # Get document IDs from query params
     doc_ids_param = request.GET.get("doc_ids", "")
     num_suggestions = int(request.GET.get("num_suggestions", 3))
-    
+
     if not doc_ids_param:
         return _error_response("doc_ids query parameter is required", status=400)
-    
+
     # Parse document IDs
     doc_ids = [doc_id.strip() for doc_id in doc_ids_param.split(",") if doc_id.strip()]
-    
+
     if not doc_ids:
         return _error_response("No valid document IDs provided", status=400)
-    
+
     # Limit number of suggestions
     num_suggestions = min(max(1, num_suggestions), 5)
-    
+
     try:
         # Get document content from FAISS
         documents = []
         for doc_id in doc_ids:
             text = _get_document_text(doc_id)
             if text:
-                documents.append({
-                    "name": doc_id,
-                    "content": text,
-                })
-        
+                documents.append(
+                    {
+                        "name": doc_id,
+                        "content": text,
+                    }
+                )
+
         if not documents:
             return _error_response("No valid documents found in index", status=404)
-        
+
         # Generate suggestions
         result = generate_question_suggestions(documents, num_suggestions)
-        
-        return JsonResponse({
-            "success": True,
-            "suggestions": result.get("suggestions", []),
-            "generated_from": result.get("generated_from", []),
-            "document_count": len(documents),
-        })
-        
+
+        return JsonResponse(
+            {
+                "success": True,
+                "suggestions": result.get("suggestions", []),
+                "generated_from": result.get("generated_from", []),
+                "document_count": len(documents),
+            }
+        )
+
     except QuestionSuggestionError as exc:
         return _error_response(f"Suggestion generation failed: {str(exc)}", status=500)
     except Exception as exc:
-        return _error_response(f"Failed to generate suggestions: {str(exc)}", status=500)
+        return _error_response(
+            f"Failed to generate suggestions: {str(exc)}", status=500
+        )
 
 
 @csrf_exempt
@@ -2206,40 +2876,40 @@ def get_question_suggestions(request: HttpRequest) -> JsonResponse:
 def record_suggestion_click(request: HttpRequest) -> JsonResponse:
     """
     Record when a user clicks on a suggested question.
-    
+
     Body:
         question: str - The question text that was clicked
         doc_ids: List[str] - Document IDs the suggestion was based on
         position: int - Position of the clicked suggestion (0-indexed)
     """
     from django_app.models import SuggestedQuestion
-    
+
     try:
         payload = _get_json_body(request)
     except ValueError as exc:
         return _error_response(str(exc), status=400)
-    
+
     question_text = payload.get("question", "").strip()
     doc_ids = payload.get("doc_ids", [])
     position = payload.get("position", 0)
-    
+
     if not question_text:
         return _error_response("question is required", status=400)
-    
+
     if not doc_ids:
         return _error_response("doc_ids is required", status=400)
-    
+
     try:
         # Try to find existing suggestion
         existing = None
         doc_names_str = ", ".join(sorted([str(d) for d in doc_ids]))
-        
+
         # Search for similar suggestions
         candidates = SuggestedQuestion.objects.filter(
             question_text=question_text,
             document_names=doc_names_str,
         )
-        
+
         if candidates.exists():
             existing = candidates.first()
         else:
@@ -2249,7 +2919,7 @@ def record_suggestion_click(request: HttpRequest) -> JsonResponse:
             )
             if candidates.exists():
                 existing = candidates.first()
-        
+
         if existing:
             # Increment click count
             existing.increment_click_count()
@@ -2267,66 +2937,76 @@ def record_suggestion_click(request: HttpRequest) -> JsonResponse:
                 },
             )
             suggestion_id = new_suggestion.id
-        
-        return JsonResponse({
-            "success": True,
-            "message": "Click recorded",
-            "suggestion_id": suggestion_id,
-            "click_count": (existing.click_count if existing else 1),
-        })
-        
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Click recorded",
+                "suggestion_id": suggestion_id,
+                "click_count": (existing.click_count if existing else 1),
+            }
+        )
+
     except Exception as exc:
         # Don't fail the request if tracking fails
         print(f"Failed to record suggestion click: {exc}")
-        return JsonResponse({
-            "success": True,
-            "message": "Click recorded (tracking may have failed)",
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Click recorded (tracking may have failed)",
+            }
+        )
 
 
 @require_http_methods(["GET"])
 def get_suggestion_history(request: HttpRequest) -> JsonResponse:
     """
     Get history of generated suggestions.
-    
+
     Query params:
         limit: int (optional) - Maximum number of suggestions to return (default: 20)
         doc_id: str (optional) - Filter by document ID
     """
     from django_app.models import SuggestedQuestion
-    
+
     try:
         limit = int(request.GET.get("limit", 20))
         doc_id = request.GET.get("doc_id", "")
-        
+
         limit = min(limit, 100)  # Max 100
-        
+
         # Build query
         query = SuggestedQuestion.objects.all()
-        
+
         if doc_id:
             query = query.filter(document_names__icontains=doc_id)
-        
+
         # Get recent suggestions
         suggestions = query.order_by("-created_at")[:limit]
-        
+
         # Serialize
         result = []
         for s in suggestions:
-            result.append({
-                "id": s.id,
-                "question_text": s.question_text,
-                "question_type": s.question_type,
-                "document_names": s.document_names.split(", ") if s.document_names else [],
-                "click_count": s.click_count,
-                "feedback_score": s.feedback_score,
-                "created_at": s.created_at.isoformat(),
-            })
-        
-        return JsonResponse({
-            "suggestions": result,
-            "total": query.count(),
-        })
-        
+            result.append(
+                {
+                    "id": s.id,
+                    "question_text": s.question_text,
+                    "question_type": s.question_type,
+                    "document_names": s.document_names.split(", ")
+                    if s.document_names
+                    else [],
+                    "click_count": s.click_count,
+                    "feedback_score": s.feedback_score,
+                    "created_at": s.created_at.isoformat(),
+                }
+            )
+
+        return JsonResponse(
+            {
+                "suggestions": result,
+                "total": query.count(),
+            }
+        )
+
     except Exception as exc:
         return _error_response(f"Failed to load suggestions: {str(exc)}", status=500)

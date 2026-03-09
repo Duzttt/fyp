@@ -1,5 +1,5 @@
 <script setup>
-const emit = defineEmits(['open-settings', 'open-dashboard'])
+const emit = defineEmits(['open-settings', 'open-admin'])
 </script>
 
 <template>
@@ -14,9 +14,9 @@ const emit = defineEmits(['open-settings', 'open-dashboard'])
       </div>
     </div>
     <div class="topbar-center">
-      <button class="pill-btn" @click="emit('open-dashboard')">
-        <span class="icon">📊</span>
-        Dashboard
+      <button class="pill-btn admin-btn" @click="emit('open-admin')">
+        <span class="icon">🛠️</span>
+        Admin
       </button>
       <button class="pill-btn" @click="emit('open-settings')">
         <span class="icon">⚙️</span>
@@ -81,6 +81,17 @@ const emit = defineEmits(['open-settings', 'open-dashboard'])
   color: var(--text-muted);
 }
 
+.topbar-center {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+  padding: 0 12px;
+}
+
 .pill-btn {
   padding: 6px 14px;
   border-radius: 999px;
@@ -95,9 +106,10 @@ const emit = defineEmits(['open-settings', 'open-dashboard'])
   );
   color: var(--text-main);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow:

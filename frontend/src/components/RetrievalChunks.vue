@@ -14,6 +14,7 @@ const props = defineProps({
 
 const emit = defineEmits(['chunk-hover', 'chunk-click', 'chunk-rightclick'])
 
+const isOpen = ref(false)
 const expandedChunks = ref(new Set())
 const showAllChunks = ref(false)
 const hoveredChunk = ref(null)
@@ -98,66 +99,77 @@ const handleChunkRightClick = (event, chunk) => {
   
   <div v-else-if="filteredChunks.length > 0" class="retrieval-chunks">
     <div class="retrieval-header">
-      <span class="retrieval-title">📚 Retrieved Context</span>
-      <span class="retrieval-count">{{ filteredChunks.length }} of {{ chunks.length }} chunks</span>
-      <button 
-        v-if="chunks.length > filteredChunks.length" 
-        class="show-all-btn"
-        @click="showAllChunks = !showAllChunks"
-      >
-        {{ showAllChunks ? 'Show Relevant Only' : `Show All (${chunks.length})` }}
-      </button>
+      <div class="retrieval-meta">
+        <span class="retrieval-title">📚 Retrieved Context</span>
+        <span class="retrieval-count">{{ filteredChunks.length }} of {{ chunks.length }} chunks</span>
+      </div>
+
+      <div class="retrieval-actions">
+        <button
+          v-if="chunks.length > filteredChunks.length"
+          class="show-all-btn"
+          @click.stop="showAllChunks = !showAllChunks"
+        >
+          {{ showAllChunks ? 'Show Relevant Only' : `Show All (${chunks.length})` }}
+        </button>
+        <button class="collapse-btn" @click.stop="isOpen = !isOpen">
+          <span class="collapse-icon">{{ isOpen ? '▼' : '▶' }}</span>
+          <span class="collapse-label">{{ isOpen ? 'Hide' : 'Show' }}</span>
+        </button>
+      </div>
     </div>
     
-    <div class="chunks-grid">
-      <div
-        v-for="(chunk, index) in filteredChunks"
-        :key="index"
-        class="chunk-card"
-        :class="getScoreColorClass(chunk.score)"
-        @mouseenter="handleChunkHover(chunk, $event)"
-        @mouseleave="handleChunkLeave"
-        @click="handleChunkClick(chunk)"
-        @contextmenu="handleChunkRightClick($event, chunk)"
-      >
-        <div class="chunk-header">
-          <div class="chunk-score">
-            <div class="score-badge" :style="{ backgroundColor: getScoreColor(chunk.score) }">
-              {{ Math.round(chunk.score * 100) }}%
+    <div v-if="isOpen" class="chunks-scroll">
+      <div class="chunks-grid">
+        <div
+          v-for="(chunk, index) in filteredChunks"
+          :key="index"
+          class="chunk-card"
+          :class="getScoreColorClass(chunk.score)"
+          @mouseenter="handleChunkHover(chunk, $event)"
+          @mouseleave="handleChunkLeave"
+          @click="handleChunkClick(chunk)"
+          @contextmenu="handleChunkRightClick($event, chunk)"
+        >
+          <div class="chunk-header">
+            <div class="chunk-score">
+              <div
+                class="score-badge"
+                :style="{ backgroundColor: getScoreColor(chunk.score) }"
+              >
+                {{ Math.round(chunk.score * 100) }}%
+              </div>
             </div>
+            <div class="chunk-source">
+              <span class="source-name">{{ chunk.source }}</span>
+              <span v-if="chunk.page" class="source-page">Page {{ chunk.page }}</span>
+            </div>
+            <button class="expand-btn" @click.stop="toggleExpand(index)">
+              {{ isExpanded(index) ? '▼' : '▶' }}
+            </button>
           </div>
-          <div class="chunk-source">
-            <span class="source-name">{{ chunk.source }}</span>
-            <span v-if="chunk.page" class="source-page">Page {{ chunk.page }}</span>
+
+          <div class="chunk-progress">
+            <div
+              class="progress-bar"
+              :style="{
+                width: chunk.score * 100 + '%',
+                background: `linear-gradient(90deg, ${getScoreColor(chunk.score)} 0%, ${getScoreColor(chunk.score)}80 100%)`,
+              }"
+            ></div>
           </div>
-          <button
-            class="expand-btn"
-            @click.stop="toggleExpand(index)"
-          >
-            {{ isExpanded(index) ? '▼' : '▶' }}
-          </button>
-        </div>
 
-        <div class="chunk-progress">
-          <div
-            class="progress-bar"
-            :style="{
-              width: chunk.score * 100 + '%',
-              background: `linear-gradient(90deg, ${getScoreColor(chunk.score)} 0%, ${getScoreColor(chunk.score)}80 100%)`
-            }"
-          ></div>
-        </div>
+          <div class="chunk-content">
+            <p class="chunk-preview">
+              {{ isExpanded(index) ? chunk.text : chunk.preview }}
+            </p>
+          </div>
 
-        <div class="chunk-content">
-          <p class="chunk-preview">
-            {{ isExpanded(index) ? chunk.text : chunk.preview }}
-          </p>
-        </div>
-
-        <div v-if="chunk.text.length > 100" class="chunk-footer">
-          <span class="char-count">
-            {{ isExpanded(index) ? chunk.text.length : 100 }} / {{ chunk.text.length }} chars
-          </span>
+          <div v-if="chunk.text.length > 100" class="chunk-footer">
+            <span class="char-count">
+              {{ isExpanded(index) ? chunk.text.length : 100 }} / {{ chunk.text.length }} chars
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -217,10 +229,25 @@ const handleChunkRightClick = (event, chunk) => {
 .retrieval-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 12px;
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.retrieval-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.retrieval-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .retrieval-title {
@@ -238,7 +265,6 @@ const handleChunkRightClick = (event, chunk) => {
 }
 
 .show-all-btn {
-  margin-left: auto;
   padding: 4px 12px;
   font-size: 11px;
   border-radius: 999px;
@@ -253,6 +279,55 @@ const handleChunkRightClick = (event, chunk) => {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-main);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.collapse-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.collapse-icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.chunks-scroll {
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.chunks-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chunks-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+.chunks-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 6px;
+}
+
+.chunks-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .chunks-grid {

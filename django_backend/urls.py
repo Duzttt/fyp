@@ -28,6 +28,8 @@ urlpatterns = [
     path("api/chat/", views.ask_qwen),
     path("api/ask_qwen", views.ask_qwen),
     path("api/ask_qwen/", views.ask_qwen),
+    path("api/chat/citations", views.ask_with_citations),
+    path("api/chat/citations/", views.ask_with_citations),
     path("api/settings", views.settings_handler),
     path("api/settings/", views.settings_handler),
     path("api/rag-config", views.get_rag_config),
@@ -49,14 +51,36 @@ urlpatterns = [
     path("api/dashboard/metrics/", views.dashboard_metrics),
     path("api/dashboard/chunks/distribution", views.dashboard_chunks_distribution),
     path("api/dashboard/chunks/distribution/", views.dashboard_chunks_distribution),
-    path("api/dashboard/similarity/distribution", views.dashboard_similarity_distribution),
-    path("api/dashboard/similarity/distribution/", views.dashboard_similarity_distribution),
+    path(
+        "api/dashboard/similarity/distribution", views.dashboard_similarity_distribution
+    ),
+    path(
+        "api/dashboard/similarity/distribution/",
+        views.dashboard_similarity_distribution,
+    ),
     path("api/dashboard/documents/timeline", views.dashboard_documents_timeline),
     path("api/dashboard/documents/timeline/", views.dashboard_documents_timeline),
     path("api/dashboard/config", views.dashboard_update_config),
     path("api/dashboard/config/", views.dashboard_update_config),
     path("api/dashboard/reindex", views.dashboard_reindex),
     path("api/dashboard/reindex/", views.dashboard_reindex),
+    # Admin Dashboard API endpoints (Phase 1)
+    path("api/admin/stats", views.admin_stats),
+    path("api/admin/stats/", views.admin_stats),
+    path("api/admin/query-stats", views.admin_query_stats),
+    path("api/admin/query-stats/", views.admin_query_stats),
+    path("api/admin/debug/retrieval", views.admin_debug_retrieval),
+    path("api/admin/debug/retrieval/", views.admin_debug_retrieval),
+    path("api/admin/documents", views.admin_documents),
+    path("api/admin/documents/", views.admin_documents),
+    path("api/admin/documents/<str:doc_id>/chunks", views.admin_document_chunks),
+    path("api/admin/documents/<str:doc_id>/chunks/", views.admin_document_chunks),
+    path("api/admin/documents/<str:doc_id>/delete", views.admin_delete_document),
+    path("api/admin/documents/<str:doc_id>/delete/", views.admin_delete_document),
+    path("api/admin/documents/<str:doc_id>/reindex", views.admin_reindex_document),
+    path("api/admin/documents/<str:doc_id>/reindex/", views.admin_reindex_document),
+    path("api/admin/indexing-status", views.admin_indexing_status),
+    path("api/admin/indexing-status/", views.admin_indexing_status),
     # Embedding Model Management endpoints
     path("api/settings/embedding-models", views.list_embedding_models),
     path("api/settings/embedding-models/", views.list_embedding_models),
@@ -69,7 +93,9 @@ urlpatterns = [
     path("api/settings/embedding-model/metrics", views.get_embedding_model_metrics),
     path("api/settings/embedding-model/metrics/", views.get_embedding_model_metrics),
     path("api/settings/embedding-model/cache/clear", views.clear_embedding_model_cache),
-    path("api/settings/embedding-model/cache/clear/", views.clear_embedding_model_cache),
+    path(
+        "api/settings/embedding-model/cache/clear/", views.clear_embedding_model_cache
+    ),
     # Document Summarization endpoints
     path("api/summary/generate", views.generate_summary),
     path("api/summary/generate/", views.generate_summary),
