@@ -2,8 +2,8 @@
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '../stores/documentStore'
 import { useSummaryStore } from '../stores/summaryStore'
-import EmbeddingModelSelector from './EmbeddingModelSelector.vue'
-import ModelComparison from './ModelComparison.vue'
+import EmbeddingModelSelector from './settings/EmbeddingModelSelector.vue'
+import ModelComparison from './dashboard/ModelComparison.vue'
 import SummaryModal from './studio/SummaryModal.vue'
 import SummaryViewer from './studio/SummaryViewer.vue'
 
