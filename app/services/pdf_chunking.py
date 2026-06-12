@@ -458,7 +458,8 @@ def chunk_pdf_with_metadata(
         char_position = 0
         for chunk in page_chunks:
             chunk_length = len(chunk)
-            final_text = f"{metadata_header}{chunk}" if metadata_header else chunk
+            use_metadata = metadata_header and chunk_strategy != "paragraph"
+            final_text = f"{metadata_header}{chunk}" if use_metadata else chunk
             chunk_records.append(
                 {
                     "text": final_text,
