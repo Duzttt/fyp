@@ -68,6 +68,7 @@ def index_pdf_file(
     index_path: Optional[str] = None,
     model_name: Optional[str] = None,
     clear_existing: bool = False,
+    chunk_strategy: str = "sentence",
 ) -> Dict[str, int]:
     """
     Read PDF -> split into chunks -> embed -> store vectors in FAISS.
@@ -93,6 +94,7 @@ def index_pdf_file(
         pdf_path=cleaned_pdf_path,
         chunk_size=chunk_size,
         source_name=source_name,
+        chunk_strategy=chunk_strategy,
     )
     if not chunk_records:
         raise PDFIndexingError("No chunks created from text")
@@ -155,6 +157,7 @@ def index_pdf_directory(
     index_path: Optional[str] = None,
     model_name: Optional[str] = None,
     clear_existing: bool = True,
+    chunk_strategy: str = "sentence",
 ) -> Dict[str, int]:
     """
     Index all PDF files in a directory.
@@ -187,6 +190,7 @@ def index_pdf_directory(
             index_path=index_path,
             model_name=model_name,
             clear_existing=clear_existing and idx == 0,
+            chunk_strategy=chunk_strategy,
         )
         total_chars += stats["total_chars"]
         total_chunks_created += stats["chunks_created"]

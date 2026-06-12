@@ -15,11 +15,6 @@ from app.services.runtime_llm import (
 )
 
 RAG_CONFIG_FILE = Path(__file__).resolve().parents[2] / "data" / "rag_config.json"
-LOCAL_LLM_MODELS = [
-    "qwen2.5-3b",
-    "qwen3.5-4b",
-    "qwen2.5-14b",
-]
 INDEXING_STRATEGY_FULL_REBUILD = "full_rebuild"
 INDEXING_STRATEGY_APPEND = "append"
 VALID_INDEXING_STRATEGIES = {
@@ -119,6 +114,7 @@ def _full_rebuild_worker() -> None:
                 index_path=settings.FAISS_INDEX_PATH,
                 model_name=rt["model_id"],
                 clear_existing=True,
+                chunk_strategy=settings.CHUNK_STRATEGY,
             )
             _invalidate_index_dependent_caches()
             with _INDEXING_STATE_LOCK:

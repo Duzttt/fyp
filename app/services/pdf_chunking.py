@@ -180,6 +180,24 @@ def split_text_into_chunks(
     return chunks
 
 
+def split_text_into_chunks_smart(
+    text: str, chunk_size: int = 500, overlap: int = 100
+) -> List[str]:
+    """
+    Split text using the SmartChunker (paragraph-aware, boundary-respecting).
+
+    Returns plain strings to match the interface of split_text_into_chunks().
+    """
+    from chunking.smart_chunker import SmartChunker
+
+    if not text or not text.strip():
+        return []
+
+    chunker = SmartChunker(chunk_size=chunk_size, overlap=overlap)
+    result = chunker.chunk_document(text, extract_keywords=False)
+    return [chunk["text"] for chunk in result]
+
+
 _COURSE_CODE_RE = re.compile(
     r"""(?ixm)
     (?:course\s*code|kod\s*kursus)\s*[:\-]?\s*
@@ -402,6 +420,7 @@ def chunk_pdf_with_metadata(
     overlap: int = 100,
     source_name: Optional[str] = None,
     prepend_course_metadata: bool = True,
+    chunk_strategy: str = "sentence",
 ) -> List[Dict[str, Any]]:
     """Chunk a PDF while preserving source filename and page number metadata.
 
@@ -426,8 +445,14 @@ def chunk_pdf_with_metadata(
     for page_record in page_records:
         page_num = int(page_record["page"])
         page_text = str(page_record["text"])
-        page_chunks = split_text_into_chunks(
-            page_text, chunk_size=chunk_size, overlap=overlap
+        page_chunks = (
+            split_text_into_chunks_smart(
+                page_text, chunk_size=chunk_size, overlap=overlap
+            )
+            if chunk_strategy == "paragraph"
+            else split_text_into_chunks(
+                page_text, chunk_size=chunk_size, overlap=overlap
+            )
         )
 
         char_position = 0

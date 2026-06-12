@@ -25,6 +25,7 @@ class Settings(BaseSettings):
 
     CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 100
+    CHUNK_STRATEGY: str = "sentence"
 
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     EMBEDDING_DIM: int = 384
@@ -89,6 +90,15 @@ class Settings(BaseSettings):
         allowed = {"full_rebuild", "append"}
         if strategy not in allowed:
             return "full_rebuild"
+        return strategy
+
+    @field_validator("CHUNK_STRATEGY", mode="before")
+    @classmethod
+    def validate_chunk_strategy(cls, value):
+        strategy = str(value).strip().lower()
+        allowed = {"sentence", "paragraph"}
+        if strategy not in allowed:
+            return "sentence"
         return strategy
 
     @property

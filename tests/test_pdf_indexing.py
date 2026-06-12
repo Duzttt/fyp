@@ -63,7 +63,7 @@ def test_index_pdf_file_success(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
-        lambda pdf_path, chunk_size=500, source_name=None: [
+        lambda pdf_path, chunk_size=500, source_name=None, chunk_strategy="sentence": [
             {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
             {"text": "chunk-2", "source": source_name or "dummy.pdf", "page": 2},
         ],
@@ -93,7 +93,7 @@ def test_index_pdf_file_strips_pdf_path(monkeypatch: pytest.MonkeyPatch):
 
     monkeypatch.setattr("app.services.pdf_indexing.read_pdf_text", _fake_read_pdf_text)
 
-    def _fake_chunk_pdf_with_metadata(pdf_path: str, chunk_size=500, source_name=None):
+    def _fake_chunk_pdf_with_metadata(pdf_path: str, chunk_size=500, source_name=None, chunk_strategy="sentence"):
         received["source_name"] = source_name
         return [
             {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
@@ -125,7 +125,7 @@ def test_index_pdf_file_raises_on_empty_chunks(monkeypatch: pytest.MonkeyPatch):
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
-        lambda pdf_path, chunk_size=500, source_name=None: [],
+        lambda pdf_path, chunk_size=500, source_name=None, chunk_strategy="sentence": [],
     )
 
     with pytest.raises(PDFIndexingError, match="No chunks created from text"):
@@ -145,7 +145,7 @@ def test_index_pdf_file_raises_on_dimension_mismatch(
     )
     monkeypatch.setattr(
         "app.services.pdf_indexing.chunk_pdf_with_metadata",
-        lambda pdf_path, chunk_size=500, source_name=None: [
+        lambda pdf_path, chunk_size=500, source_name=None, chunk_strategy="sentence": [
             {"text": "chunk-1", "source": source_name or "dummy.pdf", "page": 1},
             {"text": "chunk-2", "source": source_name or "dummy.pdf", "page": 2},
         ],
@@ -178,6 +178,7 @@ def test_index_pdf_directory_full_rebuild(
         index_path: Optional[str] = None,
         model_name: Optional[str] = None,
         clear_existing: bool = False,
+        chunk_strategy: str = "sentence",
     ):
         calls.append(
             (Path(pdf_path).name, clear_existing, chunk_size, index_path, model_name)
@@ -233,7 +234,7 @@ def test_index_calls_hybrid_refresh(monkeypatch):
         "name": "mock",
         "read_text": lambda path: "mock extracted text",
         "read_pages": lambda path: [],
-        "chunk_with_metadata": lambda pdf_path, chunk_size=500, source_name=None: [
+        "chunk_with_metadata": lambda pdf_path, chunk_size=500, source_name=None, chunk_strategy="sentence": [
             {"text": "test chunk", "source": source_name or "test.pdf", "page": 1},
         ],
     }
@@ -280,3 +281,15 @@ def test_index_calls_hybrid_refresh(monkeypatch):
         assert refresh_called, "HybridRetrieverService.refresh() should be called"
     finally:
         os.unlink(pdf_path)
+
+
+class TestChunkStrategyPassthrough:
+    def test_index_pdf_file_accepts_chunk_strategy(self):
+        import inspect
+        sig = inspect.signature(index_pdf_file)
+        assert "chunk_strategy" in sig.parameters
+
+    def test_index_pdf_directory_accepts_chunk_strategy(self):
+        import inspect
+        sig = inspect.signature(index_pdf_directory)
+        assert "chunk_strategy" in sig.parameters

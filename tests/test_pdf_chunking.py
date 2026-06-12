@@ -238,3 +238,77 @@ class TestChunkPdfWithMetadataPrepend:
             assert chunk["source"] == "fake.pdf"
             assert isinstance(chunk["page"], int)
             assert chunk["page"] >= 1
+
+
+class TestSmartChunkAdapter:
+    def test_split_text_into_chunks_smart_basic(self):
+        from app.services.pdf_chunking import split_text_into_chunks_smart
+
+        text = "This is paragraph one.\n\nThis is paragraph two.\n\nThis is paragraph three."
+        chunks = split_text_into_chunks_smart(text, chunk_size=50, overlap=10)
+
+        assert len(chunks) > 0
+        assert all(isinstance(c, str) for c in chunks)
+
+    def test_split_text_into_chunks_smart_empty(self):
+        from app.services.pdf_chunking import split_text_into_chunks_smart
+
+        assert split_text_into_chunks_smart("") == []
+        assert split_text_into_chunks_smart("   ") == []
+
+    def test_split_text_into_chunks_smart_returns_strings(self):
+        from app.services.pdf_chunking import split_text_into_chunks_smart
+
+        text = "Hello world. " * 100
+        chunks = split_text_into_chunks_smart(text, chunk_size=100, overlap=20)
+
+        for chunk in chunks:
+            assert isinstance(chunk, str)
+            assert len(chunk) > 0
+
+
+class TestChunkStrategyRouting:
+    def test_chunk_pdf_with_metadata_sentence_strategy(self):
+        from app.services.pdf_chunking import chunk_pdf_with_metadata
+
+        text = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        import app.services.pdf_chunking as mod
+        original = mod.read_pdf_pages
+        mod.read_pdf_pages = lambda path: [{"page": 1, "text": text}]
+        try:
+            chunks = chunk_pdf_with_metadata(
+                "fake.pdf", chunk_size=50, overlap=10, chunk_strategy="sentence"
+            )
+            assert len(chunks) > 0
+            assert all("text" in c for c in chunks)
+        finally:
+            mod.read_pdf_pages = original
+
+    def test_chunk_pdf_with_metadata_paragraph_strategy(self):
+        from app.services.pdf_chunking import chunk_pdf_with_metadata
+
+        text = "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        import app.services.pdf_chunking as mod
+        original = mod.read_pdf_pages
+        mod.read_pdf_pages = lambda path: [{"page": 1, "text": text}]
+        try:
+            chunks = chunk_pdf_with_metadata(
+                "fake.pdf", chunk_size=50, overlap=10, chunk_strategy="paragraph"
+            )
+            assert len(chunks) > 0
+            assert all("text" in c for c in chunks)
+        finally:
+            mod.read_pdf_pages = original
+
+    def test_chunk_pdf_with_metadata_default_strategy(self):
+        from app.services.pdf_chunking import chunk_pdf_with_metadata
+
+        text = "First paragraph.\n\nSecond paragraph."
+        import app.services.pdf_chunking as mod
+        original = mod.read_pdf_pages
+        mod.read_pdf_pages = lambda path: [{"page": 1, "text": text}]
+        try:
+            chunks = chunk_pdf_with_metadata("fake.pdf", chunk_size=50, overlap=10)
+            assert len(chunks) > 0
+        finally:
+            mod.read_pdf_pages = original
