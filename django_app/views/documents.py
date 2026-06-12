@@ -100,6 +100,7 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
                 index_path=settings.FAISS_INDEX_PATH,
                 model_name=rt["model_id"],
                 clear_existing=True,
+                chunk_strategy=settings.CHUNK_STRATEGY,
             )
         elif indexing_strategy == INDEXING_STRATEGY_APPEND:
             index_stats = index_pdf_file(
@@ -107,6 +108,7 @@ def upload_pdf(request: HttpRequest) -> JsonResponse:
                 chunk_size=settings.CHUNK_SIZE,
                 model_name=load_runtime_embedding_settings()["model_id"],
                 clear_existing=False,
+                chunk_strategy=settings.CHUNK_STRATEGY,
             )
         else:
             return _error_response(
@@ -204,6 +206,7 @@ def delete_document(request: HttpRequest) -> JsonResponse:
             index_path=settings.FAISS_INDEX_PATH,
             model_name=load_runtime_embedding_settings()["model_id"],
             clear_existing=True,
+            chunk_strategy=settings.CHUNK_STRATEGY,
         )
     except PDFIndexingError as exc:
         return _error_response(str(exc), status=400)

@@ -440,6 +440,7 @@ def admin_delete_document(request: HttpRequest, doc_id: str) -> JsonResponse:
             index_path=settings.FAISS_INDEX_PATH,
             model_name=load_runtime_embedding_settings()["model_id"],
             clear_existing=True,
+            chunk_strategy=settings.CHUNK_STRATEGY,
         )
     except Exception as exc:
         return _error_response(f"Index rebuild failed: {str(exc)}", status=500)
@@ -470,6 +471,7 @@ def admin_reindex_document(request: HttpRequest, doc_id: str) -> JsonResponse:
             chunk_size=settings.CHUNK_SIZE,
             model_name=load_runtime_embedding_settings()["model_id"],
             clear_existing=False,
+            chunk_strategy=settings.CHUNK_STRATEGY,
         )
     except Exception as exc:
         return _error_response(f"Reindex failed: {str(exc)}", status=500)
