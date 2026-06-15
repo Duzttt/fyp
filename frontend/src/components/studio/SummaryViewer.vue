@@ -247,8 +247,8 @@ const handleFeedback = (rating) => {
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  border: 3px solid rgba(99, 102, 241, 0.2);
-  border-top-color: var(--accent);
+  border: 3px solid var(--primary-container);
+  border-top-color: var(--primary);
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
 }
@@ -256,13 +256,13 @@ const handleFeedback = (rating) => {
 .loading-text {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
   margin-bottom: 6px;
 }
 
 .loading-sub {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 
 @keyframes spin {
@@ -284,7 +284,7 @@ const handleFeedback = (rating) => {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .summary-meta {
@@ -296,10 +296,10 @@ const handleFeedback = (rating) => {
 .meta-badge {
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: var(--primary-container);
+  border: 1px solid var(--primary);
   font-size: 11px;
-  color: var(--accent);
+  color: var(--on-primary);
   font-weight: 600;
   white-space: nowrap;
 }
@@ -313,9 +313,9 @@ const handleFeedback = (rating) => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
-  color: var(--text-muted);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -325,35 +325,35 @@ const handleFeedback = (rating) => {
 }
 
 .action-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(99, 102, 241, 0.1);
+  border-color: var(--primary-container);
+  color: var(--primary-container);
+  background: var(--surface-container-high);
 }
 
 .action-btn.active {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: var(--accent);
-  color: var(--accent);
+  background: var(--primary-container);
+  border-color: var(--primary);
+  color: var(--on-primary);
 }
 
 /* Comparison Section */
 .comparison-section {
-  background: rgba(2, 6, 23, 0.4);
+  background: var(--surface-container-high);
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.8);
+  border: 1px solid var(--outline-variant);
   overflow: hidden;
 }
 
 .section-header {
   padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .section-header h4 {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -372,20 +372,20 @@ const handleFeedback = (rating) => {
   padding: 10px 14px;
   text-align: left;
   font-weight: 600;
-  color: var(--text-muted);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  color: var(--on-surface-variant);
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface-container);
   white-space: nowrap;
 }
 
 .comparison-table td {
   padding: 12px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--outline-variant);
   vertical-align: top;
 }
 
 .comparison-row:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-container);
 }
 
 .doc-name-cell {
@@ -397,12 +397,12 @@ const handleFeedback = (rating) => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--text-main);
+  color: var(--on-surface);
   font-weight: 500;
 }
 
 .points-cell {
-  color: var(--text-main);
+  color: var(--on-surface);
   line-height: 1.4;
 }
 
@@ -415,23 +415,23 @@ const handleFeedback = (rating) => {
 .keyword-tag {
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.15);
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: var(--primary-container);
+  border: 1px solid var(--primary);
   font-size: 10px;
-  color: var(--accent);
+  color: var(--on-primary);
   white-space: nowrap;
 }
 
 .no-keywords {
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   font-style: italic;
 }
 
 /* Summary Text */
 .summary-text-wrapper {
-  background: rgba(2, 6, 23, 0.4);
+  background: var(--surface-container-high);
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.8);
+  border: 1px solid var(--outline-variant);
   overflow: hidden;
 }
 
@@ -439,14 +439,14 @@ const handleFeedback = (rating) => {
   padding: 16px;
   font-size: 13px;
   line-height: 1.7;
-  color: var(--text-main);
+  color: var(--on-surface);
 }
 
 /* Citations Section */
 .citations-section {
-  background: rgba(2, 6, 23, 0.4);
+  background: var(--surface-container-high);
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.8);
+  border: 1px solid var(--outline-variant);
   overflow: hidden;
 }
 
@@ -460,8 +460,8 @@ const handleFeedback = (rating) => {
 .citation-item {
   padding: 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
-  border-left: 3px solid var(--accent);
+  background: var(--surface-container);
+  border-left: 3px solid var(--primary-container);
 }
 
 .citation-point {
@@ -478,19 +478,19 @@ const handleFeedback = (rating) => {
 .point-text {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
 }
 
 .citation-text {
   font-size: 12px;
   line-height: 1.5;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   padding-left: 22px;
   font-style: italic;
 }
 
 .quote-mark {
-  color: var(--accent);
+  color: var(--primary-container);
   opacity: 0.7;
 }
 
@@ -498,7 +498,7 @@ const handleFeedback = (rating) => {
   margin-top: 6px;
   padding-left: 22px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-align: right;
 }
 
@@ -508,15 +508,15 @@ const handleFeedback = (rating) => {
   align-items: center;
   justify-content: space-between;
   padding-top: 8px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--outline-variant);
 }
 
 .regenerate-btn {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  background: rgba(99, 102, 241, 0.1);
-  color: var(--accent);
+  border: 1px solid var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
@@ -527,8 +527,8 @@ const handleFeedback = (rating) => {
 }
 
 .regenerate-btn:hover {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
 }
 
 .feedback-section {
@@ -539,7 +539,7 @@ const handleFeedback = (rating) => {
 
 .feedback-label {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 
 .feedback-buttons {
@@ -551,15 +551,15 @@ const handleFeedback = (rating) => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
   cursor: pointer;
   font-size: 16px;
   transition: all 0.2s;
 }
 
 .feedback-btn:hover {
-  border-color: var(--accent);
+  border-color: var(--primary-container);
   transform: scale(1.1);
 }
 
@@ -582,12 +582,12 @@ const handleFeedback = (rating) => {
 .empty-text {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
   margin-bottom: 6px;
 }
 
 .empty-sub {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 </style>

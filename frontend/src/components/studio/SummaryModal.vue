@@ -15,7 +15,7 @@ const emit = defineEmits(['update:show', 'close', 'generate'])
 const config = ref({
   length: 'medium',
   style: 'narrative',
-  language: 'zh',
+  language: 'en',
   include_citations: true,
   include_comparison: true,
 })
@@ -39,7 +39,6 @@ const styleOptions = [
 ]
 
 const languageOptions = [
-  { value: 'zh', label: 'Chinese' },
   { value: 'en', label: 'English' },
 ]
 
@@ -71,7 +70,7 @@ const resetConfig = () => {
   config.value = {
     length: 'medium',
     style: 'narrative',
-    language: 'zh',
+    language: 'en',
     include_citations: true,
     include_comparison: props.selectedDocs.length > 1,
   }
@@ -220,10 +219,10 @@ const resetConfig = () => {
 .modal-container {
   width: min(600px, 90vw);
   max-height: 85vh;
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--surface-container);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--outline-variant);
   border-radius: 20px;
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
   overflow: hidden;
@@ -236,23 +235,23 @@ const resetConfig = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
 }
 
 .modal-close {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-muted);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
+  color: var(--on-surface-variant);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -261,8 +260,8 @@ const resetConfig = () => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--tertiary-container);
+  color: var(--on-tertiary);
   transform: rotate(90deg);
 }
 
@@ -276,8 +275,8 @@ const resetConfig = () => {
 
 /* Selected Docs Info */
 .selected-docs-info {
-  background: rgba(2, 6, 23, 0.6);
-  border: 1px solid rgba(55, 65, 81, 0.8);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
   border-radius: 12px;
   padding: 12px;
 }
@@ -296,7 +295,7 @@ const resetConfig = () => {
 .info-text {
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--primary-container);
 }
 
 .doc-list {
@@ -313,9 +312,9 @@ const resetConfig = () => {
   gap: 8px;
   padding: 6px 10px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-container);
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 
 .doc-icon {
@@ -333,7 +332,7 @@ const resetConfig = () => {
 .config-section h4 {
   margin: 0 0 12px;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
@@ -346,7 +345,7 @@ const resetConfig = () => {
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
   margin-bottom: 8px;
 }
 
@@ -359,8 +358,8 @@ const resetConfig = () => {
 .option-card {
   padding: 10px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -370,25 +369,25 @@ const resetConfig = () => {
 }
 
 .option-card:hover {
-  border-color: rgba(99, 102, 241, 0.5);
-  background: rgba(2, 6, 23, 0.8);
+  border-color: var(--primary);
+  background: var(--surface-container-high);
 }
 
 .option-card.active {
-  border-color: var(--accent);
-  background: rgba(99, 102, 241, 0.15);
-  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+  border-color: var(--primary-container);
+  background: var(--primary-container);
+  box-shadow: 0 0 0 1px var(--primary);
 }
 
 .option-title {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--on-surface);
 }
 
 .option-desc {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 
 .option-row {
@@ -400,22 +399,22 @@ const resetConfig = () => {
   flex: 1;
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
-  color: var(--text-main);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .option-btn:hover {
-  border-color: rgba(99, 102, 241, 0.5);
+  border-color: var(--primary);
 }
 
 .option-btn.active {
-  border-color: var(--accent);
-  background: rgba(99, 102, 241, 0.15);
-  color: var(--accent);
+  border-color: var(--primary-container);
+  background: var(--primary-container);
+  color: var(--on-primary);
 }
 
 .checkboxes {
@@ -429,50 +428,50 @@ const resetConfig = () => {
   align-items: center;
   gap: 8px;
   font-size: 12px;
-  color: var(--text-main);
+  color: var(--on-surface);
   cursor: pointer;
 }
 
 .checkbox-label input[type="checkbox"] {
   width: 16px;
   height: 16px;
-  accent-color: var(--accent);
+  accent-color: var(--primary-container);
   cursor: pointer;
 }
 
 .error-message {
   padding: 10px 14px;
   border-radius: 10px;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  color: #fca5a5;
+  background: var(--tertiary-container);
+  border: 1px solid var(--tertiary);
+  color: var(--on-tertiary);
   font-size: 12px;
 }
 
 /* Modal Footer */
 .modal-footer {
   padding: 16px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--outline-variant);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-container-low);
 }
 
 .btn-reset {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
-  color: var(--text-muted);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-reset:hover:not(:disabled) {
-  border-color: var(--text-main);
-  color: var(--text-main);
+  border-color: var(--on-surface);
+  color: var(--on-surface);
 }
 
 .btn-reset:disabled {
@@ -488,16 +487,16 @@ const resetConfig = () => {
 .btn-cancel {
   padding: 10px 20px;
   border-radius: 10px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
-  color: var(--text-main);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .btn-cancel:hover:not(:disabled) {
-  border-color: var(--text-muted);
+  border-color: var(--on-surface-variant);
 }
 
 .btn-cancel:disabled {
@@ -509,8 +508,8 @@ const resetConfig = () => {
   padding: 10px 24px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(135deg, var(--accent), #a855f7);
-  color: white;
+  background: linear-gradient(135deg, var(--primary-container), var(--primary));
+  color: var(--on-primary);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -519,7 +518,7 @@ const resetConfig = () => {
 
 .btn-generate:hover:not(:disabled) {
   transform: scale(1.02);
-  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 10px 25px var(--primary);
 }
 
 .btn-generate:disabled {
