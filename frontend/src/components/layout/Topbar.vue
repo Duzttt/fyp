@@ -78,10 +78,10 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(19, 27, 46, 0.7);
+  background: var(--surface-container);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(69, 70, 83, 0.15);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .topbar-left {
@@ -100,7 +100,7 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #bdc2ff 0%, #818cf8 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -110,7 +110,7 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
   width: 14px;
   height: 14px;
   border-radius: 4px;
-  background: rgba(11, 19, 38, 0.9);
+  background: var(--surface);
 }
 
 .brand-title {
@@ -159,8 +159,8 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
 }
 
 .icon-btn:hover {
-  background: rgba(189, 194, 255, 0.06);
-  color: var(--on-surface);
+  background: var(--primary-container);
+  color: var(--on-primary);
 }
 
 .notification-btn {
@@ -182,7 +182,7 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #818cf8, #6366f1);
+  background: linear-gradient(135deg, var(--primary-container), var(--primary));
   display: flex;
   align-items: center;
   justify-content: center;

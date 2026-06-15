@@ -285,8 +285,8 @@ const formatSize = (bytes) => {
 }
 
 .chunkviz-modal {
-  background: rgba(15, 23, 42, 0.98);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
   border-radius: 16px;
   width: 100%;
   max-width: 900px;
@@ -302,7 +302,7 @@ const formatSize = (bytes) => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .header-title {
@@ -314,33 +314,33 @@ const formatSize = (bytes) => {
 .header-icon {
   width: 24px;
   height: 24px;
-  color: var(--accent, #6366f1);
+  color: var(--primary-container);
 }
 
 .modal-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: var(--text-main, #e2e8f0);
+  color: var(--on-surface);
 }
 
 .close-btn {
   width: 32px;
   height: 32px;
   border: none;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-high);
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   transition: all 0.2s;
 }
 
 .close-btn:hover {
-  background: rgba(239, 68, 68, 0.2);
-  color: #ef4444;
+  background: var(--tertiary-container);
+  color: var(--on-tertiary);
 }
 
 .close-btn svg {
@@ -367,7 +367,7 @@ const formatSize = (bytes) => {
 .section-label {
   font-size: 12px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -382,28 +382,28 @@ const formatSize = (bytes) => {
 .doc-select {
   width: 100%;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
   border-radius: 8px;
-  color: var(--text-main, #e2e8f0);
+  color: var(--on-surface);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .doc-select:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: var(--primary-container);
 }
 
 .doc-select:focus {
   outline: none;
-  border-color: var(--accent, #6366f1);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  border-color: var(--primary-container);
+  box-shadow: 0 0 0 3px var(--primary-container);
 }
 
 .doc-select option {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: var(--surface-container);
+  color: var(--on-surface);
 }
 
 /* Stats Panel */
@@ -414,8 +414,8 @@ const formatSize = (bytes) => {
 }
 
 .stat-item {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.1);
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
   border-radius: 10px;
   padding: 14px;
   text-align: center;
@@ -425,13 +425,13 @@ const formatSize = (bytes) => {
   display: block;
   font-size: 20px;
   font-weight: 700;
-  color: var(--accent, #6366f1);
+  color: var(--primary-container);
   margin-bottom: 4px;
 }
 
 .stat-label {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.3px;
 }
@@ -446,10 +446,10 @@ const formatSize = (bytes) => {
 .page-btn {
   width: 28px;
   height: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
   border-radius: 6px;
-  color: var(--text-main, #e2e8f0);
+  color: var(--on-surface);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -459,8 +459,8 @@ const formatSize = (bytes) => {
 }
 
 .page-btn:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.2);
-  border-color: rgba(99, 102, 241, 0.4);
+  background: var(--primary-container);
+  border-color: var(--primary);
 }
 
 .page-btn:disabled {
@@ -470,7 +470,7 @@ const formatSize = (bytes) => {
 
 .page-info {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   min-width: 60px;
   text-align: center;
 }
@@ -485,7 +485,7 @@ const formatSize = (bytes) => {
   justify-content: center;
   gap: 12px;
   padding: 40px 20px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
   text-align: center;
 }
 
@@ -500,8 +500,8 @@ const formatSize = (bytes) => {
 .spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid rgba(99, 102, 241, 0.2);
-  border-top-color: var(--accent, #6366f1);
+  border: 3px solid var(--primary-container);
+  border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -511,11 +511,11 @@ const formatSize = (bytes) => {
 }
 
 .error-state {
-  color: #fca5a5;
+  color: var(--tertiary);
 }
 
 .error-state svg {
-  color: #ef4444;
+  color: var(--tertiary);
   opacity: 1;
 }
 
@@ -534,17 +534,17 @@ const formatSize = (bytes) => {
 }
 
 .chunks-list::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-container-low);
   border-radius: 3px;
 }
 
 .chunks-list::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: var(--outline-variant);
   border-radius: 3px;
 }
 
 .chunks-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.3);
+  background: var(--outline);
 }
 
 .chunk-item {
@@ -568,18 +568,18 @@ const formatSize = (bytes) => {
 .chunk-index {
   font-size: 13px;
   font-weight: 700;
-  color: var(--accent, #6366f1);
+  color: var(--primary-container);
 }
 
 .chunk-meta {
   display: flex;
   gap: 12px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--on-surface-variant);
 }
 
 .chunk-page {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-high);
   padding: 2px 8px;
   border-radius: 4px;
 }
@@ -587,7 +587,7 @@ const formatSize = (bytes) => {
 .chunk-text {
   font-size: 13px;
   line-height: 1.6;
-  color: var(--text-main, #e2e8f0);
+  color: var(--on-surface);
   white-space: pre-wrap;
   word-break: break-word;
   max-height: 120px;
