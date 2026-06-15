@@ -63,6 +63,49 @@
   --font-body: 'Inter', sans-serif;
 }
 
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surface hierarchy */
+  --surface: #fefefe;
+  --surface-dim: #f1f1f1;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f7f7f9;
+  --surface-container: #f1f1f4;
+  --surface-container-high: #e5e5ea;
+  --surface-container-highest: #d9d9e0;
+  --surface-bright: #ffffff;
+
+  /* Primary */
+  --primary: #3b44a8;
+  --primary-container: #6366f1;
+  --on-primary: #ffffff;
+  --on-primary-container: #ffffff;
+
+  /* Secondary */
+  --secondary: #555e71;
+  --secondary-container: #d9e3f8;
+  --on-secondary: #ffffff;
+  --on-secondary-container: #111c2b;
+
+  /* Tertiary */
+  --tertiary: #7c5800;
+  --tertiary-container: #ffde9e;
+  --on-tertiary: #ffffff;
+
+  /* Text */
+  --on-surface: #1b1b1f;
+  --on-surface-variant: #44474f;
+
+  /* Accents */
+  --outline: #74777f;
+  --outline-variant: #c4c6cf;
+}
+
+[data-theme] * {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
 * {
   box-sizing: border-box;
 }

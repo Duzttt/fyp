@@ -1,5 +1,6 @@
 <script setup>
 import { ICONS } from '../../constants/icons'
+import ThemeToggle from './ThemeToggle.vue'
 
 const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'open-rag-demo'])
 </script>
@@ -53,6 +54,7 @@ const emit = defineEmits(['open-admin', 'open-chunkviz', 'open-llm-config', 'ope
       >
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path :d="ICONS.admin"/></svg>
       </button>
+      <ThemeToggle />
       <button
         type="button"
         class="icon-btn notification-btn"

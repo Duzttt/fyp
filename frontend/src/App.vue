@@ -10,8 +10,10 @@ import ChunkViz from './components/shared/ChunkViz.vue'
 import RagDemoView from './components/demo/RagDemoView.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useLlmSettingsStore } from './stores/llmSettingsStore'
+import { useThemeStore } from './composables/useThemeStore'
 
 const llmStore = useLlmSettingsStore()
+const { initTheme, startListening, stopListening, handleStorageEvent } = useThemeStore()
 
 const showAdmin = ref(false)
 const showChunkViz = ref(false)
@@ -56,11 +58,16 @@ const handleCloseComparison = () => {
 }
 
 onMounted(() => {
+  initTheme()
+  startListening()
+  window.addEventListener('storage', handleStorageEvent)
   llmStore.loadProviders()
   window.addEventListener('popstate', syncRouteState)
 })
 
 onBeforeUnmount(() => {
+  stopListening()
+  window.removeEventListener('storage', handleStorageEvent)
   window.removeEventListener('popstate', syncRouteState)
 })
 </script>
