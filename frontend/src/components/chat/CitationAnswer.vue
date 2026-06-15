@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import MarkdownIt from 'markdown-it'
+import DOMPurify from 'dompurify'
+import BaseTooltip from '../shared/BaseTooltip.vue'
 
 const md = new MarkdownIt({
   html: false,
@@ -11,7 +13,7 @@ const md = new MarkdownIt({
 
 const renderMarkdown = (text) => {
   if (!text) return ''
-  return md.renderInline(text)
+  return DOMPurify.sanitize(md.renderInline(text))
 }
 
 const props = defineProps({
@@ -42,6 +44,7 @@ const props = defineProps({
 
 const activeTooltip = ref(null)
 const tooltipPosition = ref({ x: 0, y: 0 })
+const tooltipTriggerRef = ref(null)
 const WORD_TOKEN_RE = /[A-Za-z0-9]+(?:'[A-Za-z0-9]+)?/g
 const STOP_WORDS = new Set([
   'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'into',
@@ -203,6 +206,10 @@ const getSentenceSegments = (sentence) => {
   return segments
 }
 
+const sentenceSegmentsCache = computed(() => {
+  return props.sentences.map((sentence) => getSentenceSegments(sentence))
+})
+
 /**
  * Format file name for display (just the base name)
  */
@@ -218,11 +225,7 @@ const formatFileName = (fileName) => {
 const handleMouseEnter = (event, sentence, index) => {
   if (!props.showTooltip || !hasCitations(sentence)) return
 
-  const rect = event.currentTarget.getBoundingClientRect()
-  tooltipPosition.value = {
-    x: rect.left + rect.width / 2,
-    y: rect.bottom + 8,
-  }
+  tooltipTriggerRef.value = event.currentTarget
   activeTooltip.value = index
 }
 
@@ -253,7 +256,7 @@ const getCitationLabel = (citations) => {
         @mouseenter="handleMouseEnter($event, sentence, idx)"
         @mouseleave="handleMouseLeave"
       >
-        <template v-for="(segment, segmentIdx) in getSentenceSegments(sentence)" :key="`${idx}-${segmentIdx}`">
+        <template v-for="(segment, segmentIdx) in sentenceSegmentsCache[idx]" :key="`${idx}-${segmentIdx}`">
           <span
             :class="{ 'retrieved-phrase': segment.matched }"
             v-html="renderMarkdown(segment.text)"
@@ -266,39 +269,33 @@ const getCitationLabel = (citations) => {
     </p>
 
     <!-- Tooltip -->
-    <Teleport to="body">
-      <transition name="tooltip-fade">
+    <BaseTooltip
+      :show="showTooltip && activeTooltip !== null && !!sentences[activeTooltip]"
+      :trigger-ref="tooltipTriggerRef"
+      :max-width="320"
+      @close="activeTooltip = null"
+    >
+      <div class="base-tooltip-header">
+        <span>📚</span>
+        <span>
+          {{ sentences[activeTooltip]?.citations.length === 1 ? 'Source' : 'Sources' }}
+        </span>
+      </div>
+      <div class="base-tooltip-content">
         <div
-          v-if="showTooltip && activeTooltip !== null && sentences[activeTooltip]"
-          class="citation-tooltip"
-          :style="{
-            left: `${tooltipPosition.x}px`,
-            top: `${tooltipPosition.y}px`,
-          }"
+          v-for="{ id, info } in getSourceInfos(sentences[activeTooltip]?.citations || [])"
+          :key="id"
+          class="tooltip-source-item"
         >
-          <div class="tooltip-header">
-            <span class="tooltip-icon">📚</span>
-            <span class="tooltip-title">
-              {{ sentences[activeTooltip].citations.length === 1 ? 'Source' : 'Sources' }}
-            </span>
-          </div>
-          <div class="tooltip-content">
-            <div
-              v-for="{ id, info } in getSourceInfos(sentences[activeTooltip].citations)"
-              :key="id"
-              class="tooltip-source-item"
-            >
-              <span class="source-file" :title="info.file">
-                {{ formatFileName(info.file) }}
-              </span>
-              <span v-if="info.page !== null && info.page !== undefined" class="source-page">
-                (p. {{ info.page }})
-              </span>
-            </div>
-          </div>
+          <span class="source-file" :title="info.file">
+            {{ formatFileName(info.file) }}
+          </span>
+          <span v-if="info.page !== null && info.page !== undefined" class="source-page">
+            (p. {{ info.page }})
+          </span>
         </div>
-      </transition>
-    </Teleport>
+      </div>
+    </BaseTooltip>
   </div>
 </template>
 
@@ -377,71 +374,13 @@ const getCitationLabel = (citations) => {
   vertical-align: super;
 }
 
-/* Tooltip Styles */
-.citation-tooltip {
-  position: fixed;
-  min-width: 200px;
-  max-width: 320px;
-  background: rgba(15, 23, 42, 0.98);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
-  z-index: 10000;
-  overflow: hidden;
-  pointer-events: none;
-  transform: translateX(-50%);
-  animation: tooltip-appear 0.15s ease-out;
-}
-
-@keyframes tooltip-appear {
-  from {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-}
-
-.tooltip-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: rgba(99, 102, 241, 0.15);
-  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
-}
-
-.tooltip-icon {
-  font-size: 14px;
-}
-
-.tooltip-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: white;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.tooltip-content {
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
+/* Tooltip source styles (BaseTooltip handles container) */
 .tooltip-source-item {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: var(--text-main);
+  color: white;
   padding: 4px 6px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.03);
@@ -460,36 +399,5 @@ const getCitationLabel = (citations) => {
   font-weight: 600;
   font-size: 10px;
   white-space: nowrap;
-}
-
-/* Tooltip fade transition */
-.tooltip-fade-enter-active,
-.tooltip-fade-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-.tooltip-fade-enter-from,
-.tooltip-fade-leave-to {
-  opacity: 0;
-  transform: translateX(-50%) translateY(-5px);
-}
-
-/* Scrollbar for tooltip content */
-.tooltip-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.tooltip-content::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 2px;
-}
-
-.tooltip-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-}
-
-.tooltip-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
 }
 </style>

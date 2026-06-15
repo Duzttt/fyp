@@ -71,10 +71,15 @@ const isExpanded = (index) => {
 const handleChunkHover = (chunk, event) => {
   hoveredChunk.value = chunk
   const rect = event.target.getBoundingClientRect()
-  tooltipPosition.value = {
-    x: rect.left,
-    y: rect.bottom + 10
-  }
+  const tooltipW = 400
+  const tooltipH = 200
+  let x = rect.left
+  let y = rect.bottom + 10
+  if (x + tooltipW > window.innerWidth) x = window.innerWidth - tooltipW - 8
+  if (y + tooltipH > window.innerHeight) y = rect.top - tooltipH - 8
+  if (x < 0) x = 8
+  if (y < 0) y = 8
+  tooltipPosition.value = { x, y }
   emit('chunk-hover', chunk)
 }
 
@@ -188,11 +193,12 @@ const handleChunkRightClick = (event, chunk) => {
     </div>
 
     <!-- Chunk Preview Tooltip -->
-    <div
-      v-if="hoveredChunk"
-      class="chunk-tooltip"
-      :style="{ left: tooltipPosition.x + 'px', top: tooltipPosition.y + 'px' }"
-    >
+    <Teleport to="body">
+      <div
+        v-if="hoveredChunk"
+        class="chunk-tooltip"
+        :style="{ left: tooltipPosition.x + 'px', top: tooltipPosition.y + 'px' }"
+      >
       <div class="chunk-tooltip-header">
         <span class="tooltip-source">📄 {{ hoveredChunk.source }}</span>
         <span v-if="hoveredChunk.page" class="tooltip-page">· Page {{ hoveredChunk.page }}</span>
@@ -204,6 +210,7 @@ const handleChunkRightClick = (event, chunk) => {
         {{ hoveredChunk.text }}
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -646,5 +653,66 @@ const handleChunkRightClick = (event, chunk) => {
     min-width: 250px;
     max-width: 90vw;
   }
+}
+
+/* Teleported tooltip styles (outside scoped context) */
+.chunk-tooltip {
+  position: fixed;
+  z-index: 5000;
+  min-width: 300px;
+  max-width: 450px;
+  background: rgba(15, 23, 42, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  padding: 12px;
+  pointer-events: none;
+  animation: chunkTooltipFadeIn 0.2s ease;
+}
+
+@keyframes chunkTooltipFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chunk-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chunk-tooltip-header .tooltip-source {
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+}
+
+.chunk-tooltip-header .tooltip-page {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chunk-tooltip-header .tooltip-score {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chunk-tooltip-body {
+  font-size: 12px;
+  line-height: 1.6;
+  color: white;
+  max-height: 200px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 </style>

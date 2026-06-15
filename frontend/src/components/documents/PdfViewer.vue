@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 const props = defineProps({
   show: {
@@ -31,6 +31,7 @@ const error = ref('')
 const scale = ref(1.5)
 
 let pdfjsLib = null
+let currentLoadingTask = null
 
 onMounted(async () => {
   // Load PDF.js dynamically
@@ -50,6 +51,11 @@ onUnmounted(() => {
 const loadPdf = async () => {
   if (!props.pdfUrl || !pdfjsLib) return
 
+  if (currentLoadingTask) {
+    currentLoadingTask.destroy()
+    currentLoadingTask = null
+  }
+
   isLoading.value = true
   error.value = ''
 
@@ -58,14 +64,20 @@ const loadPdf = async () => {
       url: props.pdfUrl,
       useWorkerFetch: false,
     })
+    currentLoadingTask = loadingTask
     pdfDoc.value = await loadingTask.promise
     totalPages.value = pdfDoc.value.numPages
     currentPage.value = props.targetPage || 1
     await renderPage(currentPage.value)
   } catch (err) {
-    console.error('Failed to load PDF:', err)
-    error.value = 'Failed to load PDF: ' + err.message
+    if (err?.name !== 'AbortException') {
+      console.error('Failed to load PDF:', err)
+      error.value = 'Failed to load PDF: ' + err.message
+    }
   } finally {
+    if (currentLoadingTask === loadingTask) {
+      currentLoadingTask = null
+    }
     isLoading.value = false
   }
 }
@@ -148,12 +160,11 @@ const zoomOut = () => {
 }
 
 // Watch for PDF URL changes
-import { watch } from 'vue'
 watch(() => props.pdfUrl, (newUrl) => {
   if (newUrl) {
     loadPdf()
   }
-}, { immediate: true })
+})
 
 watch(() => props.show, (newShow) => {
   if (newShow && props.pdfUrl) {

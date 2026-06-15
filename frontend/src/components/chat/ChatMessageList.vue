@@ -1,4 +1,5 @@
 <script setup>
+import { ref, watch, nextTick } from 'vue'
 import ChatMessage from './ChatMessage.vue'
 import QuestionSuggestions from './QuestionSuggestions.vue'
 import RetrievalChunks from './RetrievalChunks.vue'
@@ -15,10 +16,47 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['chunk-hover', 'chunk-click', 'chunk-rightclick', 'suggestion-click'])
+
+const chatBodyRef = ref(null)
+const isNearBottom = ref(true)
+
+const scrollToBottom = (behavior = 'smooth') => {
+  nextTick(() => {
+    const el = chatBodyRef.value
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior })
+    }
+  })
+}
+
+const checkScrollPosition = () => {
+  const el = chatBodyRef.value
+  if (!el) return
+  const threshold = 150
+  isNearBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+}
+
+watch(
+  () => props.messages.length,
+  () => {
+    if (isNearBottom.value) {
+      scrollToBottom()
+    }
+  }
+)
+
+watch(
+  () => props.isLoading,
+  (loading) => {
+    if (loading) {
+      scrollToBottom()
+    }
+  }
+)
 </script>
 
 <template>
-  <div class="chat-body">
+  <div class="chat-body" ref="chatBodyRef" @scroll="checkScrollPosition">
     <div v-if="messages.length === 0" class="chat-empty">
       <div class="empty-sparkle">
         <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5zM19 15l-1.25 2.75L15 19l2.75 1.25L19 23l1.25-2.75L23 19l-2.75-1.25L19 15z"/></svg>
@@ -45,7 +83,7 @@ const emit = defineEmits(['chunk-hover', 'chunk-click', 'chunk-rightclick', 'sug
     <div v-else class="messages-list">
       <div
         v-for="(msg, idx) in messages"
-        :key="idx"
+        :key="msg.id"
         class="message-group"
         :data-message-id="msg.id"
       >

@@ -12,7 +12,7 @@ import {
   Title,
   Tooltip
 } from 'chart.js'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   acknowledgeAlert,
   createABTest,
@@ -117,6 +117,41 @@ const costAnalysis = ref({ total: 0, breakdown: [], recommendations: [] })
 const userBehavior = ref({ active_users: 0, segments: [], user_paths: [] })
 const reportsHistory = ref([])
 const healthScore = ref({ overall_score: 0, dimensions: {}, issues: [] })
+
+// Notifications system
+const notifications = ref([])
+let notifId = 0
+const notify = (message, type = 'info') => {
+  const id = ++notifId
+  notifications.value.push({ id, message, type })
+  setTimeout(() => {
+    notifications.value = notifications.value.filter(n => n.id !== id)
+  }, 4000)
+}
+const dismissNotif = (id) => {
+  notifications.value = notifications.value.filter(n => n.id !== id)
+}
+const confirmAction = (message) => {
+  return window.confirm(message)
+}
+
+const embeddingBounds = computed(() => {
+  const points = embeddingViz.value.points || []
+  if (points.length === 0) return { minX: 0, maxX: 1, minY: 0, maxY: 1, xRange: 1, yRange: 1 }
+  const xs = points.map(p => p.x)
+  const ys = points.map(p => p.y)
+  const minX = Math.min(...xs)
+  const maxX = Math.max(...xs)
+  const minY = Math.min(...ys)
+  const maxY = Math.max(...ys)
+  return { minX, maxX, minY, maxY, xRange: maxX - minX || 1, yRange: maxY - minY || 1 }
+})
+
+let searchDebounceTimer = null
+const debouncedLoadDocuments = () => {
+  clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(loadDocuments, 300)
+}
 
 // Phase 3: Form data
 const reportForm = ref({
@@ -224,30 +259,30 @@ const handleDebugSearch = async () => {
     debugResults.value = data
   } catch (err) {
     console.error('Debug retrieval failed:', err)
-    alert('Debug retrieval failed: ' + err.message)
+    notify('Debug retrieval failed: ' + err.message, 'error')
   } finally {
     debugLoading.value = false
   }
 }
 
 const handleDeleteDocument = async (docId) => {
-  if (!confirm(`Delete document "${docId}"? This will rebuild the index.`)) return
+  if (!confirmAction(`Delete document "${docId}"? This will rebuild the index.`)) return
   
   try {
     await deleteAdminDocument(docId)
-    alert('Document deleted successfully')
+    notify('Document deleted successfully', 'success')
     await loadDocuments()
   } catch (err) {
-    alert('Failed to delete document: ' + err.message)
+    notify('Failed to delete document: ' + err.message, 'error')
   }
 }
 
 const handleReindexDocument = async (docId) => {
   try {
     await reindexAdminDocument(docId)
-    alert('Document reindexed successfully')
+    notify('Document reindexed successfully', 'success')
   } catch (err) {
-    alert('Failed to reindex document: ' + err.message)
+    notify('Failed to reindex document: ' + err.message, 'error')
   }
 }
 
@@ -378,9 +413,9 @@ const handleCreateTest = async () => {
     await createABTest(newTestForm.value)
     await loadABTests()
     newTestForm.value = { name: '', description: '', variants: [{ name: 'control', config: {} }, { name: 'variant_a', config: {} }] }
-    alert('Test created!')
+    notify('Test created!', 'success')
   } catch (err) {
-    alert('Failed to create test: ' + err.message)
+    notify('Failed to create test: ' + err.message, 'error')
   }
 }
 
@@ -389,7 +424,7 @@ const handleStartTest = async (testId) => {
     await startABTest(testId)
     await loadABTests()
   } catch (err) {
-    alert('Failed to start test: ' + err.message)
+    notify('Failed to start test: ' + err.message, 'error')
   }
 }
 
@@ -398,7 +433,7 @@ const handleStopTest = async (testId) => {
     await stopABTest(testId)
     await loadABTests()
   } catch (err) {
-    alert('Failed to stop test: ' + err.message)
+    notify('Failed to stop test: ' + err.message, 'error')
   }
 }
 
@@ -478,10 +513,10 @@ const loadHealthScore = async () => {
 const handleGenerateReport = async () => {
   try {
     const data = await generateReport(reportForm.value)
-    alert('Report generated!')
+    notify('Report generated!', 'success')
     await loadReports()
   } catch (err) {
-    alert('Failed to generate report: ' + err.message)
+    notify('Failed to generate report: ' + err.message, 'error')
   }
 }
 
@@ -491,14 +526,34 @@ onMounted(async () => {
   loading.value = false
   
   // Poll indexing status
-  setInterval(loadIndexingStatus, 3000)
+  indexingInterval = setInterval(loadIndexingStatus, 3000)
   // Poll alerts
-  setInterval(loadAlerts, 60000)
+  alertsInterval = setInterval(loadAlerts, 60000)
+})
+
+let indexingInterval = null
+let alertsInterval = null
+
+onBeforeUnmount(() => {
+  if (indexingInterval) clearInterval(indexingInterval)
+  if (alertsInterval) clearInterval(alertsInterval)
 })
 </script>
 
 <template>
   <div class="admin-panel">
+    <div class="notif-container" v-if="notifications.length">
+      <div
+        v-for="n in notifications"
+        :key="n.id"
+        class="notif-toast"
+        :class="'notif-' + n.type"
+        @click="dismissNotif(n.id)"
+      >
+        <span>{{ n.message }}</span>
+        <button type="button" class="notif-dismiss" aria-label="Dismiss">&times;</button>
+      </div>
+    </div>
     <div class="admin-header">
       <div class="admin-title">
         <span class="title-icon">🛠️</span>
@@ -741,7 +796,7 @@ onMounted(async () => {
                 type="text"
                 placeholder="Search documents..."
                 class="search-input"
-                @input="loadDocuments"
+                @input="debouncedLoadDocuments"
               />
               <button class="refresh-btn" aria-label="Refresh documents" title="Refresh documents" @click="loadDocuments">↻</button>
             </div>
@@ -940,8 +995,8 @@ onMounted(async () => {
               <div v-for="(point, i) in embeddingViz.points" :key="i" 
                 class="viz-point"
                 :style="{ 
-                  left: ((point.x - Math.min(...embeddingViz.points.map(p => p.x))) / (Math.max(...embeddingViz.points.map(p => p.x)) - Math.min(...embeddingViz.points.map(p => p.x))) * 100) + '%',
-                  top: ((point.y - Math.min(...embeddingViz.points.map(p => p.y))) / (Math.max(...embeddingViz.points.map(p => p.y)) - Math.min(...embeddingViz.points.map(p => p.y))) * 100) + '%',
+                  left: ((point.x - embeddingBounds.minX) / embeddingBounds.xRange * 100) + '%',
+                  top: ((point.y - embeddingBounds.minY) / embeddingBounds.yRange * 100) + '%',
                   background: point.document_color
                 }"
                 :title="point.text_preview"
@@ -1297,6 +1352,46 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.notif-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 400px;
+}
+.notif-toast {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  animation: notifSlideIn 0.2s ease;
+  backdrop-filter: blur(12px);
+}
+.notif-info { background: rgba(99, 102, 241, 0.9); }
+.notif-success { background: rgba(34, 197, 94, 0.9); }
+.notif-error { background: rgba(239, 68, 68, 0.9); }
+.notif-dismiss {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.notif-dismiss:hover { opacity: 1; }
+@keyframes notifSlideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
 .admin-panel {
   position: fixed;
   top: 50%;

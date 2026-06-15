@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { getQuestionSuggestions, recordSuggestionClick } from '../../services/api'
 import { useLlmSettingsStore } from '../../stores/llmSettingsStore'
 
@@ -28,7 +28,7 @@ const collapsed = ref(false)
 const generationTime = ref(null)
 
 // Local cache for suggestions (keyed by sorted doc names)
-const suggestionsCache = ref(new Map())
+const suggestionsCache = reactive(new Map())
 const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
 
 // Abort controller for cancelling in-flight requests
@@ -77,23 +77,23 @@ function debouncedGenerate() {
 }
 
 function getCachedSuggestions(key) {
-  const cached = suggestionsCache.value.get(key)
+  const cached = suggestionsCache.get(key)
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data
   }
   if (cached) {
-    suggestionsCache.value.delete(key)
+    suggestionsCache.delete(key)
   }
   return null
 }
 
 function setCachedSuggestions(key, data) {
   // Keep cache size reasonable
-  if (suggestionsCache.value.size > 20) {
-    const oldestKey = suggestionsCache.value.keys().next().value
-    suggestionsCache.value.delete(oldestKey)
+  if (suggestionsCache.size > 20) {
+    const oldestKey = suggestionsCache.keys().next().value
+    suggestionsCache.delete(oldestKey)
   }
-  suggestionsCache.value.set(key, { data, timestamp: Date.now() })
+  suggestionsCache.set(key, { data, timestamp: Date.now() })
 }
 
 const generateSuggestions = async () => {

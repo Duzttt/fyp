@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
+import DOMPurify from 'dompurify'
 
 const props = defineProps({
   content: {
@@ -33,16 +34,24 @@ const md = new MarkdownIt({
 const renderedContent = computed(() => {
   if (!props.content) return ''
   
-  if (props.inline) {
-    return md.renderInline(props.content)
-  }
+  const raw = props.inline
+    ? md.renderInline(props.content)
+    : md.render(props.content)
   
-  return md.render(props.content)
+  return DOMPurify.sanitize(raw)
 })
 
 const containerRef = ref(null)
 
 onMounted(() => {
+  highlightCodeBlocks()
+})
+
+watch(renderedContent, () => {
+  nextTick(highlightCodeBlocks)
+})
+
+const highlightCodeBlocks = () => {
   if (containerRef.value) {
     containerRef.value.querySelectorAll('pre code').forEach((block) => {
       if (!block.classList.contains('hljs')) {
@@ -50,7 +59,7 @@ onMounted(() => {
       }
     })
   }
-})
+}
 </script>
 
 <template>

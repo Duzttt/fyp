@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 
 const props = defineProps({
   isLoading: Boolean
@@ -8,36 +8,47 @@ const props = defineProps({
 const emit = defineEmits(['send'])
 
 const question = ref('')
+const textareaRef = ref(null)
 
 const sendMessage = () => {
   if (!question.value.trim()) return
   emit('send', question.value)
   question.value = ''
+  nextTick(resizeTextarea)
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    sendMessage()
+  }
+}
+
+const resizeTextarea = () => {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = Math.min(el.scrollHeight, 160) + 'px'
 }
 </script>
 
 <template>
   <div class="chat-input-wrap">
     <label class="sr-only" for="chat-question-input">Your question</label>
-    <button
-      type="button"
-      class="attach-btn"
-      aria-label="Attach file (coming soon)"
-      disabled
-    >
-      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
-    </button>
-    <input
+    <textarea
       id="chat-question-input"
+      ref="textareaRef"
       v-model="question"
-      @keydown.enter.prevent="sendMessage"
-      type="text"
+      @keydown="handleKeydown"
+      @input="resizeTextarea"
       class="chat-input"
       name="question"
       autocomplete="off"
-      placeholder="Ask a question…"
+      placeholder="Ask a question… (Shift+Enter for newline)"
       :disabled="isLoading"
-    />
+      rows="1"
+      maxlength="4000"
+    ></textarea>
     <button
       type="button"
       class="chat-send-btn"
@@ -58,8 +69,9 @@ const sendMessage = () => {
   padding: 12px 16px 16px;
   display: flex;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
   background: var(--surface-container);
+  border-top: 1px solid rgba(69, 70, 83, 0.15);
 }
 
 .sr-only {
@@ -74,41 +86,6 @@ const sendMessage = () => {
   border: 0;
 }
 
-.attach-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  background: var(--surface-container-high);
-  color: var(--on-surface-variant);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
-  flex-shrink: 0;
-}
-
-.attach-btn:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.attach-btn:focus-visible {
-  outline: 2px solid var(--primary-container);
-  outline-offset: 2px;
-}
-
-.attach-btn svg {
-  width: 18px;
-  height: 18px;
-}
-
-.attach-btn:hover {
-  background: var(--surface-container-highest);
-  color: var(--on-surface);
-}
-
 .chat-input {
   flex: 1;
   padding: 10px 16px;
@@ -118,6 +95,9 @@ const sendMessage = () => {
   color: var(--on-surface);
   font-family: var(--font-body);
   font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  overflow-y: auto;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 

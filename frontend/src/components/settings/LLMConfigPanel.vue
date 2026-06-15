@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useLlmSettingsStore } from '../../stores/llmSettingsStore'
+import { ICONS } from '../../constants/icons'
 
 const emit = defineEmits(['close'])
 
@@ -12,18 +13,18 @@ const navSections = [
   {
     label: 'System Config',
     items: [
-      { id: 'general', label: 'General', icon: 'M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z' },
-      { id: 'api-providers', label: 'API Providers', icon: 'M4 8h4V4H4v4zm6 12h4v-4h-4v4zm-6 0h4v-4H4v4zm0-6h4v-4H4v4zm6 0h4v-4h-4v4zm6-10v4h4V4h-4zm-6 4h4V4h-4v4zm6 6h4v-4h-4v4zm0 6h4v-4h-4v4z' },
-      { id: 'model-config', label: 'Model Config', icon: 'M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z' },
-      { id: 'security', label: 'Security', icon: 'M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z' },
-      { id: 'billing', label: 'Billing', icon: 'M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z' },
+      { id: 'general', label: 'General', icon: ICONS.general },
+      { id: 'api-providers', label: 'API Providers', icon: ICONS.apiProviders },
+      { id: 'model-config', label: 'Model Config', icon: ICONS.modelConfig },
+      { id: 'security', label: 'Security', icon: ICONS.security },
+      { id: 'billing', label: 'Billing', icon: ICONS.billing },
     ],
   },
   {
     label: 'Resources',
     items: [
-      { id: 'docs', label: 'Documentation', icon: 'M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z' },
-      { id: 'support', label: 'Support', icon: 'M11.5 2C6.81 2 3 5.81 3 10.5S6.81 19 11.5 19h.5v3c4.86-2.34 8-7 8-11.5C20 5.81 16.19 2 11.5 2zm1 14.5h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 9.9 13 10.5 13 11.5h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z' },
+      { id: 'docs', label: 'Documentation', icon: ICONS.docs },
+      { id: 'support', label: 'Support', icon: ICONS.support },
     ],
   },
 ]
@@ -42,7 +43,15 @@ const providers = computed(() => {
     { id: 'openai', name: 'OpenAI', icon: 'openai', status: 'connected', models: ['GPT-4o', 'GPT-4 Turbo', 'GPT-3.5 Turbo'] },
     { id: 'anthropic', name: 'Anthropic', icon: 'anthropic', status: 'not-configured', models: ['Claude 3.5 Sonnet', 'Claude 3 Opus'] },
     { id: 'gemini', name: 'Google Gemini', icon: 'gemini', status: 'not-configured', models: ['gemini-2.0-flash', 'gemini-pro'] },
-    { id: 'local_llm', name: 'Local LLM', icon: 'local_llm', status: 'disconnected', models: ['qwen2.5-3b', 'qwen3.5-4b'] },
+    {
+      id: 'local_llm',
+      name: 'Local LLM (llama.cpp)',
+      icon: 'local_llm',
+      status: 'disconnected',
+      models: llmStore.currentProvider === 'local_llm' && llmStore.currentModel
+        ? [llmStore.currentModel]
+        : [],
+    },
   ]
 })
 
@@ -101,7 +110,7 @@ const handleSave = async () => {
     saveMessage.value = success
       ? 'Configuration saved successfully'
       : llmStore.error || 'Failed to save configuration'
-    setTimeout(() => { saveMessage.value = '' }, 3000)
+    saveTimeout = setTimeout(() => { saveMessage.value = '' }, 3000)
   } catch (err) {
     saveMessage.value = err.message || 'Failed to save configuration'
   } finally {
@@ -119,9 +128,17 @@ const handleTestConnection = async () => {
     testResult.value = { success: false, message: err.message || 'Connection failed' }
   } finally {
     testingConnection.value = false
-    setTimeout(() => { testResult.value = null }, 5000)
+    testTimeout = setTimeout(() => { testResult.value = null }, 5000)
   }
 }
+
+let saveTimeout = null
+let testTimeout = null
+
+onBeforeUnmount(() => {
+  if (saveTimeout) clearTimeout(saveTimeout)
+  if (testTimeout) clearTimeout(testTimeout)
+})
 
 const getStatusLabel = (status) => {
   const labels = { connected: 'CONNECTED', 'not-configured': 'NOT CONFIGURED', disconnected: 'DISCONNECTED' }

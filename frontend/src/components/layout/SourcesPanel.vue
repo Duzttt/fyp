@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useDocumentStore } from '../../stores/documentStore'
 import { uploadPDF, getFiles, deleteFile } from '../../services/api'
 
@@ -48,43 +48,17 @@ const uploadFile = async (file) => {
 const handleFileUpload = async (event) => {
   const files = Array.from(event.target.files)
   if (files.length === 0) return
-
-  uploading.value = true
-  uploadError.value = ''
-  uploadProgress.value = 0
-  uploadSuccess.value = false
-  uploadResults.value = []
-
-  for (let i = 0; i < files.length; i++) {
-    const result = await uploadFile(files[i])
-    uploadResults.value.push(result)
-    uploadProgress.value = Math.round(((i + 1) / files.length) * 100)
-  }
-
-  const successCount = uploadResults.value.filter(r => r.success).length
-  const failCount = uploadResults.value.length - successCount
-
-  if (failCount > 0) {
-    uploadError.value = `${failCount} of ${uploadResults.value.length} file${uploadResults.value.length > 1 ? 's' : ''} failed to upload`
-  } else {
-    uploadSuccess.value = true
-  }
-
-  await loadFiles()
-
-  setTimeout(() => {
-    uploadSuccess.value = false
-    uploadError.value = ''
-    uploadResults.value = []
-    showUploadModal.value = false
-  }, 1500)
+  await processUpload(files)
 }
 
 const handleDrop = async (event) => {
   event.preventDefault()
   const files = Array.from(event.dataTransfer.files)
   if (files.length === 0) return
+  await processUpload(files)
+}
 
+const processUpload = async (files) => {
   uploading.value = true
   uploadError.value = ''
   uploadProgress.value = 0
@@ -108,7 +82,7 @@ const handleDrop = async (event) => {
 
   await loadFiles()
 
-  setTimeout(() => {
+  autoCloseTimeout = setTimeout(() => {
     uploadSuccess.value = false
     uploadError.value = ''
     uploadResults.value = []
@@ -117,6 +91,12 @@ const handleDrop = async (event) => {
 }
 
 const handleDragOver = (event) => { event.preventDefault() }
+
+let autoCloseTimeout = null
+
+onBeforeUnmount(() => {
+  if (autoCloseTimeout) clearTimeout(autoCloseTimeout)
+})
 
 const removeFile = async (filename) => {
   if (!filename) return
@@ -136,6 +116,7 @@ const removeFile = async (filename) => {
     await deleteFile(filename)
     // Remove from sources after successful delete
     sources.value = sources.value.filter(s => (s.name || s.filename) !== filename)
+    documentStore.setAllDocuments(sources.value)
   } catch (err) {
     uploadError.value = err.response?.data?.error || 'Failed to delete file'
   } finally {
