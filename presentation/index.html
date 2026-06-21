@@ -1195,90 +1195,113 @@
     <!-- 14 ─ Evaluation Method — RAGAS -->
     <section class="slide">
       <div class="slide-content">
-        <h2>RAGAS Evaluation Metrics</h2>
-        <p class="slide-subtitle">Automated quality assessment across four key dimensions</p>
+        <h2>Evaluation Method &mdash; RAGAS</h2>
+        <p class="slide-subtitle">Four complementary dimensions scored on the same 25 question/reference pairs</p>
         <div class="metrics-grid">
           <div class="metric-card">
             <div class="metric-name">Faithfulness</div>
-            <div class="metric-bar"><div class="metric-fill" style="width:87%"></div></div>
-            <div class="metric-value">0.87</div>
-            <div class="metric-desc">Answer grounded in retrieved context</div>
+            <div class="metric-desc">Are answer claims supported by retrieved context?</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">Answer Relevancy</div>
-            <div class="metric-bar"><div class="metric-fill" style="width:82%"></div></div>
-            <div class="metric-value">0.82</div>
-            <div class="metric-desc">Answer directly addresses the question</div>
+            <div class="metric-name">Answer relevancy</div>
+            <div class="metric-desc">Does the response directly address the question?</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">Context Precision</div>
-            <div class="metric-bar"><div class="metric-fill" style="width:79%"></div></div>
-            <div class="metric-value">0.79</div>
-            <div class="metric-desc">Retrieved passages are relevant to query</div>
+            <div class="metric-name">Context precision</div>
+            <div class="metric-desc">How much retrieved evidence is relevant?</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">Context Recall</div>
-            <div class="metric-bar"><div class="metric-fill" style="width:84%"></div></div>
-            <div class="metric-value">0.84</div>
-            <div class="metric-desc">Ground truth covered by retrieval</div>
+            <div class="metric-name">Context recall</div>
+            <div class="metric-desc">How much required evidence was retrieved?</div>
           </div>
         </div>
-        <p class="eval-note">Evaluated on 50 question-answer pairs derived from 5 lecture PDFs &mdash; a focused but representative sample of the target domain.</p>
+        <p class="eval-note">Scores range from 0 to 1; higher is better. Values are summarized on the next slide.</p>
       </div>
     </section>
 
-    <!-- 15 ─ Benchmarks -->
+    <!-- 15 ─ RAGAS Results -->
     <section class="slide">
       <div class="slide-content">
-        <h2>Performance Benchmarks</h2>
-        <p class="slide-subtitle">Measured on a corpus of 150 lecture PDFs (~1,800 pages total)</p>
-        <table class="data-table">
-          <thead>
-            <tr><th>Metric</th><th>Target</th><th>Achieved</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Indexing Speed</td><td>~10 pages/sec</td><td>12 pages/sec</td><td class="status-pass">&#10003; Pass</td></tr>
-            <tr><td>Retrieval Latency</td><td>&lt; 500 ms</td><td>320 ms</td><td class="status-pass">&#10003; Pass</td></tr>
-            <tr><td>Concurrent Queries</td><td>10+</td><td>15</td><td class="status-pass">&#10003; Pass</td></tr>
-            <tr><td>Document Capacity</td><td>100+ PDFs</td><td>150 PDFs</td><td class="status-pass">&#10003; Pass</td></tr>
-          </tbody>
-        </table>
+        <h2>RAGAS Results</h2>
+        <div class="chart-series-data" hidden>
+          <span data-series="baseline" data-values="0.85,0.86,0.67,0.84"></span>
+          <span data-series="smart-chunking" data-values="0.59,0.60,0.29,0.24"></span>
+          <span data-series="enhanced-retrieval" data-values="0.65,0.80,0.53,0.58"></span>
+        </div>
+        <div class="chart-legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#a8a29e;"></span>Original baseline</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--accent);"></span>Smart chunking</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#6b8a7a;"></span>Enhanced retrieval</span>
+        </div>
+        <div class="chart-layout">
+          <div class="ragas-chart">
+            <div class="chart-y-axis">
+              <span>1.0</span><span>0.75</span><span>0.50</span><span>0.25</span><span>0.0</span>
+            </div>
+            <div class="chart-plot">
+              <div class="chart-group">
+                <div class="chart-bar baseline" style="height:85%"><span>0.85</span></div>
+                <div class="chart-bar smart" style="height:59%"><span>0.59</span></div>
+                <div class="chart-bar enhanced" style="height:65%"><span>0.65</span></div>
+              </div>
+              <div class="chart-group">
+                <div class="chart-bar baseline" style="height:86%"><span>0.86</span></div>
+                <div class="chart-bar smart" style="height:60%"><span>0.60</span></div>
+                <div class="chart-bar enhanced" style="height:80%"><span>0.80</span></div>
+              </div>
+              <div class="chart-group">
+                <div class="chart-bar baseline" style="height:67%"><span>0.67</span></div>
+                <div class="chart-bar smart" style="height:29%"><span>0.29</span></div>
+                <div class="chart-bar enhanced" style="height:53%"><span>0.53</span></div>
+              </div>
+              <div class="chart-group">
+                <div class="chart-bar baseline" style="height:84%"><span>0.84</span></div>
+                <div class="chart-bar smart" style="height:24%"><span>0.24</span></div>
+                <div class="chart-bar enhanced" style="height:58%"><span>0.58</span></div>
+              </div>
+            </div>
+            <div class="chart-labels">
+              <span>Faithfulness</span>
+              <span>Answer relevancy</span>
+              <span>Context precision</span>
+              <span>Context recall</span>
+            </div>
+          </div>
+          <div>
+            <div class="finding-callout"><strong>Recovered after retrieval changes:</strong> enhanced retrieval exceeded the smart-chunking run on all four metrics.</div>
+            <div class="finding-callout"><strong>Baseline still strongest:</strong> the original run remained highest overall, so later changes are not presented as a universal improvement.</div>
+            <p class="eval-note">Means recalculated from 25 identical question/reference pairs per run.</p>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- 16 ─ Comparison (FIXED) -->
+    <!-- 16 ─ Findings and Discussion -->
     <section class="slide">
       <div class="slide-content">
-        <h2>Baseline vs Enhanced Configuration</h2>
-        <p class="slide-subtitle">Impact of chunking strategy and prompt optimization on answer quality</p>
-        <div class="comparison-row">
-          <div class="comparison-card baseline">
-            <h3>Baseline</h3>
-            <ul>
-              <li>Fixed 512-char chunks</li>
-              <li>No overlap between chunks</li>
-              <li>Basic prompt template</li>
-            </ul>
-            <div class="comparison-score">Score: 0.72</div>
+        <h2>Findings and Discussion</h2>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-name">Grounding remains the priority</div>
+            <div class="metric-desc">Faithfulness recovered from 0.59 to 0.65, but remained below the 0.85 baseline.</div>
           </div>
-          <div class="comparison-arrow">&rarr;</div>
-          <div class="comparison-card enhanced">
-            <h3>Enhanced</h3>
-            <ul>
-              <li>Sentence-aware 400-char chunks</li>
-              <li>50-char overlap for continuity</li>
-              <li>Optimised prompt with roles &amp; citations</li>
-            </ul>
-            <div class="comparison-score">Score: 0.84</div>
+          <div class="metric-card">
+            <div class="metric-name">Retrieval changes involve trade-offs</div>
+            <div class="metric-desc">Context precision and recall improved over the smart-chunking run without surpassing the original evaluation.</div>
           </div>
-        </div>
-        <div class="badge-wrap">
-          <div class="improvement-badge">+16.7% improvement in average RAGAS score</div>
+          <div class="metric-card">
+            <div class="metric-name">One change at a time</div>
+            <div class="metric-desc">Future experiments should isolate chunking, retrieval, reranking, and prompting so effects can be attributed.</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-name">Evaluation is iterative</div>
+            <div class="metric-desc">Retain the best configuration only after repeated runs and human review of retrieved evidence.</div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 17 ─ Limitations (FIXED) -->
+    <!-- 17 ─ Limitations and Future Work -->
     <section class="slide">
       <div class="slide-content">
         <h2>Limitations &amp; Future Work</h2>
