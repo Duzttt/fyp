@@ -853,196 +853,196 @@
       </div>
     </section>
 
-    <!-- 2 ─ Problem -->
+    <!-- 2 ─ Problem Statement -->
     <section class="slide">
       <div class="slide-content">
-        <h2>The Problem</h2>
-        <p class="slide-subtitle">Students spend excessive time navigating large volumes of lecture materials</p>
+        <h2>Problem Statement</h2>
         <div class="problem-grid">
           <div class="problem-card">
             <div class="problem-num">1</div>
-            <h3>Fragmented Documents</h3>
-            <p>Information scattered across dozens of PDF files makes manual search slow and unreliable</p>
+            <h3>Information overload</h3>
+            <p>Lecture content is distributed across long PDF files, making the right explanation difficult to locate when students need it.</p>
           </div>
           <div class="problem-card">
             <div class="problem-num">2</div>
-            <h3>Keyword Limitations</h3>
-            <p>Traditional text search fails to capture semantic meaning and conceptual relationships</p>
+            <h3>Slow manual searching</h3>
+            <p>Keyword search and page-by-page reading consume revision time and can miss conceptually related passages.</p>
           </div>
           <div class="problem-card">
             <div class="problem-num">3</div>
-            <h3>Time Inefficiency</h3>
-            <p>Hours spent scanning hundreds of pages could be better spent on active learning</p>
+            <h3>Ungrounded AI answers</h3>
+            <p>Generic assistants may answer beyond approved course material without showing the lecture source behind the response.</p>
           </div>
         </div>
+        <p class="prompt-note"><strong>Need:</strong> fast, source-grounded answers drawn from the student's own lecture notes.</p>
       </div>
     </section>
 
-    <!-- 3 ─ Objectives -->
+    <!-- 3 ─ Project Objectives -->
     <section class="slide">
       <div class="slide-content">
         <h2>Project Objectives</h2>
-        <p class="slide-subtitle">Design and build a domain-specific Q&amp;A system for lecture materials</p>
         <div class="objectives-list">
           <div class="objective-item">
             <div class="objective-num">01</div>
             <div>
-              <h3>End-to-End RAG Pipeline</h3>
-              <p>Process PDF lecture notes and generate citation-backed answers grounded in source material</p>
+              <h3>Preserve lecture evidence</h3>
+              <p>Ingest PDF lecture notes while retaining source and page metadata for traceability.</p>
             </div>
           </div>
           <div class="objective-item">
             <div class="objective-num">02</div>
             <div>
-              <h3>Multi-Provider LLM Integration</h3>
-              <p>Support Gemini, OpenRouter, and local models via llama.cpp for deployment flexibility</p>
+              <h3>Retrieve relevant passages</h3>
+              <p>Combine dense semantic search with BM25 keyword matching to improve evidence discovery.</p>
             </div>
           </div>
           <div class="objective-item">
             <div class="objective-num">03</div>
             <div>
-              <h3>Efficient Vector Search</h3>
-              <p>FAISS-based similarity search with sub-second retrieval latency across large document corpora</p>
+              <h3>Generate grounded answers</h3>
+              <p>Use retrieved context to produce answers with citations and transparent source snippets.</p>
             </div>
           </div>
           <div class="objective-item">
             <div class="objective-num">04</div>
             <div>
-              <h3>Intuitive User Interface</h3>
-              <p>Vue 3 and TailwindCSS chat interface with real-time responses and source attribution</p>
+              <h3>Evaluate the complete system</h3>
+              <p>Assess retrieval, RAGAS answer quality, functionality, and practical response performance.</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 4 ─ Architecture -->
+    <!-- 4 ─ Project Scope and Boundaries -->
     <section class="slide">
       <div class="slide-content">
-        <h2>System Architecture</h2>
-        <p class="slide-subtitle">Three-tier design with clear separation between presentation, logic, and AI services</p>
-        <div class="slide-illustration compact">
-        </div>
-        <div class="arch-stack">
-          <div class="arch-block frontend">
-            <div class="logo-container" style="justify-content: center; margin-bottom: 8px;">
-              <img src="logos/vue3-logo.png" alt="Vue 3" class="logo-img" style="height: 24px;">
-            </div>
-            <span class="arch-label">Frontend</span>
-            <span class="arch-tech">Vue 3 &middot; TailwindCSS &middot; Vite</span>
-          </div>
-          <div class="arch-connector">REST API</div>
-          <div class="arch-block backend">
-            <span class="arch-label">Backend</span>
-            <span class="arch-tech">Django 5.2</span>
-            <div class="arch-services">
-              <div class="arch-service">Document Service<small>PDF parsing, chunking, embedding</small></div>
-              <div class="arch-service">Retrieval Service<small>FAISS index, similarity search</small></div>
-              <div class="arch-service">Generation Service<small>Prompt construction, LLM routing</small></div>
-            </div>
-          </div>
-          <div class="arch-connector">Provider API</div>
-          <div class="arch-block llm">
-            <span class="arch-label">LLM Providers</span>
-            <span class="arch-tech">Gemini &middot; OpenRouter &middot; llama.cpp</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5 ─ Tech Stack -->
-    <section class="slide">
-      <div class="slide-content">
-        <h2>Technology Stack</h2>
-        <p class="slide-subtitle">Purpose-selected tools for each layer of the system</p>
-        <table class="data-table">
-          <thead>
-            <tr><th>Layer</th><th>Technology</th><th>Purpose</th></tr>
-          </thead>
-          <tbody>
-            <tr><td>Backend</td><td>Django 5.2</td><td>REST API, ORM, middleware</td></tr>
-            <tr><td>RAG Pipeline</td><td>LangChain</td><td>Document loading, text splitting</td></tr>
-            <tr><td>Embeddings</td><td>Sentence Transformers</td><td>all-MiniLM-L6-v2 (384-dim)</td></tr>
-            <tr><td>Vector Store</td><td>FAISS</td><td>IndexFlatL2 exact similarity search</td></tr>
-            <tr><td>Frontend</td><td><img src="logos/vue3-logo.png" alt="Vue 3" style="height: 16px; vertical-align: middle; margin-right: 4px;">Vue 3 + Vite</td><td>Reactive SPA with fast HMR</td></tr>
-            <tr><td>Styling</td><td>TailwindCSS</td><td>Utility-first responsive design</td></tr>
-            <tr><td>LLM</td><td>Gemini / OpenRouter / llama.cpp</td><td>Multi-provider flexible routing</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- 6 ─ RAG Pipeline -->
-    <section class="slide">
-      <div class="slide-content">
-        <h2>RAG Pipeline Flow</h2>
-        <p class="slide-subtitle">Two interconnected flows sharing a common vector index</p>
-        <div class="slide-illustration compact">
-        </div>
-        <div class="flow-section">
-          <div class="flow-label">Indexing &mdash; Document Upload</div>
-          <div class="flow-row">
-            <div class="flow-box">PDF Upload</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Text Extraction</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Chunking</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Embedding</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box highlight">FAISS Index</div>
-          </div>
-        </div>
-        <div class="flow-section">
-          <div class="flow-label">Retrieval &mdash; User Query</div>
-          <div class="flow-row">
-            <div class="flow-box">User Query</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Query Embedding</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box highlight">FAISS Search</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Context Assembly</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Prompt + LLM</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Cited Answer</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7 ─ PDF Extraction -->
-    <section class="slide">
-      <div class="slide-content">
-        <h2>PDF Text Extraction</h2>
-        <p class="slide-subtitle">LangChain PyPDFLoader with page-level metadata preservation</p>
-        <div class="two-col">
-          <div class="col">
-            <h3>Approach</h3>
-            <ul class="feature-list">
-              <li>LangChain's PyPDFLoader extracts text page by page</li>
-              <li>Page numbers preserved as document metadata</li>
-              <li>Leading and trailing whitespace stripped</li>
-              <li>Empty pages filtered out automatically</li>
-              <li>Each page becomes a Document object for downstream processing</li>
+        <h2>Project Scope and Boundaries</h2>
+        <p class="slide-subtitle">A focused lecture-note assistant—not a general learning-management platform</p>
+        <div class="scope-grid">
+          <article class="scope-card in-scope">
+            <h3>In scope</h3>
+            <ul class="scope-list">
+              <li>Text-readable PDF upload and extraction</li>
+              <li>Sentence-aware chunking with metadata</li>
+              <li>MiniLM embeddings and FAISS indexing</li>
+              <li>BM25 + dense hybrid retrieval with RRF</li>
+              <li>Gemini, OpenRouter, and local LLM generation</li>
+              <li>Cited answers, source snippets, web UI, and RAGAS evaluation</li>
             </ul>
-          </div>
-          <div class="col">
-            <h3>Implementation</h3>
-            <pre class="code-block"><span class="kw">class</span> <span class="fn">PDFLoader</span>:
-    <span class="kw">def</span> <span class="fn">extract_text</span>(self, path):
-        loader = <span class="fn">PyPDFLoader</span>(path)
-        docs = loader.<span class="fn">load</span>()
-        pages = [d.page_content.<span class="fn">strip</span>()
-                 <span class="kw">for</span> d <span class="kw">in</span> docs]
-        <span class="kw">return</span> <span class="str">"\n"</span>.<span class="fn">join</span>(pages)</pre>
-          </div>
+          </article>
+          <article class="scope-card out-scope">
+            <h3>Out of scope</h3>
+            <ul class="scope-list">
+              <li>Non-PDF learning sources and scanned-PDF OCR</li>
+              <li>Automatic marking or student grading</li>
+              <li>Course-authoring and content-management tools</li>
+              <li>Institution-wide LMS integration</li>
+              <li>Claims of universal subject expertise</li>
+              <li>Replacement of lecturers or human academic support</li>
+            </ul>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- 8 ─ Chunking -->
+    <!-- 5 ─ Literature Review -->
+    <section class="slide">
+      <div class="slide-content">
+        <h2>Literature Review &mdash; Top Three Studies</h2>
+        <div class="evidence-grid">
+          <article class="evidence-card" data-study-rank="1">
+            <div class="evidence-rank">Rank 01 &middot; Educational QA</div>
+            <h3>Alawwad et al. (2025)</h3>
+            <p class="evidence-line"><strong>Method:</strong> Fine-tuned Llama-2 with semantic retrieval for textual textbook QA.</p>
+            <p class="evidence-line"><strong>Finding:</strong> 84.24% test accuracy on textual TQA.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Text only; diagrams and visual evidence are excluded.</p>
+            <p class="evidence-line"><strong>Project relevance:</strong> Closest evidence for RAG over structured lesson content.</p>
+            <p class="citation-line">Pattern Recognition &middot; doi:10.1016/j.patcog.2024.111332</p>
+          </article>
+          <article class="evidence-card" data-study-rank="2">
+            <div class="evidence-rank">Rank 02 &middot; Hybrid retrieval</div>
+            <h3>Hu et al. (2025)</h3>
+            <p class="evidence-line"><strong>Method:</strong> Multimodal parsing with sparse-dense hybrid retrieval and LLM generation.</p>
+            <p class="evidence-line"><strong>Finding:</strong> Reported correctness improved by 20.1% under the study setup.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Real-time retrieval at document scale still needs optimization.</p>
+            <p class="evidence-line"><strong>Project relevance:</strong> Supports combining BM25 and dense retrieval.</p>
+            <p class="citation-line">IEEE Access &middot; doi:10.1109/ACCESS.2025.3544408</p>
+          </article>
+          <article class="evidence-card" data-study-rank="3">
+            <div class="evidence-rank">Rank 03 &middot; Higher education</div>
+            <h3>Neumann et al. (2024)</h3>
+            <p class="evidence-line"><strong>Method:</strong> GPT-4 RAG chatbot in Moodle using LangChain and Weaviate.</p>
+            <p class="evidence-line"><strong>Finding:</strong> 88% response accuracy with positive student acceptance.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Human tutors remained preferred; automated fact-checking was weak.</p>
+            <p class="evidence-line"><strong>Project relevance:</strong> Demonstrates RAG as complementary academic support.</p>
+            <p class="citation-line">IEEE Transactions on Education &middot; doi:10.1109/TE.2024.3467912</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 ─ Research Gap and Contribution -->
+    <section class="slide">
+      <div class="slide-content">
+        <h2>Research Gap and Project Contribution</h2>
+        <div class="gap-grid">
+          <article class="gap-card">
+            <h3>Research gap</h3>
+            <p>Existing studies show useful RAG retrieval and generation, but practical lecture-note assistants still need transparent source traceability, hybrid retrieval, deployment choice, and integrated evaluation.</p>
+          </article>
+          <article class="gap-card contribution">
+            <h3>Project contribution</h3>
+            <p>This project combines PDF metadata, BM25 + FAISS retrieval, configurable cloud or local LLMs, cited answers, and RAGAS evaluation in one usable workflow.</p>
+          </article>
+        </div>
+        <p class="eval-note">Contribution is framed as an implementation response—not a claim of universal research novelty.</p>
+      </div>
+    </section>
+
+    <!-- 7 ─ Methodology -->
+    <section class="slide">
+      <div class="slide-content">
+        <h2>Methodology</h2>
+        <p class="slide-subtitle">Adapted CRISP-DM for iterative RAG system development</p>
+        <div class="methodology-flow">
+          <article class="method-stage">
+            <div class="method-number">1</div>
+            <h3>Project and Problem Understanding</h3>
+            <p>Define the educational need, objectives, users, scope, and success criteria.</p>
+          </article>
+          <article class="method-stage">
+            <div class="method-number">2</div>
+            <h3>Lecture-Note Data Understanding</h3>
+            <p>Review PDF structure, text quality, page content, and traceability metadata.</p>
+          </article>
+          <article class="method-stage">
+            <div class="method-number">3</div>
+            <h3>PDF Extraction and Text Preparation</h3>
+            <p>Extract text and create 500-character chunks with 100-character overlap.</p>
+          </article>
+          <article class="method-stage">
+            <div class="method-number">4</div>
+            <h3>RAG Modelling and Application Development</h3>
+            <p>Embed, index, retrieve, fuse evidence, and generate cited answers.</p>
+          </article>
+          <article class="method-stage">
+            <div class="method-number">5</div>
+            <h3>Technical and Functional Evaluation</h3>
+            <p>Evaluate retrieval, RAGAS quality, software behaviour, and end-to-end use.</p>
+          </article>
+          <article class="method-stage">
+            <div class="method-number">6</div>
+            <h3>Deployment and Iterative Refinement</h3>
+            <p>Deploy, monitor, and use evidence and feedback to improve earlier stages.</p>
+          </article>
+        </div>
+        <div class="feedback-loop">↶ Evaluation and deployment findings feed back into data preparation and RAG modelling.</div>
+      </div>
+    </section>
+
+    <!-- 8 ─ System Architecture -->
     <section class="slide">
       <div class="slide-content">
         <h2>Text Chunking Strategy</h2>
