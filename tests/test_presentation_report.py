@@ -6,7 +6,7 @@ from typing import List
 
 PRESENTATION_PATH = Path(__file__).parents[1] / "presentation" / "index.html"
 SLIDE_PATTERN = re.compile(
-    r'<section class="slide(?: active)?">(.*?)</section>', re.DOTALL
+    r'<section class="slide(?: active)?"[^>]*>(.*?)</section>', re.DOTALL
 )
 
 
@@ -47,8 +47,7 @@ def test_presentation_contains_approved_18_slide_sequence() -> None:
     slide_text = [_plain_text(slide) for slide in _slides()]
     assert len(slide_text) == 18
     assert all(
-        expected in actual
-        for expected, actual in zip(expected_headings, slide_text)
+        expected in actual for expected, actual in zip(expected_headings, slide_text)
     )
 
 
