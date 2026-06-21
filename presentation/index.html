@@ -1042,134 +1042,139 @@
       </div>
     </section>
 
-    <!-- 8 ─ System Architecture -->
+    <!-- 8 ─ System Architecture and Technology Stack -->
     <section class="slide">
       <div class="slide-content">
-        <h2>Text Chunking Strategy</h2>
-        <p class="slide-subtitle">Recursive character splitting with sentence-boundary awareness</p>
-        <div class="config-row">
-          <div class="config-card">
-            <div class="config-value">400</div>
-            <div class="config-label">Chunk Size (characters)</div>
+        <h2>System Architecture and Technology Stack</h2>
+        <div class="arch-stack">
+          <div class="arch-block frontend">
+            <span class="arch-label">Frontend</span>
+            <span class="arch-tech">Vue 3 + Vite</span>
           </div>
-          <div class="config-card">
-            <div class="config-value">50</div>
-            <div class="config-label">Overlap (characters)</div>
-          </div>
-          <div class="config-card">
-            <div class="config-value">6</div>
-            <div class="config-label">Separator Levels</div>
-          </div>
-        </div>
-        <div class="chunk-note">
-          <strong>Separator hierarchy:</strong> <code>". "</code> <code>"! "</code> <code>"? "</code> <code>"\n"</code> <code>" "</code> <code>""</code><br><br>
-          <strong>Rationale:</strong> The recursive splitter prefers natural sentence boundaries before falling back to word or character splits. A 400-character chunk (~100 tokens) provides focused retrieval for specific questions, while the 50-character overlap preserves context that would otherwise be lost at chunk boundaries.
-        </div>
-      </div>
-    </section>
-
-    <!-- 9 ─ Embeddings -->
-    <section class="slide">
-      <div class="slide-content">
-        <h2>Embeddings &amp; Vector Store</h2>
-        <p class="slide-subtitle">Dense vector representations with exact nearest-neighbor search</p>
-        <div class="slide-illustration compact">
-          <img src="images/slide-9-embeddings.svg" alt="Visualization of vector embeddings and similarity search in FAISS">
-        </div>
-        <div class="two-col">
-          <div class="col">
-            <h3>Embedding Model</h3>
-            <div class="model-card">
-              <div class="model-name">all-MiniLM-L6-v2</div>
-              <div class="model-detail">
-                384-dimensional output vectors<br>
-                Sentence Transformers library<br>
-                Optimized for semantic similarity<br>
-                Lightweight &mdash; ~80 MB model size
-              </div>
+          <div class="arch-connector">REST API</div>
+          <div class="arch-block backend">
+            <span class="arch-label">Backend</span>
+            <span class="arch-tech">Django 5.2</span>
+            <div class="arch-services">
+              <div class="arch-service">Document Service<small>PDF parsing, chunking, embedding</small></div>
+              <div class="arch-service">Retrieval Service<small>FAISS &middot; BM25 &middot; Reciprocal Rank Fusion</small></div>
+              <div class="arch-service">Generation Service<small>Prompt construction, LLM routing</small></div>
             </div>
           </div>
-          <div class="col">
-            <h3>Vector Store</h3>
-            <div class="model-card">
-              <div class="model-name">FAISS IndexFlatL2</div>
-              <div class="model-detail">
-                L2 (Euclidean) distance metric<br>
-                Exact search &mdash; no approximation error<br>
-                Persistent index saved to disk<br>
-                Supports efficient batch queries
-              </div>
-            </div>
+          <div class="arch-connector">Provider API</div>
+          <div class="arch-block llm">
+            <span class="arch-label">LLM Providers</span>
+            <span class="arch-tech">Gemini &middot; OpenRouter &middot; llama.cpp</span>
           </div>
+        </div>
+        <div class="config-row" style="margin-top: 20px;">
+          <div class="config-card"><div class="config-value" style="font-size: 14px;">Vue 3 + Vite</div></div>
+          <div class="config-card"><div class="config-value" style="font-size: 14px;">Django 5.2</div></div>
+          <div class="config-card"><div class="config-value" style="font-size: 14px;">Sentence Transformers</div></div>
+          <div class="config-card"><div class="config-value" style="font-size: 14px;">FAISS + rank-bm25</div></div>
+          <div class="config-card"><div class="config-value" style="font-size: 14px;">Gemini / OpenRouter / llama.cpp</div></div>
         </div>
       </div>
     </section>
 
-    <!-- 10 ─ LLM Integration -->
+    <!-- 9 ─ PDF Ingestion and Indexing -->
     <section class="slide">
       <div class="slide-content">
-        <h2>LLM Integration</h2>
-        <p class="slide-subtitle">Provider-abstracted interface with structured prompt template</p>
-        <div class="provider-grid">
-          <div class="provider-card">
-            <div class="provider-icon p-gemini">G</div>
-            <h3>Google Gemini</h3>
-            <p class="provider-model">gemini-2.5-flash</p>
-            <p class="provider-desc">High quality, multimodal, cloud-based</p>
-          </div>
-          <div class="provider-card">
-            <div class="provider-icon p-openrouter">OR</div>
-            <h3>OpenRouter</h3>
-            <p class="provider-model">Multiple models</p>
-            <p class="provider-desc">Provider flexibility, competitive pricing</p>
-          </div>
-          <div class="provider-card">
-            <div class="provider-icon p-local">LL</div>
-            <h3>Local LLM</h3>
-            <p class="provider-model">llama.cpp server</p>
-            <p class="provider-desc">Full privacy, offline, zero API cost</p>
+        <h2>PDF Ingestion and Indexing</h2>
+        <div class="flow-section">
+          <div class="flow-row">
+            <div class="flow-box">Validate PDF</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">Extract page text</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">Create 500 / 100 chunks</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">Generate 384-d embeddings</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box highlight">Persist FAISS index</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">Refresh hybrid index</div>
           </div>
         </div>
-        <div class="prompt-note">
-          <strong>Prompt strategy:</strong> Each query uses a structured template with a role instruction (&ldquo;You are a helpful lecture assistant&rdquo;), retrieved context passages, the user&rsquo;s question, and explicit citation formatting &mdash; ensuring grounded, traceable answers.
+        <p class="prompt-note" style="margin-top: 18px;"><strong>Note:</strong> Source filename and page metadata are retained for citations.</p>
+      </div>
+    </section>
+
+    <!-- 10 ─ Retrieval and Answer-Generation Flow -->
+    <section class="slide">
+      <div class="slide-content">
+        <h2>Retrieval and Answer-Generation Flow</h2>
+        <div class="flow-section">
+          <div class="flow-row">
+            <div class="flow-box">User question</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">BM25 top 20 + FAISS top 20</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box highlight">RRF fusion (k = 60)</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">optional cross-encoder reranking</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">final top 5 contexts</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box">configured LLM</div>
+            <div class="flow-arrow">&rarr;</div>
+            <div class="flow-box highlight">answer + source snippets</div>
+          </div>
+        </div>
+        <p class="prompt-note" style="margin-top: 18px;"><strong>Note:</strong> Reranker is currently disabled in <code>rag_config.json</code>.</p>
+      </div>
+    </section>
+
+    <!-- 11 ─ Core Technical Design -->
+    <section class="slide">
+      <div class="slide-content">
+        <h2>Core Technical Design</h2>
+        <div class="metrics-grid">
+          <article class="metric-card">
+            <div class="metric-name">Text preparation</div>
+            <div class="metric-value">500 / 100</div>
+            <div class="metric-desc">Current PDF indexing path: chunk size / overlap</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-name">Embedding</div>
+            <div class="metric-value">384-d</div>
+            <div class="metric-desc">all-MiniLM-L6-v2 sentence vectors</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-name">Candidate retrieval</div>
+            <div class="metric-value">20 + 20</div>
+            <div class="metric-desc">BM25 and dense candidates before fusion</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-name">Generation context</div>
+            <div class="metric-value">Top 5</div>
+            <div class="metric-desc">Fused evidence supplied to the configured LLM</div>
+          </article>
         </div>
       </div>
     </section>
 
-    <!-- 11 ─ UI Overview -->
+    <!-- 12 ─ Interface and User Workflow -->
     <section class="slide">
       <div class="slide-content">
-        <h2>UI Overview</h2>
-        <p class="slide-subtitle">Three-panel layout designed for focused document Q&amp;A</p>
+        <h2>Interface and User Workflow</h2>
         <div class="slide-illustration screenshot">
           <img src="screenshots/01-main-ui.png" alt="Actual application UI showing three-panel layout with sources, chat, and studio panels">
         </div>
-        <div class="logo-container" style="justify-content: center; margin-top: 16px;">
-          <img src="logos/vue3-logo.png" alt="Vue 3" class="logo-img" style="height: 20px;">
-          <span class="logo-text">Vue 3 + TailwindCSS interface</span>
+        <div class="steps" style="margin-top: 16px;">
+          <div class="step"><div class="step-num">1</div><p>Upload lecture notes</p></div>
+          <div class="step"><div class="step-num">2</div><p>Select sources</p></div>
+          <div class="step"><div class="step-num">3</div><p>Ask a question</p></div>
+          <div class="step"><div class="step-num">4</div><p>Inspect citations and snippets</p></div>
         </div>
       </div>
     </section>
 
-    <!-- 12 ─ Upload Flow -->
+    <!-- 13 ─ Chat Demonstration -->
     <section class="slide">
       <div class="slide-content">
-        <h2>Upload Flow</h2>
-        <p class="slide-subtitle">Drag-and-drop PDF upload with asynchronous processing and persistent indexing</p>
-        <div class="steps">
-          <div class="step"><div class="step-num">1</div><p>Upload PDF via drag-drop or file picker</p></div>
-          <div class="step"><div class="step-num">2</div><p>Text extracted, chunks created with overlap</p></div>
-          <div class="step"><div class="step-num">3</div><p>Embeddings generated and indexed to FAISS</p></div>
-          <div class="step"><div class="step-num">4</div><p>Index persisted to disk &mdash; ready for queries</p></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 13 ─ Chat Demo -->
-    <section class="slide">
-      <div class="slide-content">
-        <h2>Chat Demo</h2>
-        <p class="slide-subtitle">Natural language questions with grounded, source-cited answers</p>
+        <h2>Chat Demonstration</h2>
+        <p class="slide-subtitle">Illustrative interaction</p>
         <div class="slide-illustration screenshot">
           <img src="screenshots/04-chat-typing.png" alt="Chat interface showing user typing a question about reasoning in AI">
         </div>
@@ -1181,13 +1186,13 @@
             <strong>Assistant:</strong> Gradient descent is an optimization algorithm that minimizes the cost function by iteratively adjusting parameters in the direction of steepest descent. The weight update rule is &theta; = &theta; &minus; &alpha;&nabla;J(&theta;), where &alpha; is the learning rate. <strong>[S1]</strong> The algorithm computes partial derivatives for each weight and applies updates after each batch or epoch. <strong>[S2]</strong>
           </div>
           <div class="sources-box">
-            <strong>Sources:</strong> lecture3.pdf &mdash; p.12 &middot; lecture5.pdf &mdash; p.8
+            <strong>Answer evidence:</strong> lecture3.pdf &mdash; p.12 and lecture5.pdf &mdash; p.8
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 14 ─ RAGAS -->
+    <!-- 14 ─ Evaluation Method — RAGAS -->
     <section class="slide">
       <div class="slide-content">
         <h2>RAGAS Evaluation Metrics</h2>
