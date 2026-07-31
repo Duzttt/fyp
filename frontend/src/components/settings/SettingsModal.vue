@@ -83,7 +83,8 @@ watch(() => props.show, async (newVal) => {
             <input 
               v-model="apiKey" 
               type="password" 
-              placeholder="Enter your API key"
+              :disabled="llmProvider === 'local_llm'"
+              :placeholder="llmProvider === 'local_llm' ? 'Not required for llama.cpp' : 'Enter your API key'"
             />
           </div>
           <div class="form-row">
@@ -91,7 +92,7 @@ watch(() => props.show, async (newVal) => {
             <input 
               v-model="model" 
               type="text" 
-              placeholder="e.g., gemini-2.5-flash"
+              :placeholder="llmProvider === 'local_llm' ? 'Model alias exposed by llama.cpp' : 'e.g., gemini-2.5-flash'"
             />
           </div>
         </div>
@@ -157,14 +158,14 @@ watch(() => props.show, async (newVal) => {
 
 .modal-container {
   width: min(520px, 90vw);
-  background: rgba(15, 23, 42, 0.8);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--outline-variant);
   border-radius: 24px;
   box-shadow:
-    0 30px 60px -20px rgba(0, 0, 0, 0.8),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    0 30px 60px -20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(128, 128, 128, 0.1);
   animation: slideUp 0.3s ease;
   overflow: hidden;
 }
@@ -174,24 +175,22 @@ watch(() => props.show, async (newVal) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  background: linear-gradient(135deg, #fff, #cbd5e1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
 }
 
 .modal-close {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -201,8 +200,8 @@ watch(() => props.show, async (newVal) => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
   transform: rotate(90deg);
 }
 
@@ -247,8 +246,8 @@ watch(() => props.show, async (newVal) => {
 .form-row select {
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: #020617;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   color: var(--text-main);
   font-size: 12px;
   outline: none;
@@ -298,21 +297,22 @@ watch(() => props.show, async (newVal) => {
 .modal-btn {
   padding: 8px 20px;
   border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
-  color: white;
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
+  color: var(--text-main);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .modal-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(128, 128, 128, 0.2);
 }
 
 .modal-btn.primary {
   background: linear-gradient(135deg, var(--accent), #a855f7);
   border: none;
+  color: white;
   box-shadow: 0 10px 20px -10px var(--accent);
 }
 

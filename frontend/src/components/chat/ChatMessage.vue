@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import CitationAnswer from './CitationAnswer.vue'
 import MarkdownRenderer from '../shared/MarkdownRenderer.vue'
 
@@ -7,15 +7,20 @@ const props = defineProps({
   message: Object
 })
 
-const emit = defineEmits(['chunk-hover', 'chunk-click', 'chunk-rightclick'])
-
 const showReasoning = ref(false)
 
 const toggleReasoning = () => {
   showReasoning.value = !showReasoning.value
 }
 
-const getMessageCitationTitle = (msg) => {
+const formatDuration = (ms) => {
+  if (!ms) return ''
+  if (ms < 1000) return `${ms}ms`
+  return `${(ms / 1000).toFixed(1)}s`
+}
+
+const citationTitle = computed(() => {
+  const msg = props.message
   if (!msg || msg.role !== 'assistant' || !msg.chunks || !msg.chunks.length) {
     return ''
   }
@@ -28,7 +33,7 @@ const getMessageCitationTitle = (msg) => {
   )
   if (!sources.length) return ''
   return `Supported by: ${sources.join(', ')}`
-}
+})
 </script>
 
 <template>
@@ -40,7 +45,7 @@ const getMessageCitationTitle = (msg) => {
       :class="{
         'has-citations': message.role === 'assistant' && message.chunks && message.chunks.length > 0
       }"
-      :title="getMessageCitationTitle(message)"
+      :title="citationTitle"
     >
       <!-- Reasoning/Thinking Section (Collapsible) -->
       <div v-if="message.reasoning" class="reasoning-section">
@@ -58,6 +63,7 @@ const getMessageCitationTitle = (msg) => {
           </span>
           <span class="reasoning-badge">
             🧠 Reasoning
+            <span v-if="message.elapsedMs" class="reasoning-duration">{{ formatDuration(message.elapsedMs) }}</span>
           </span>
         </button>
         
@@ -194,40 +200,35 @@ const getMessageCitationTitle = (msg) => {
   font-weight: 600;
   color: rgba(168, 85, 247, 0.9);
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.reasoning-duration {
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .reasoning-content {
   padding: 12px;
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--surface-container-low);
   border-top: 1px solid rgba(168, 85, 247, 0.2);
-}
-
-.reasoning-text {
-  font-size: 12px;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.6);
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: 'Courier New', Courier, monospace;
-  padding: 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 6px;
-  border-left: 3px solid rgba(168, 85, 247, 0.4);
 }
 
 .reasoning-markdown {
   font-size: 12px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--text-muted);
 }
 
 .reasoning-markdown :deep(code) {
   font-family: 'Courier New', Courier, monospace;
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--surface-container);
 }
 
 .reasoning-markdown :deep(pre) {
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--surface-container-high);
   border-left: 3px solid rgba(168, 85, 247, 0.4);
 }
 
@@ -292,8 +293,8 @@ const getMessageCitationTitle = (msg) => {
   margin: 12px 0;
   padding: 12px 16px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   overflow-x: auto;
 }
 

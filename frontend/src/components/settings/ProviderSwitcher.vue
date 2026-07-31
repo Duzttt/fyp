@@ -144,14 +144,14 @@ const handleSelect = async (providerId, model) => {
 .modal-container {
   width: min(520px, 90vw);
   max-height: 80vh;
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--outline-variant);
   border-radius: 24px;
   box-shadow:
-    0 30px 60px -20px rgba(0, 0, 0, 0.8),
-    inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    0 30px 60px -20px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(128, 128, 128, 0.1);
   animation: slideUp 0.3s ease;
   overflow: hidden;
   display: flex;
@@ -163,24 +163,22 @@ const handleSelect = async (providerId, model) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .modal-header h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  background: linear-gradient(135deg, #fff, #cbd5e1);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-main);
 }
 
 .modal-close {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -190,8 +188,8 @@ const handleSelect = async (providerId, model) => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
   transform: rotate(90deg);
 }
 

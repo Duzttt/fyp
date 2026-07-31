@@ -38,6 +38,8 @@ onMounted(async () => {
   if (window.pdfjsLib) {
     pdfjsLib = window.pdfjsLib
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+  } else {
+    console.warn('PDF.js library not loaded from CDN')
   }
 })
 
@@ -49,7 +51,12 @@ onUnmounted(() => {
 })
 
 const loadPdf = async () => {
-  if (!props.pdfUrl || !pdfjsLib) return
+  if (!props.pdfUrl) return
+
+  if (!pdfjsLib) {
+    error.value = 'PDF viewer library failed to load. Please refresh the page or check your network connection.'
+    return
+  }
 
   if (currentLoadingTask) {
     currentLoadingTask.destroy()
@@ -221,12 +228,12 @@ watch(() => props.show, (newShow) => {
   width: 450px;
   max-width: calc(100vw - 40px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   height: calc(100vh - 100px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 16px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   z-index: 4000;
   overflow: hidden;
   overscroll-behavior: contain;
@@ -251,7 +258,7 @@ watch(() => props.show, (newShow) => {
 .pdf-viewer-title {
   font-size: 13px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -270,8 +277,8 @@ watch(() => props.show, (newShow) => {
   width: 28px;
   height: 28px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -287,8 +294,8 @@ watch(() => props.show, (newShow) => {
 }
 
 .pdf-viewer-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
 }
 
 .pdf-viewer-nav {
@@ -296,8 +303,8 @@ watch(() => props.show, (newShow) => {
   align-items: center;
   justify-content: space-between;
   padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
   flex-shrink: 0;
 }
 
@@ -305,8 +312,8 @@ watch(() => props.show, (newShow) => {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-main);
   cursor: pointer;
   display: flex;

@@ -104,12 +104,12 @@ const handleEscape = (e) => {
 .base-tooltip {
   position: fixed;
   z-index: 10000;
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   padding: 12px;
   pointer-events: auto;
 }
@@ -120,16 +120,16 @@ const handleEscape = (e) => {
   gap: 6px;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
   font-size: 11px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
 }
 
 .base-tooltip-content {
   font-size: 12px;
   line-height: 1.6;
-  color: white;
+  color: var(--text-main);
   max-height: 200px;
   overflow-y: auto;
 }
@@ -144,7 +144,7 @@ const handleEscape = (e) => {
 }
 
 .base-tooltip-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(128, 128, 128, 0.3);
   border-radius: 2px;
 }
 

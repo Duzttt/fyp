@@ -557,12 +557,12 @@ const handleChunkRightClick = (event, chunk) => {
   z-index: 5000;
   min-width: 300px;
   max-width: 450px;
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   padding: 12px;
   pointer-events: none;
   animation: tooltipFadeIn 0.2s ease;
@@ -585,7 +585,7 @@ const handleChunkRightClick = (event, chunk) => {
   gap: 8px;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .tooltip-source {
@@ -608,7 +608,7 @@ const handleChunkRightClick = (event, chunk) => {
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(128, 128, 128, 0.15);
 }
 
 .chunk-tooltip-body {
@@ -631,7 +631,7 @@ const handleChunkRightClick = (event, chunk) => {
 }
 
 .chunk-tooltip-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(128, 128, 128, 0.3);
   border-radius: 3px;
 }
 
@@ -661,12 +661,12 @@ const handleChunkRightClick = (event, chunk) => {
   z-index: 5000;
   min-width: 300px;
   max-width: 450px;
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   padding: 12px;
   pointer-events: none;
   animation: chunkTooltipFadeIn 0.2s ease;
@@ -683,18 +683,18 @@ const handleChunkRightClick = (event, chunk) => {
   gap: 8px;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .chunk-tooltip-header .tooltip-source {
   font-size: 11px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
 }
 
 .chunk-tooltip-header .tooltip-page {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
 }
 
 .chunk-tooltip-header .tooltip-score {
@@ -703,13 +703,13 @@ const handleChunkRightClick = (event, chunk) => {
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(128, 128, 128, 0.15);
 }
 
 .chunk-tooltip-body {
   font-size: 12px;
   line-height: 1.6;
-  color: white;
+  color: var(--text-main);
   max-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;

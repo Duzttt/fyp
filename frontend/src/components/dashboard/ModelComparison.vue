@@ -202,12 +202,12 @@ const getSpeedColor = (speed) => {
 .modal-container {
   width: min(900px, 95vw);
   max-height: 85vh;
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--outline-variant);
   border-radius: 20px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -218,7 +218,7 @@ const getSpeedColor = (speed) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .modal-header h3 {
@@ -232,8 +232,8 @@ const getSpeedColor = (speed) => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -243,8 +243,8 @@ const getSpeedColor = (speed) => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
   transform: rotate(90deg);
 }
 
@@ -273,15 +273,15 @@ const getSpeedColor = (speed) => {
 .model-select-card {
   padding: 14px;
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .model-select-card:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(2, 6, 23, 0.8);
+  border-color: var(--outline);
+  background: var(--surface-container);
 }
 
 .model-select-card.selected {
@@ -336,8 +336,8 @@ const getSpeedColor = (speed) => {
   flex: 1;
   padding: 12px 16px;
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   color: var(--text-main);
   font-size: 13px;
   outline: none;
@@ -379,8 +379,8 @@ const getSpeedColor = (speed) => {
 
 .result-card {
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.5);
-  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -388,11 +388,11 @@ const getSpeedColor = (speed) => {
 
 .result-header {
   padding: 12px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-container);
 }
 
 .result-header h5 {
@@ -422,7 +422,7 @@ const getSpeedColor = (speed) => {
   gap: 10px;
   padding: 10px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(128, 128, 128, 0.1);
 }
 
 .item-rank {
@@ -468,9 +468,9 @@ const getSpeedColor = (speed) => {
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
-  border: 1px dashed rgba(55, 65, 81, 0.5);
+  border: 1px dashed var(--outline-variant);
   border-radius: 12px;
-  background: rgba(2, 6, 23, 0.3);
+  background: var(--surface-container-low);
 }
 
 /* Transitions */

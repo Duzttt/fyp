@@ -206,11 +206,11 @@ onMounted(() => {
   transform: translate(-50%, -50%);
   width: min(1200px, 95vw);
   height: min(800px, 90vh);
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.3);
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
   z-index: 5000;
   display: flex;
   flex-direction: column;

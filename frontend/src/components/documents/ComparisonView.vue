@@ -279,8 +279,8 @@ const exportAsMarkdown = () => {
   flex: 1;
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(55, 65, 81, 0.8);
-  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   color: var(--text-main);
   font-size: 13px;
   outline: none;
@@ -420,8 +420,8 @@ const exportAsMarkdown = () => {
 .comparison-column {
   display: flex;
   flex-direction: column;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(55, 65, 81, 0.6);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -431,8 +431,8 @@ const exportAsMarkdown = () => {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
   flex-shrink: 0;
 }
 
@@ -442,7 +442,7 @@ const exportAsMarkdown = () => {
   gap: 8px;
   font-size: 12px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
 }
 
 .doc-icon {
@@ -497,8 +497,8 @@ const exportAsMarkdown = () => {
 .difference-analysis {
   margin-top: 14px;
   padding: 14px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(55, 65, 81, 0.6);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   border-radius: 12px;
 }
 
@@ -512,7 +512,7 @@ const exportAsMarkdown = () => {
 .difference-title {
   font-size: 13px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 8px;

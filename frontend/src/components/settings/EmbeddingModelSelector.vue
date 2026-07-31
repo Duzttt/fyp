@@ -318,15 +318,15 @@ const getSpeedColor = (speed) => {
   justify-content: space-between;
   padding: 10px 12px;
   border-radius: 12px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .current-model:hover:not(.loading) {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(2, 6, 23, 1);
+  border-color: var(--outline);
+  background: var(--surface-container-low);
 }
 
 .current-model.loading {
@@ -437,17 +437,17 @@ const getSpeedColor = (speed) => {
   left: 12px;
   right: 12px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  background: rgba(2, 6, 23, 0.98);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
   z-index: 100;
   overflow: hidden;
 }
 
 .dropdown-header {
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
@@ -467,7 +467,7 @@ const getSpeedColor = (speed) => {
   padding: 10px 12px;
   cursor: pointer;
   transition: all 0.2s;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
 }
 
 .model-option:last-child {
@@ -475,7 +475,7 @@ const getSpeedColor = (speed) => {
 }
 
 .model-option:hover:not(.disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(128, 128, 128, 0.1);
 }
 
 .model-option.active {
@@ -579,12 +579,12 @@ const getSpeedColor = (speed) => {
 .modal-container {
   width: min(600px, 90vw);
   max-height: 80vh;
-  background: rgba(15, 23, 42, 0.95);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--outline-variant);
   border-radius: 20px;
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -595,7 +595,7 @@ const getSpeedColor = (speed) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .modal-header h3 {
@@ -609,8 +609,8 @@ const getSpeedColor = (speed) => {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;
@@ -620,8 +620,8 @@ const getSpeedColor = (speed) => {
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
   transform: rotate(90deg);
 }
 
@@ -648,8 +648,8 @@ const getSpeedColor = (speed) => {
 .test-input-group input {
   padding: 10px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(55, 65, 81, 0.9);
-  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   color: var(--text-main);
   font-size: 13px;
   outline: none;
@@ -693,7 +693,7 @@ const getSpeedColor = (speed) => {
   align-items: center;
   justify-content: space-between;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .results-header h4 {
@@ -719,8 +719,8 @@ const getSpeedColor = (speed) => {
 .result-item {
   padding: 12px;
   border-radius: 10px;
-  border: 1px solid rgba(55, 65, 81, 0.5);
-  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   display: flex;
   flex-direction: column;
   gap: 8px;

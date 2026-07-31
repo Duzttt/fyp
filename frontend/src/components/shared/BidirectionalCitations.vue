@@ -118,12 +118,12 @@ const navigateToMessage = (messageId) => {
   right: 20px;
   width: 380px;
   max-height: 450px;
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(99, 102, 241, 0.4);
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   z-index: 4500;
   overflow: hidden;
   display: none;
@@ -147,7 +147,7 @@ const navigateToMessage = (messageId) => {
 .bidirectional-title {
   font-size: 13px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -169,8 +169,8 @@ const navigateToMessage = (messageId) => {
 }
 
 .bidirectional-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
 }
 
 .bidirectional-source-info {
@@ -178,8 +178,8 @@ const navigateToMessage = (messageId) => {
   align-items: center;
   gap: 12px;
   padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
   font-size: 11px;
 }
 
@@ -212,16 +212,16 @@ const navigateToMessage = (messageId) => {
 
 .bidirectional-search {
   padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.15);
-  border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+  background: var(--surface-container);
+  border-bottom: 1px solid var(--outline-variant);
 }
 
 .search-input {
   width: 100%;
   padding: 6px 12px;
   border-radius: 8px;
-  border: 1px solid rgba(55, 65, 81, 0.8);
-  background: rgba(2, 6, 23, 0.8);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
   color: var(--text-main);
   font-size: 12px;
   outline: none;
@@ -242,8 +242,8 @@ const navigateToMessage = (messageId) => {
 
 .bidirectional-item {
   padding: 12px;
-  background: rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(55, 65, 81, 0.5);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
   border-radius: 10px;
   margin-bottom: 10px;
   cursor: pointer;

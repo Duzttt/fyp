@@ -142,12 +142,12 @@ const emit = defineEmits(['toggle-tooltip', 'close-tooltip'])
   right: 0;
   width: 280px;
   max-height: 300px;
-  background: rgba(15, 23, 42, 0.98);
+  background: var(--surface-container-high);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--outline-variant);
   border-radius: 12px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
   z-index: 100;
   overflow: hidden;
   display: flex;
@@ -157,14 +157,14 @@ const emit = defineEmits(['toggle-tooltip', 'close-tooltip'])
 
 .tooltip-header {
   padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--outline-variant);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-main);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-container);
 }
 
 .tooltip-close {
@@ -188,8 +188,8 @@ const emit = defineEmits(['toggle-tooltip', 'close-tooltip'])
 }
 
 .tooltip-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--text-main);
 }
 
 .tooltip-content {
@@ -207,14 +207,14 @@ const emit = defineEmits(['toggle-tooltip', 'close-tooltip'])
   gap: 8px;
   padding: 6px 8px;
   border-radius: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--surface-container-low);
   font-size: 11px;
   color: var(--text-main);
   transition: background-color 0.2s;
 }
 
 .tooltip-doc-item:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: var(--surface-container-highest);
 }
 
 .doc-icon {
@@ -230,8 +230,8 @@ const emit = defineEmits(['toggle-tooltip', 'close-tooltip'])
 
 .tooltip-footer {
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container);
 }
 
 .footer-note {

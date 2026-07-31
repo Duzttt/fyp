@@ -152,8 +152,8 @@ const highlightCodeBlocks = () => {
   margin: 12px 0;
   padding: 12px 16px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   overflow-x: auto;
 }
 
@@ -168,8 +168,8 @@ const highlightCodeBlocks = () => {
   margin: 12px 0;
   padding: 12px 16px;
   border-radius: 8px;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
   overflow-x: auto;
 }
 
