@@ -16,6 +16,34 @@ const studioTools = [
     icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
     action: 'summary',
   },
+  {
+    id: 'mcq',
+    title: 'Generate MCQ',
+    desc: 'Create multiple-choice questions from the selected documents.',
+    icon: 'M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 8h6v2H10v-2zm0-4h6v2H10V7zm0 8h6v2H10v-2zM7 7h2v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2z',
+    comingSoon: true,
+  },
+  {
+    id: 'quiz',
+    title: 'Quiz',
+    desc: 'Test your understanding with an interactive quiz.',
+    icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z',
+    comingSoon: true,
+  },
+  {
+    id: 'flashcard',
+    title: 'Flashcards',
+    desc: 'Review key concepts with flip-style flashcards.',
+    icon: 'M2.53 19.65l1.34.56v-9.03l-2.43 5.86c-.41 1.02.06 2.19 1.09 2.49zm19.5-3.7L17.07 3.98c-.31-.81-1.18-1.23-1.97-.91L2.96 7.58c-.81.31-1.23 1.18-.91 1.97l5.12 13.01c.31.81 1.18 1.23 1.97.91l12.87-4.87c.81-.31 1.24-1.17.92-1.97zM7.88 8.75c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-2 11c0 1.1.9 2 2 2h1.45l-3.45-8.77v6.77zm6 1.5c0 1.1.9 2 2 2h1.55l-3.55-9.02v7.02z',
+    comingSoon: true,
+  },
+  {
+    id: 'datatable',
+    title: 'Data Table',
+    desc: 'Extract structured data tables from your documents.',
+    icon: 'M20 3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM8 19H4v-6h4v6zm0-8H4V5h4v6zm6 8h-4v-6h4v6zm0-8h-4V5h4v6zm6 8h-4v-6h4v6zm0-8h-4V5h4v6z',
+    comingSoon: true,
+  },
 ]
 
 const showSummaryModal = ref(false)
@@ -28,6 +56,10 @@ const isGenerating = computed(() => summaryStore.isGenerating)
 
 const handleToolClick = (tool) => {
   if (tool.disabled) return
+  if (tool.comingSoon) {
+    alert(`${tool.title} is coming soon`)
+    return
+  }
   if (tool.action === 'summary') {
     openSummaryModal()
   }
@@ -88,27 +120,36 @@ const closeSummaryViewer = () => {
             <span class="tool-title">{{ tool.title }}</span>
             <span class="tool-desc">{{ tool.desc }}</span>
           </div>
-          <span v-if="tool.action === 'summary' && selectedCount > 0" class="tool-badge" aria-hidden="true">
+          <span v-if="tool.comingSoon" class="tool-badge soon" aria-hidden="true">Soon</span>
+          <span v-else-if="tool.action === 'summary' && selectedCount > 0" class="tool-badge" aria-hidden="true">
             {{ selectedCount }}
           </span>
         </button>
       </div>
 
-      <div v-if="showSummaryViewer" class="summary-viewer-container">
-        <div class="viewer-header">
-          <span class="viewer-title">Summary</span>
-          <button type="button" class="viewer-close" aria-label="Close summary" @click="closeSummaryViewer">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          </button>
-        </div>
-        <SummaryViewer
-          :summary="currentSummary"
-          :config="summaryStore.lastConfig"
-          :is-loading="isGenerating"
-          @regenerate="handleSummaryRegenerate"
-          @feedback="handleSummaryFeedback"
-        />
-      </div>
+      <Teleport to="body">
+        <Transition name="modal-fade">
+          <div v-if="showSummaryViewer" class="summary-modal-overlay" @click.self="closeSummaryViewer">
+            <div class="summary-modal">
+              <div class="modal-header">
+                <span class="modal-title">Summary</span>
+                <button type="button" class="modal-close" aria-label="Close summary" @click="closeSummaryViewer">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <SummaryViewer
+                  :summary="currentSummary"
+                  :config="summaryStore.lastConfig"
+                  :is-loading="isGenerating"
+                  @regenerate="handleSummaryRegenerate"
+                  @feedback="handleSummaryFeedback"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
 
     </div>
 
@@ -256,34 +297,57 @@ const closeSummaryViewer = () => {
   padding: 0 6px;
 }
 
-.summary-viewer-container {
-  border-radius: 10px;
-  background: var(--surface-container);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  max-height: 400px;
+.tool-badge.soon {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.viewer-header {
-  padding: 10px 12px;
+.summary-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.summary-modal {
+  width: 90vw;
+  max-width: 720px;
+  max-height: 85vh;
+  background: var(--surface-container);
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 16px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: rgba(129, 140, 248, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.viewer-title {
+.modal-title {
   font-family: var(--font-headline);
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--primary);
 }
 
-.viewer-close {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
   border: none;
   background: transparent;
   color: var(--on-surface-variant);
@@ -294,19 +358,48 @@ const closeSummaryViewer = () => {
   transition: background-color 0.2s, color 0.2s;
 }
 
-.viewer-close:focus-visible {
+.modal-close:focus-visible {
   outline: 2px solid var(--primary-container);
   outline-offset: 2px;
 }
 
-.viewer-close svg {
-  width: 16px;
-  height: 16px;
+.modal-close svg {
+  width: 18px;
+  height: 18px;
 }
 
-.viewer-close:hover {
-  background: rgba(255, 255, 255, 0.06);
+.modal-close:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: var(--on-surface);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-fade-enter-active .summary-modal,
+.modal-fade-leave-active .summary-modal {
+  transition: transform 0.2s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+.modal-fade-enter-from .summary-modal {
+  transform: scale(0.95);
+}
+
+.modal-fade-leave-to .summary-modal {
+  transform: scale(0.95);
 }
 
 </style>
