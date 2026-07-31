@@ -4,7 +4,7 @@ import SourcesPanel from './components/layout/SourcesPanel.vue'
 import ChatPanel from './components/chat/ChatPanel.vue'
 import StudioPanel from './components/layout/StudioPanel.vue'
 import ComparisonView from './components/documents/ComparisonView.vue'
-import LLMConfigPanel from './components/settings/LLMConfigPanel.vue'
+import ModelConfigModal from './components/settings/ModelConfigModal.vue'
 import AdminDashboard from './components/admin/AdminDashboard.vue'
 import ChunkViz from './components/shared/ChunkViz.vue'
 import RagDemoView from './components/demo/RagDemoView.vue'
@@ -81,15 +81,12 @@ onBeforeUnmount(() => {
       @open-llm-config="showLLMConfig = true"
       @open-rag-demo="handleOpenRagDemo"
     />
-    <LLMConfigPanel
-      v-if="showLLMConfig"
-      @close="showLLMConfig = false"
-    />
+    <ModelConfigModal v-model:show="showLLMConfig" />
     <RagDemoView
       v-if="showRagDemo"
       @close="handleCloseRagDemo"
     />
-    <main v-else-if="!showLLMConfig" id="main-content" class="main" tabindex="-1">
+    <main id="main-content" class="main" tabindex="-1">
       <SourcesPanel
         @selection-change="handleSelectionChange"
         @toggle-compare="handleToggleCompare"
