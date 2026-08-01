@@ -6,10 +6,13 @@ This module provides comprehensive evaluation metrics for retrieval systems:
 - Precision @k: Fraction of retrieved documents that are relevant
 - MRR (Mean Reciprocal Rank): Average of reciprocal ranks
 - NDCG @k: Normalized Discounted Cumulative Gain
+- p95 latency: 95th percentile retrieval latency across queries
 """
 
+import json
 import math
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -35,6 +38,7 @@ class EvaluationResult:
     reciprocal_rank: float = 0.0
     ndcg_at_5: float = 0.0
     ndcg_at_10: float = 0.0
+    latency_ms: float = 0.0
 
     def to_dict(self) -> Dict[str, float]:
         """Convert to dictionary."""
@@ -51,6 +55,7 @@ class EvaluationResult:
             "reciprocal_rank": self.reciprocal_rank,
             "ndcg_at_5": self.ndcg_at_5,
             "ndcg_at_10": self.ndcg_at_10,
+            "latency_ms": round(self.latency_ms, 2),
         }
 
 
@@ -70,6 +75,7 @@ class AggregateMetrics:
     mrr: float = 0.0  # Mean Reciprocal Rank
     avg_ndcg_at_5: float = 0.0
     avg_ndcg_at_10: float = 0.0
+    p95_latency_ms: float = 0.0  # 95th percentile latency across queries
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -86,6 +92,7 @@ class AggregateMetrics:
             "mrr": round(self.mrr, 4),
             "ndcg_at_5": round(self.avg_ndcg_at_5, 4),
             "ndcg_at_10": round(self.avg_ndcg_at_10, 4),
+            "p95_latency_ms": round(self.p95_latency_ms, 2),
         }
 
 
@@ -130,8 +137,36 @@ class RetrievalEvaluator:
             self.relevant_docs = {}
             for q in test_queries:
                 query_id = q.get("id", f"q_{id(q)}")
-                expected = q.get("expected_doc_ids", [])
+                expected = q.get("expected_doc_ids", q.get("relevant_chunk_ids", []))
                 self.relevant_docs[query_id] = expected
+
+    @staticmethod
+    def load_benchmark(path: str) -> List[Dict[str, Any]]:
+        """
+        Load a benchmark dataset from a JSONL file.
+
+        Each line is a record with:
+            {
+                "id": "q001",
+                "query": "...",
+                "relevant_chunk_ids": ["chunk_14", "chunk_15"],
+                "ground_truth": "..."
+            }
+
+        Args:
+            path: Path to the .jsonl benchmark file
+
+        Returns:
+            List[Dict] of benchmark records
+        """
+        queries: List[Dict[str, Any]] = []
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                stripped = line.strip()
+                if not stripped:
+                    continue
+                queries.append(json.loads(stripped))
+        return queries
 
     def evaluate(
         self,
@@ -164,13 +199,19 @@ class RetrievalEvaluator:
             query_id = query_data.get("id", f"q_{id(query_data)}")
             query_text = query_data.get("query", "")
             relevant_doc_ids = set(
-                query_data.get("expected_doc_ids", self.relevant_docs.get(query_id, []))
+                query_data.get(
+                    "expected_doc_ids",
+                    query_data.get(
+                        "relevant_chunk_ids", self.relevant_docs.get(query_id, [])
+                    ),
+                )
             )
 
             if not relevant_doc_ids:
                 continue  # Skip queries with no relevant documents
 
-            # Perform retrieval
+            # Perform retrieval and time it for latency percentiles
+            started_at = time.perf_counter()
             try:
                 retrieved = retriever.retrieve(query_text, top_k=top_k)
                 retrieved_ids = [doc.get("id") for doc in retrieved if doc.get("id")]
@@ -178,9 +219,11 @@ class RetrievalEvaluator:
                 raise RetrievalEvaluatorError(
                     f"Retrieval failed for query {query_id}: {str(e)}"
                 )
+            latency_ms = (time.perf_counter() - started_at) * 1000.0
 
             # Compute metrics
             result = self._compute_metrics(query_id, retrieved_ids, relevant_doc_ids)
+            result.latency_ms = latency_ms
             results.append(result)
 
         # Compute aggregate metrics
@@ -327,6 +370,12 @@ class RetrievalEvaluator:
 
         n = len(results)
 
+        # p95 latency: the smallest latency such that >= 95% of queries are
+        # at or below it.
+        latencies = sorted(r.latency_ms for r in results)
+        p95_index = max(0, int(math.ceil(0.95 * n)) - 1)
+        p95_latency_ms = latencies[p95_index]
+
         aggregate = AggregateMetrics(
             num_queries=n,
             avg_recall_at_1=sum(r.recall_at_1 for r in results) / n,
@@ -340,6 +389,7 @@ class RetrievalEvaluator:
             mrr=sum(r.reciprocal_rank for r in results) / n,
             avg_ndcg_at_5=sum(r.ndcg_at_5 for r in results) / n,
             avg_ndcg_at_10=sum(r.ndcg_at_10 for r in results) / n,
+            p95_latency_ms=p95_latency_ms,
         )
 
         return aggregate
