@@ -74,8 +74,12 @@ def _install_happy_path_mocks(monkeypatch: pytest.MonkeyPatch, trace_service):
         lambda index_path, embedding_dim: FakeVectorStore(),
     )
 
-    def fake_retrieve_with_faiss(query, top_k=5, source_filter=None):
+    def fake_retrieve_with_faiss(
+        query, top_k=5, source_filter=None, stage_timings=None
+    ):
         captured["source_filter"] = source_filter
+        if stage_timings is not None:
+            stage_timings.append({"stage": "bm25_dense_fusion", "duration_ms": 1})
         return [
             {
                 "text": "Retrieval augmented generation uses retrieved context.",
@@ -157,8 +161,12 @@ def test_build_rag_demo_trace_skips_generation_when_include_answer_false(
         include_answer=False,
     )
 
-    llm_stage = next(stage for stage in trace["stages"] if stage["id"] == "llm_generation")
-    final_stage = next(stage for stage in trace["stages"] if stage["id"] == "final_answer")
+    llm_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "llm_generation"
+    )
+    final_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "final_answer"
+    )
     assert llm_stage["status"] == "skipped"
     assert final_stage["status"] == "skipped"
     assert trace["answer"] == ""
@@ -201,8 +209,12 @@ def test_build_rag_demo_trace_preserves_retrieval_when_llm_times_out(
         include_answer=True,
     )
 
-    llm_stage = next(stage for stage in trace["stages"] if stage["id"] == "llm_generation")
-    final_stage = next(stage for stage in trace["stages"] if stage["id"] == "final_answer")
+    llm_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "llm_generation"
+    )
+    final_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "final_answer"
+    )
     assert llm_stage["status"] == "failed"
     assert "timed out" in llm_stage["summary"].lower()
     assert final_stage["status"] == "skipped"

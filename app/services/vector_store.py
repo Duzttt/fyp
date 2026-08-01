@@ -166,6 +166,48 @@ class VectorStore:
             [result["distance"] for result in grounded_results],
         )
 
+    def get_embedding(self, index: int) -> Optional[np.ndarray]:
+        """
+        Reconstruct the (L2-normalized) embedding vector for a chunk index.
+
+        Used by MMR diversity selection to measure inter-chunk similarity.
+
+        Args:
+            index: Chunk index into the persisted FAISS index
+
+        Returns:
+            np.ndarray or None if the index is out of range
+        """
+        if self.index is None:
+            return None
+        try:
+            idx = int(index)
+        except (TypeError, ValueError):
+            return None
+        if idx < 0 or idx >= self.index.ntotal:
+            return None
+        try:
+            return self.index.reconstruct(idx)
+        except Exception:
+            return None
+
+    def get_embeddings(self, indices: List[int]) -> Dict[int, np.ndarray]:
+        """
+        Reconstruct embeddings for a list of chunk indices.
+
+        Args:
+            indices: List of chunk indices
+
+        Returns:
+            Dict[int, np.ndarray] - only successfully reconstructed indices
+        """
+        embeddings: Dict[int, np.ndarray] = {}
+        for index in indices:
+            vector = self.get_embedding(index)
+            if vector is not None:
+                embeddings[int(index)] = vector
+        return embeddings
+
     def save(self) -> None:
         if self.index is None:
             return

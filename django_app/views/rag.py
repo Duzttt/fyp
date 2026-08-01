@@ -116,7 +116,7 @@ def ask(request: HttpRequest) -> JsonResponse:
     llm_model = rag_config.get("llm_model") or runtime_settings["model"]
     temperature = rag_config.get("temperature", 0.7)
     similarity_threshold = float(rag_config.get("similarity_threshold", 0.6))
-    reranker_enabled = bool(rag_config.get("reranker_enabled", False))
+    reranker_enabled = bool(rag_config.get("reranker_enabled", True))
 
     # A/B test: assign this request to a variant and apply its config overrides.
     ab_test = None
@@ -602,7 +602,7 @@ def update_rag_config(request: HttpRequest) -> JsonResponse:
     top_k = int(payload.get("top_k", 3))
     temperature = float(payload.get("temperature", 0.7))
     similarity_threshold = float(payload.get("similarity_threshold", 0.6))
-    reranker_enabled = bool(payload.get("reranker_enabled", False))
+    reranker_enabled = bool(payload.get("reranker_enabled", True))
 
     if top_k < 1:
         top_k = 1
@@ -683,7 +683,7 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             query=query,
             top_k=top_k,
             source_filter=None,
-            reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
+            reranker_enabled=bool(rag_config.get("reranker_enabled", True)),
         )
         context = build_context_from_sources(retrieved_sources)
 
@@ -776,7 +776,7 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
             query=query,
             top_k=top_k,
             source_filter=source_filter,
-            reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
+            reranker_enabled=bool(rag_config.get("reranker_enabled", True)),
         )
     except LocalRAGError as exc:
         return _error_response(str(exc), status=503)
@@ -852,7 +852,7 @@ def compare_documents(request: HttpRequest) -> JsonResponse:
                 query=query,
                 top_k=top_k,
                 source_filter=[source],
-                reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
+                reranker_enabled=bool(rag_config.get("reranker_enabled", True)),
             )
             context = build_context_from_sources(retrieved)
 

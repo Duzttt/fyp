@@ -21,6 +21,7 @@ def retrieve_with_faiss(
     query: str,
     top_k: int = 5,
     source_filter: Optional[List[str]] = None,
+    stage_timings: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
     from app.services.local_rag import LocalRAGError as RuntimeLocalRAGError
     from app.services.local_rag import retrieve_with_faiss as runtime_retrieve
@@ -31,13 +32,16 @@ def retrieve_with_faiss(
             top_k=top_k,
             source_filter=source_filter,
             similarity_threshold=0.0,
+            stage_timings=stage_timings,
         )
     except RuntimeLocalRAGError as exc:
         raise LocalRAGError(str(exc)) from exc
 
 
 def build_context_from_sources(sources: List[Dict[str, Any]]) -> str:
-    from app.services.local_rag import build_context_from_sources as runtime_build_context
+    from app.services.local_rag import (
+        build_context_from_sources as runtime_build_context,
+    )
 
     return runtime_build_context(sources)
 
@@ -387,11 +391,13 @@ def build_rag_demo_trace(
     )
 
     hybrid_started_at = time.perf_counter()
+    retrieval_stage_timings: List[Dict[str, Any]] = []
     try:
         retrieved_sources = retrieve_with_faiss(
             query=normalized_query,
             top_k=bounded_top_k,
             source_filter=normalized_sources,
+            stage_timings=retrieval_stage_timings,
         )
         retrieved_chunks = _format_retrieved_chunks(retrieved_sources)
         stages.append(
@@ -401,7 +407,11 @@ def build_rag_demo_trace(
                 "completed",
                 _duration_ms(hybrid_started_at),
                 "The system combines keyword and semantic signals to choose the strongest evidence.",
-                technical={"top_k": bounded_top_k, "source_filter": normalized_sources or []},
+                technical={
+                    "top_k": bounded_top_k,
+                    "source_filter": normalized_sources or [],
+                    "stages": retrieval_stage_timings,
+                },
                 results=[
                     {
                         "rank": rank,
@@ -452,7 +462,10 @@ def build_rag_demo_trace(
             _duration_ms(context_started_at),
             context_summary,
             details={"context_preview": _clip_text(context, 500)},
-            technical={"context_length": len(context), "chunks_used": len(retrieved_sources)},
+            technical={
+                "context_length": len(context),
+                "chunks_used": len(retrieved_sources),
+            },
         )
     )
 
@@ -473,7 +486,10 @@ def build_rag_demo_trace(
                     "completed",
                     _duration_ms(llm_started_at),
                     "The language model writes an answer grounded in the retrieved context.",
-                    details={"provider": runtime_llm["provider"], "model": runtime_llm["model"]},
+                    details={
+                        "provider": runtime_llm["provider"],
+                        "model": runtime_llm["model"],
+                    },
                     technical={"answer_length": len(answer)},
                 )
             )
@@ -485,7 +501,10 @@ def build_rag_demo_trace(
                     "failed",
                     _duration_ms(llm_started_at),
                     "LLM generation timed out after retrieval and context building completed.",
-                    details={"provider": runtime_llm["provider"], "model": runtime_llm["model"]},
+                    details={
+                        "provider": runtime_llm["provider"],
+                        "model": runtime_llm["model"],
+                    },
                     error=str(exc),
                 )
             )
@@ -497,7 +516,10 @@ def build_rag_demo_trace(
                     "failed",
                     _duration_ms(llm_started_at),
                     "LLM generation failed after retrieval and context building completed.",
-                    details={"provider": runtime_llm["provider"], "model": runtime_llm["model"]},
+                    details={
+                        "provider": runtime_llm["provider"],
+                        "model": runtime_llm["model"],
+                    },
                     error=str(exc),
                 )
             )
@@ -509,7 +531,10 @@ def build_rag_demo_trace(
                 "skipped",
                 0,
                 "LLM generation was skipped for this trace request.",
-                technical={"include_answer": include_answer, "has_context": bool(context.strip())},
+                technical={
+                    "include_answer": include_answer,
+                    "has_context": bool(context.strip()),
+                },
             )
         )
 

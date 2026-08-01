@@ -185,6 +185,11 @@ class HybridRetriever:
             doc_id: score for doc_id, score in dense_results
         }
 
+        # Build BM25 score lookup (raw BM25 score, used for observability)
+        bm25_score_map: Dict[str, float] = {
+            doc_id: score for doc_id, score in bm25_results
+        }
+
         # 3. Fuse results
         if method == FusionMethod.RRF:
             fused_scores = self.fusion_rrf(bm25_results, dense_results, k=rrf_k)
@@ -201,12 +206,16 @@ class HybridRetriever:
         for doc_id, score in sorted_results[:fetch_k]:
             if doc_id in self.doc_store:
                 doc = self.doc_store[doc_id]
+                dense_score = dense_score_map.get(doc_id, 0.0)
                 final_results.append(
                     {
                         "id": doc_id,
                         "text": doc.get("text", ""),
                         "score": score,
-                        "cosine_similarity": dense_score_map.get(doc_id, 0.0),
+                        "fusion_score": score,
+                        "bm25_score": bm25_score_map.get(doc_id, 0.0),
+                        "dense_score": dense_score,
+                        "cosine_similarity": dense_score,
                         "source": doc.get("source", "unknown"),
                         "metadata": doc.get("metadata", {}),
                     }

@@ -41,7 +41,7 @@ class TestLocalRagHybrid:
             FakeHybridService,
         )
 
-        results = retrieve_with_faiss("test query", top_k=5)
+        results = retrieve_with_faiss("test query", top_k=5, reranker_enabled=False)
         assert len(results) == 2
         assert results[0]["text"] == "result 1"
         assert results[0]["score"] == 0.95
@@ -88,7 +88,9 @@ class TestLocalRagHybrid:
             lambda **kw: mock_embed,
         )
 
-        results = retrieve_with_faiss("test query", top_k=5, similarity_threshold=0.0)
+        results = retrieve_with_faiss(
+            "test query", top_k=5, similarity_threshold=0.0, reranker_enabled=False
+        )
         assert len(results) == 1
         assert results[0]["text"] == "dense result"
 
@@ -424,3 +426,146 @@ class TestRelevanceFiltering:
             "test query", top_k=5, similarity_threshold=0.0, reranker_enabled=False
         )
         assert len(results) == 1
+
+
+class TestRerankAndDiversity:
+    """Task 4: rerank precedence, per-source caps, graceful degradation,
+    score-field preservation and stage observability."""
+
+    def _patch_hybrid(self, monkeypatch, fake_results):
+        class FakeHybridService:
+            @staticmethod
+            def get_instance():
+                return FakeHybridService()
+
+            def search(self, query, top_k=5, candidate_top_k=None):
+                return list(fake_results)
+
+        monkeypatch.setattr(
+            "app.services.local_rag.HybridRetrieverService", FakeHybridService
+        )
+
+    def test_reranker_ranking_precedes_rrf_ranking(self, monkeypatch):
+        """After reranking, order must follow rerank_score, not the RRF score."""
+        fake_results = [
+            {
+                "text": "a",
+                "source": "x.pdf",
+                "page": 1,
+                "score": 0.9,
+                "fusion_score": 0.9,
+                "bm25_score": 5.0,
+                "dense_score": 0.9,
+                "chunk_index": 0,
+            },
+            {
+                "text": "b",
+                "source": "y.pdf",
+                "page": 1,
+                "score": 0.7,
+                "fusion_score": 0.7,
+                "bm25_score": 4.0,
+                "dense_score": 0.7,
+                "chunk_index": 1,
+            },
+        ]
+        self._patch_hybrid(monkeypatch, fake_results)
+
+        class FakeReranker:
+            @staticmethod
+            def get_instance(model_name):
+                return FakeReranker()
+
+            def rerank(self, query, candidates):
+                candidates[0]["rerank_score"] = 0.3  # "a" low
+                candidates[1]["rerank_score"] = 0.9  # "b" high
+                candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
+                return candidates
+
+        monkeypatch.setattr(
+            "app.services.cross_encoder_reranker.CrossEncoderReranker", FakeReranker
+        )
+
+        results = retrieve_with_faiss("test query", top_k=5)
+        assert results[0]["text"] == "b"
+        assert results[0]["rerank_score"] == 0.9
+        # All score fields must be preserved through reranking.
+        assert results[0]["fusion_score"] == 0.7
+        assert results[0]["bm25_score"] == 4.0
+        assert results[0]["dense_score"] == 0.7
+        assert results[1]["text"] == "a"
+
+    def test_max_chunks_per_source_enforced_with_relaxation(self, monkeypatch):
+        """At most 2 chunks per source; the cap is relaxed only when no other
+        source has candidates left."""
+        fake_results = [
+            {
+                "text": f"c{i}",
+                "source": "a.pdf",
+                "page": 1,
+                "score": 0.9 - i * 0.4,
+                "fusion_score": 0.9 - i * 0.4,
+                "chunk_index": i,
+            }
+            for i in range(3)
+        ] + [
+            {
+                "text": f"d{i}",
+                "source": "b.pdf",
+                "page": 1,
+                "score": 0.7 - i * 0.01,
+                "fusion_score": 0.7 - i * 0.01,
+                "chunk_index": 10 + i,
+            }
+            for i in range(2)
+        ]
+        self._patch_hybrid(monkeypatch, fake_results)
+
+        results = retrieve_with_faiss("test query", top_k=5, reranker_enabled=False)
+        assert len(results) == 5
+        from collections import Counter
+
+        counts = Counter(r["source"] for r in results)
+        assert counts["b.pdf"] == 2  # cap honoured for the secondary source
+        assert counts["a.pdf"] == 3  # relaxed once b.pdf was exhausted
+
+    def test_returns_fewer_results_when_candidates_insufficient(self, monkeypatch):
+        """With too few candidates the system must return fewer results, not fail."""
+        fake_results = [
+            {
+                "text": "only one",
+                "source": "x.pdf",
+                "page": 1,
+                "score": 0.9,
+                "fusion_score": 0.9,
+                "chunk_index": 0,
+            }
+        ]
+        self._patch_hybrid(monkeypatch, fake_results)
+
+        results = retrieve_with_faiss("test query", top_k=5, reranker_enabled=False)
+        assert len(results) == 1
+        assert results[0]["text"] == "only one"
+
+    def test_stage_timings_recorded(self, monkeypatch):
+        fake_results = [
+            {
+                "text": "doc",
+                "source": "x.pdf",
+                "page": 1,
+                "score": 0.9,
+                "fusion_score": 0.9,
+                "chunk_index": 0,
+            }
+        ]
+        self._patch_hybrid(monkeypatch, fake_results)
+
+        timings: list = []
+        retrieve_with_faiss(
+            "test query", top_k=5, reranker_enabled=False, stage_timings=timings
+        )
+
+        stages = {t["stage"] for t in timings}
+        assert "bm25_dense_fusion" in stages
+        assert "mmr_diversity" in stages
+        assert all(isinstance(t["duration_ms"], int) for t in timings)

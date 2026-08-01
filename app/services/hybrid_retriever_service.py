@@ -115,7 +115,12 @@ class HybridRetrieverService:
                 "source": r.get("source", "unknown"),
                 "page": r.get("metadata", {}).get("page"),
                 "score": r.get("score", 0.0),
+                "fusion_score": r.get("fusion_score", r.get("score", 0.0)),
+                "bm25_score": r.get("bm25_score", 0.0),
+                "dense_score": r.get("dense_score", r.get("cosine_similarity", 0.0)),
                 "cosine_similarity": r.get("cosine_similarity", 0.0),
+                "rerank_score": r.get("rerank_score", 0.0),
+                "chunk_index": r.get("metadata", {}).get("chunk_index"),
             }
             for r in hybrid_results
         ]
@@ -161,6 +166,7 @@ def _build_document_list(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                 "metadata": {
                     "page": chunk.get("page"),
                     "source": chunk.get("source", "unknown"),
+                    "chunk_index": i,
                 },
             }
         )
