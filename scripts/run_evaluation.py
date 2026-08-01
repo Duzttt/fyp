@@ -5,6 +5,7 @@ Usage:
         --dataset eval_dataset.jsonl \\
         --out eval_report.csv
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,16 +44,25 @@ def _parse_args() -> argparse.Namespace:
         "--out", required=True, help="Output CSV path (e.g. eval_report.csv)."
     )
     parser.add_argument("--top-k", type=int, default=5, help="Chunks to retrieve.")
-    parser.add_argument(
-        "--base-url", default=None, help="Override EVAL_BASE_URL."
-    )
+    parser.add_argument("--base-url", default=None, help="Override EVAL_BASE_URL.")
     parser.add_argument("--model", default=None, help="Override EVAL_MODEL.")
     parser.add_argument(
-        "--timeout", type=int, default=settings.EVAL_TIMEOUT_SECONDS
+        "--judge-base-url",
+        default=settings.NVIDIA_BASE_URL,
+        help="RAGAS judge URL (default: NVIDIA NIM).",
     )
     parser.add_argument(
-        "--max-workers", type=int, default=settings.EVAL_MAX_WORKERS
+        "--judge-model",
+        default=settings.NVIDIA_MODEL,
+        help="RAGAS judge model (default: NVIDIA NIM model).",
     )
+    parser.add_argument(
+        "--judge-api-key",
+        default=settings.NVIDIA_API_KEY,
+        help="RAGAS judge API key (default: NVIDIA_API_KEY from .env).",
+    )
+    parser.add_argument("--timeout", type=int, default=settings.EVAL_TIMEOUT_SECONDS)
+    parser.add_argument("--max-workers", type=int, default=settings.EVAL_MAX_WORKERS)
     parser.add_argument("--log-file", default=None)
     return parser.parse_args()
 
@@ -90,6 +100,9 @@ def main() -> int:
             top_k=args.top_k,
             timeout=args.timeout,
             max_workers=args.max_workers,
+            judge_base_url=args.judge_base_url,
+            judge_model=args.judge_model,
+            judge_api_key=args.judge_api_key,
         )
     except DatasetFormatError as exc:
         print(f"ERROR (dataset format): {exc}", file=sys.stderr)

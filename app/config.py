@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: Optional[str] = None
     OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
     OPENROUTER_MODEL: str = "nvidia/nemotron-3-super-120b-a12b:free"
+
+    # NVIDIA NIM (build.nvidia.com) — OpenAI-compatible endpoint
+    NVIDIA_API_KEY: Optional[str] = None
+    NVIDIA_BASE_URL: str = "https://integrate.api.nvidia.com/v1"
+    NVIDIA_MODEL: str = "nvidia/llama-3.1-nemotron-70b-instruct"
     LLM_PROVIDER: str = "gemini"
     LLM_MAX_OUTPUT_TOKENS: int = 2048
     CITATION_MAX_OUTPUT_TOKENS: int = 3072
@@ -115,7 +120,9 @@ class Settings(BaseSettings):
             normalized.add(ext if ext.startswith(".") else f".{ext}")
         return normalized or {".pdf"}
 
-    @field_validator("GEMINI_API_KEY", "OPENROUTER_API_KEY", mode="before")
+    @field_validator(
+        "GEMINI_API_KEY", "OPENROUTER_API_KEY", "NVIDIA_API_KEY", mode="before"
+    )
     @classmethod
     def normalize_optional_api_keys(cls, value):
         if value is None:

@@ -311,8 +311,17 @@ def evaluate_dataset(
     top_k: int = 5,
     timeout: int = 300,
     max_workers: int = 4,
+    judge_base_url: Optional[str] = None,
+    judge_model: Optional[str] = None,
+    judge_api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Read JSONL, run RAG + RAGAS, write CSV. Returns summary dict."""
+    """Read JSONL, run RAG + RAGAS, write CSV. Returns summary dict.
+
+    Args:
+        base_url/model: Answer generator endpoint (e.g. local llama.cpp).
+        judge_base_url/judge_model/judge_api_key: Optional separate RAGAS
+            judge endpoint. Falls back to the generator endpoint when unset.
+    """
     if not os.path.exists(dataset_path):
         raise DatasetFormatError(f"Dataset not found: {dataset_path}")
 
@@ -417,9 +426,9 @@ def evaluate_dataset(
             return [float(v) for v in emb]
 
     langchain_llm = ChatOpenAI(
-        model=model,
-        openai_api_key="local",
-        openai_api_base=base_url,
+        model=judge_model or model,
+        openai_api_key=judge_api_key or "local",
+        openai_api_base=judge_base_url or base_url,
         temperature=0,
         max_tokens=4096,
     )

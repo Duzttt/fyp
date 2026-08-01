@@ -1,4 +1,5 @@
 """Tests for app.services.eval_pipeline."""
+
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -31,6 +32,9 @@ def _FakeSettings(docs_dir: Path) -> SimpleNamespace:
         LOCAL_LLM_BASE_URL="http://localhost:8080",
         LOCAL_LLM_MODEL="local",
         DOCUMENTS_PATH=str(docs_dir),
+        NVIDIA_BASE_URL="https://integrate.api.nvidia.com/v1",
+        NVIDIA_MODEL="nvidia/llama-3.1-nemotron-70b-instruct",
+        NVIDIA_API_KEY=None,
     )
 
 
@@ -44,9 +48,14 @@ def _make_settings(monkeypatch, **overrides) -> Settings:
     construction and ``LOCAL_LLM_*`` defaults are non-None.
     """
     for key in (
-        "QA_GEN_BASE_URL", "QA_GEN_MODEL", "QA_GEN_TIMEOUT_SECONDS",
-        "EVAL_BASE_URL", "EVAL_MODEL", "EVAL_TIMEOUT_SECONDS",
-        "LOCAL_LLM_BASE_URL", "LOCAL_LLM_MODEL",
+        "QA_GEN_BASE_URL",
+        "QA_GEN_MODEL",
+        "QA_GEN_TIMEOUT_SECONDS",
+        "EVAL_BASE_URL",
+        "EVAL_MODEL",
+        "EVAL_TIMEOUT_SECONDS",
+        "LOCAL_LLM_BASE_URL",
+        "LOCAL_LLM_MODEL",
     ):
         monkeypatch.delenv(key, raising=False)
     settings = Settings(_env_file=None)
@@ -62,8 +71,10 @@ def test_resolve_endpoint_cli_flag_wins(monkeypatch):
         QA_GEN_MODEL="env-model",
     )
     base_url, model = resolve_endpoint(
-        phase="qa_gen", settings=settings,
-        cli_base_url="http://cli:9090", cli_model="cli-model",
+        phase="qa_gen",
+        settings=settings,
+        cli_base_url="http://cli:9090",
+        cli_model="cli-model",
     )
     assert base_url == "http://cli:9090"
     assert model == "cli-model"
@@ -223,6 +234,7 @@ def test_generate_qa_dataset_writes_jsonl(tmp_path, monkeypatch):
     lines = out_path.read_text(encoding="utf-8").strip().splitlines()
     assert len(lines) == 2
     import json as _json
+
     record = _json.loads(lines[0])
     assert set(record.keys()) == {"question", "ground_truth"}
 
@@ -296,6 +308,7 @@ def test_generate_qa_dataset_falls_back_to_truncated_on_timeout(tmp_path, monkey
     monkeypatch.setattr("app.services.eval_pipeline._call_chat", fake_call_chat)
 
     import requests as _requests
+
     monkeypatch.setattr("app.services.eval_pipeline.requests", _requests)
 
     count = generate_qa_dataset(
@@ -343,9 +356,8 @@ def test_evaluate_dataset_reads_jsonl_and_writes_csv(tmp_path, monkeypatch):
 
             def to_csv(self, path, index=False, encoding="utf-8"):
                 Path(path).write_text(
-                    "question,faithfulness\n" + "\n".join(
-                        f"{r['question']},0.9" for r in dataset.to_list()
-                    ),
+                    "question,faithfulness\n"
+                    + "\n".join(f"{r['question']},0.9" for r in dataset.to_list()),
                     encoding=encoding,
                 )
 
@@ -355,9 +367,7 @@ def test_evaluate_dataset_reads_jsonl_and_writes_csv(tmp_path, monkeypatch):
 
         return Scores()
 
-    monkeypatch.setattr(
-        "app.services.eval_pipeline._run_ragas_metrics", fake_ragas
-    )
+    monkeypatch.setattr("app.services.eval_pipeline._run_ragas_metrics", fake_ragas)
 
     summary = evaluate_dataset(
         dataset_path=str(ds_path),
@@ -386,9 +396,7 @@ def test_evaluate_dataset_continues_on_single_question_failure(tmp_path, monkeyp
             raise RuntimeError("retrieval boom")
         return [{"text": "ctx", "source": "x.pdf", "page": 1}]
 
-    monkeypatch.setattr(
-        "app.services.local_rag.retrieve_with_faiss", fake_retrieve
-    )
+    monkeypatch.setattr("app.services.local_rag.retrieve_with_faiss", fake_retrieve)
     monkeypatch.setattr(
         "app.services.local_rag.build_context_from_sources", lambda s: "ctx"
     )
@@ -433,15 +441,11 @@ def test_evaluate_dataset_raises_on_missing_field(tmp_path, monkeypatch):
     bad_path = tmp_path / "bad.jsonl"
     bad_path.write_text('{"question": "Q1"}\n', encoding="utf-8")
 
-    monkeypatch.setattr(
-        "app.services.local_rag.retrieve_with_faiss", lambda **kw: []
-    )
+    monkeypatch.setattr("app.services.local_rag.retrieve_with_faiss", lambda **kw: [])
     monkeypatch.setattr(
         "app.services.local_rag.build_context_from_sources", lambda s: ""
     )
-    monkeypatch.setattr(
-        "app.services.eval_pipeline._call_chat", lambda **kw: "ans"
-    )
+    monkeypatch.setattr("app.services.eval_pipeline._call_chat", lambda **kw: "ans")
     monkeypatch.setattr(
         "app.services.eval_pipeline._run_ragas_metrics", lambda *a, **kw: None
     )
@@ -487,15 +491,30 @@ def test_generate_qa_dataset_cli_pdfs_all(tmp_path, monkeypatch):
 
     captured: dict = {}
 
-    def fake_gen(*, pdf_paths, out_path, base_url, model, num_questions_per_pdf=5,
-                 language="en", timeout=120):
+    def fake_gen(
+        *,
+        pdf_paths,
+        out_path,
+        base_url,
+        model,
+        num_questions_per_pdf=5,
+        language="en",
+        timeout=120,
+    ):
         captured["pdf_paths"] = list(pdf_paths)
         return len(pdf_paths)
 
     rc = _load_cli(
         monkeypatch,
-        argv=["generate_qa_dataset.py", "--pdfs", "all",
-              "--out", str(tmp_path / "out.jsonl"), "--num", "5"],
+        argv=[
+            "generate_qa_dataset.py",
+            "--pdfs",
+            "all",
+            "--out",
+            str(tmp_path / "out.jsonl"),
+            "--num",
+            "5",
+        ],
         fake_settings=_FakeSettings(fake_dir),
         fake_gen=fake_gen,
         fake_resolve=lambda **kw: ("http://x:8080", "m"),
@@ -511,8 +530,13 @@ def test_generate_qa_dataset_cli_pdfs_all_no_pdfs(tmp_path, monkeypatch, capsys)
 
     rc = _load_cli(
         monkeypatch,
-        argv=["generate_qa_dataset.py", "--pdfs", "all",
-              "--out", str(tmp_path / "out.jsonl")],
+        argv=[
+            "generate_qa_dataset.py",
+            "--pdfs",
+            "all",
+            "--out",
+            str(tmp_path / "out.jsonl"),
+        ],
         fake_settings=_FakeSettings(fake_dir),
         fake_gen=lambda **kw: 0,
         fake_resolve=lambda **kw: ("http://x:8080", "m"),
@@ -550,9 +574,15 @@ def test_run_evaluation_cli_configures_django(monkeypatch, tmp_path):
             module, "resolve_endpoint", lambda **kw: ("http://x:8080", "m")
         )
         monkeypatch.setattr(
-            sys, "argv",
-            ["run_evaluation.py", "--dataset", str(tmp_path / "ds.jsonl"),
-             "--out", str(tmp_path / "out.csv")],
+            sys,
+            "argv",
+            [
+                "run_evaluation.py",
+                "--dataset",
+                str(tmp_path / "ds.jsonl"),
+                "--out",
+                str(tmp_path / "out.csv"),
+            ],
         )
         rc = module.main()
     finally:
