@@ -8,7 +8,6 @@ Tests cover:
 """
 
 import pytest
-from typing import List, Dict, Any
 
 # Test documents - mix of Chinese and English
 TEST_DOCUMENTS = [
@@ -133,6 +132,92 @@ class TestBM25Index:
 
         index.refresh(TEST_DOCUMENTS)
         assert index.get_document_count() == 8
+
+    def test_tokenize_lowercases_and_splits(self):
+        """Tokenization must lowercase and split on non-alphanumeric chars."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS)
+        tokens = index.tokenize("Machine Learning & NLP-2")
+
+        assert "machine" in tokens
+        assert "learning" in tokens
+        assert "nlp" in tokens
+        # Hyphenated technical terms are kept whole and expanded to their
+        # alphanumeric constituents.
+        assert "nlp-2" in tokens
+
+    def test_tokenize_empty_text(self):
+        """Empty or blank text must produce no tokens."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS)
+
+        assert index.tokenize("") == []
+        assert index.tokenize("   ") == []
+
+    def test_search_fullwidth_normalization(self):
+        """Full-width (CJK) letters/spaces must normalize to half-width."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS)
+        results = index.search("ｍａｃｈｉｎｅ　ｌｅａｒｎｉｎｇ", top_k=5)
+
+        doc_ids = [doc_id for doc_id, _ in results]
+        assert "doc1" in doc_ids
+
+    def test_bm25_plus_variant(self):
+        """BM25Plus variant must work."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS, variant="plus")
+        results = index.search("machine learning", top_k=3)
+
+        assert len(results) > 0
+
+    def test_bm25_lucene_variant(self):
+        """BM25L variant must work."""
+        from retrieval.bm25_index import BM25Index, BM25Variant
+
+        index = BM25Index(TEST_DOCUMENTS, variant=BM25Variant.LUCENE)
+        results = index.search("machine learning", top_k=3)
+
+        assert len(results) > 0
+
+    def test_invalid_variant(self):
+        """Unknown variants must raise BM25IndexError."""
+        from retrieval.bm25_index import BM25Index, BM25IndexError
+
+        with pytest.raises(BM25IndexError):
+            BM25Index(TEST_DOCUMENTS, variant="unknown")
+
+    def test_custom_k1_b(self):
+        """Custom k1/b parameters must be accepted."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS, k1=2.0, b=0.5)
+        results = index.search("machine learning", top_k=3)
+
+        assert len(results) > 0
+
+    def test_stopwords_do_not_affect_matching(self):
+        """Stopwords in the query must not change the result set."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS)
+        with_stop = index.search("machine the learning", top_k=5)
+        clean = index.search("machine learning", top_k=5)
+
+        assert [doc_id for doc_id, _ in with_stop] == [doc_id for doc_id, _ in clean]
+
+    def test_custom_tokenizer(self):
+        """An injected tokenizer must replace the built-in one."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(TEST_DOCUMENTS, tokenizer=lambda text: text.lower().split())
+        results = index.search("machine learning", top_k=3)
+
+        assert len(results) > 0
 
 
 class TestDenseRetriever:
@@ -368,6 +453,154 @@ class TestFusionMethods:
         # With low alpha, doc1 should score higher (BM25 favors it)
         assert fused_high_alpha["doc2"] > fused_high_alpha["doc1"]
         assert fused_low_alpha["doc1"] > fused_low_alpha["doc2"]
+
+
+class TestBM25TechnicalTokenization:
+    """Technical English terms must be tokenized and matched correctly."""
+
+    TECH_DOCUMENTS = [
+        {
+            "id": "cpp1",
+            "text": "C++ is a general-purpose programming language with templates and RAII.",
+        },
+        {
+            "id": "cs1",
+            "text": "C# is a modern object-oriented language from Microsoft.",
+        },
+        {
+            "id": "astar1",
+            "text": "A* is a graph traversal and path search algorithm used in games.",
+        },
+        {
+            "id": "ver1",
+            "text": "Python 3.10 introduced match statements and improved type hints.",
+        },
+        {
+            "id": "id1",
+            "text": "The config file uses foo_bar as the parameter naming convention.",
+        },
+        {
+            "id": "hyphen1",
+            "text": "Deep-learning models rely on backpropagation for training.",
+        },
+        {
+            "id": "neg1",
+            "text": "The algorithm does not support concurrent writes.",
+        },
+    ]
+
+    def test_tokenize_keeps_symbol_terms(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        tokens = index.tokenize(
+            "C++, A*, OAuth2, foo_bar, deep-learning, Python 3.10"
+        )
+
+        assert "c++" in tokens
+        assert "a*" in tokens
+        assert "oauth2" in tokens
+        assert "foo_bar" in tokens
+        assert "deep-learning" in tokens
+        assert "python" in tokens
+        assert "3.10" in tokens
+
+    def test_tokenize_expands_compound_terms(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        tokens = index.tokenize("foo_bar deep-learning 3.10")
+
+        assert "foo" in tokens
+        assert "bar" in tokens
+        assert "deep" in tokens
+        assert "learning" in tokens
+
+    def test_negation_terms_are_preserved(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        tokens = index.tokenize("does not support concurrent writes")
+
+        assert "not" in tokens
+        assert "no" in index.tokenize("no alternative")
+        assert "nor" in index.tokenize("neither a nor b")
+
+    def test_search_cpp(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("C++", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "cpp1"
+
+    def test_search_csharp(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("C#", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "cs1"
+
+    def test_search_astar(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("A*", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "astar1"
+
+    def test_search_version_number(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("Python 3.10", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "ver1"
+
+    def test_search_underscore_identifier(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("foo_bar", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "id1"
+
+    def test_search_hyphenated_term(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("deep-learning", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "hyphen1"
+
+    def test_search_negation_query(self):
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(self.TECH_DOCUMENTS)
+        results = index.search("does not support concurrent writes", top_k=3)
+
+        assert len(results) > 0
+        assert results[0][0] == "neg1"
+
+    def test_custom_tokenizer_still_overrides_builtin(self):
+        """An injected tokenizer must fully replace the technical tokenizer."""
+        from retrieval.bm25_index import BM25Index
+
+        index = BM25Index(
+            self.TECH_DOCUMENTS,
+            tokenizer=lambda text: [t for t in text.lower().split() if t],
+        )
+        tokens = index.tokenize("C++ foo_bar")
+
+        assert tokens == ["c++", "foo_bar"]
+        assert "foo" not in tokens
 
 
 class TestHybridRetrieverIntegration:
