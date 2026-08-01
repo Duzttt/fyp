@@ -18,7 +18,7 @@ def client() -> Client:
 def test_ask_view_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {
                 "text": "Trends include ubiquity...",
                 "source": "Intelligent_Agent.pdf",
@@ -70,7 +70,7 @@ def test_ask_view_missing_query(client: Client):
 def test_ask_view_timeout(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {"text": "chunk", "source": "a.pdf", "page": 1}
         ],
     )

@@ -18,7 +18,7 @@ def client() -> Client:
 def test_ask_success(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {"text": "trend one", "source": "Intelligent_Agent.pdf", "page": 7},
             {"text": "trend two", "source": "Intelligent_Agent.pdf", "page": 8},
         ],
@@ -45,7 +45,7 @@ def test_ask_success(client: Client, monkeypatch: pytest.MonkeyPatch):
 def test_ask_timeout(client: Client, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {"text": "trend one", "source": "Intelligent_Agent.pdf", "page": 7}
         ],
     )

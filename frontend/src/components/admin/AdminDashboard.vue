@@ -14,7 +14,6 @@ import {
 } from 'chart.js'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
-  acknowledgeAlert,
   createABTest,
   debugRetrieval,
   deleteAdminDocument,
@@ -26,17 +25,12 @@ import {
   getAdminDocumentChunks,
   getAdminDocuments,
   getAdminEmbeddingVisualization,
-  getAdminFailureAnalysis,
   getAdminIndexingStatus,
   getAdminQueryClusters,
   getAdminQueryStats,
   getAdminStats,
-  getCapacityForecast,
-  getCostAnalysis,
-  getCurrentAlerts,
   getHealthScore,
   getReportsHistory,
-  getSelfHealingEvents,
   getUserBehavior,
   reindexAdminDocument,
   startABTest,
@@ -89,6 +83,8 @@ const debugLoading = ref(false)
 const documents = ref([])
 const documentsLoading = ref(false)
 const documentSearch = ref('')
+const chunkSearch = ref('')
+const actionDocId = ref(null)
 const selectedDoc = ref(null)
 const documentChunks = ref([])
 const chunksLoading = ref(false)
@@ -101,19 +97,16 @@ const indexingStatus = ref({ status: 'idle', progress: 0, current_file: '' })
 
 // Phase 2: Analytics data
 const selectedDocForAnalytics = ref(null)
+const selectedDocForAnalyticsId = ref('')
 const docAnalytics = ref(null)
+const docAnalyticsLoading = ref(false)
 const queryClusters = ref({ clusters: [], total_queries: 0 })
-const failureAnalysis = ref({ failure_rate: 0, breakdown: [], suggestions: [] })
 const embeddingViz = ref({ points: [], documents: [] })
 const chunkQuality = ref({ top_chunks: [], low_quality_chunks: [], overall_score: 0 })
 const traceResults = ref(null)
 const abTests = ref([])
 
 // Phase 3: Smart Operations data
-const alerts = ref({ active_alerts: [], history: [] })
-const capacityForecast = ref({ historical: {}, forecast: {}, recommendations: [] })
-const selfHealingEvents = ref({ events: [], policies: [] })
-const costAnalysis = ref({ total: 0, breakdown: [], recommendations: [] })
 const userBehavior = ref({ active_users: 0, segments: [], user_paths: [] })
 const reportsHistory = ref([])
 const healthScore = ref({ overall_score: 0, dimensions: {}, issues: [] })
@@ -163,6 +156,23 @@ const abTestResults = ref(null)
 // Phase 2: Loading states
 const analyticsLoading = ref(false)
 const vizMethod = ref('pca')
+const hoveredPoint = ref(null)
+const selectedPoint = ref(null)
+const highlightDoc = ref(null)
+const tooltipPos = ref({ x: 0, y: 0 })
+
+const legendColor = (doc) => {
+  const p = (embeddingViz.value.points || []).find(p => p.document === doc)
+  return p?.document_color || '#888'
+}
+
+const onVizMouseMove = (e) => {
+  tooltipPos.value = { x: e.offsetX, y: e.offsetY }
+}
+
+const toggleHighlight = (doc) => {
+  highlightDoc.value = highlightDoc.value === doc ? null : doc
+}
 const traceQuery = ref('')
 const traceLoading = ref(false)
 
@@ -170,27 +180,104 @@ const traceLoading = ref(false)
 const newTestForm = ref({
   name: '',
   description: '',
-  variants: [{ name: 'control', config: {} }, { name: 'variant_a', config: {} }],
+  traffic_split: [50, 50],
+  variants: [
+    { name: 'control', config: { top_k: 3, temperature: 0.7, similarity_threshold: 0.6, reranker_enabled: false } },
+    { name: 'variant_a', config: { top_k: 5, temperature: 0.9, similarity_threshold: 0.5, reranker_enabled: true } },
+  ],
 })
 
-const tabs = [
-  { id: 'overview', label: 'System Overview', icon: '📊' },
-  { id: 'retrieval', label: 'Retrieval Debug', icon: '🔍' },
-  { id: 'documents', label: 'Documents', icon: '📄' },
-  { id: 'analytics', label: 'Analytics', icon: '📈' },
-  { id: 'clusters', label: 'Query Clusters', icon: '🔮' },
-  { id: 'failures', label: 'Failures', icon: '⚠️' },
-  { id: 'viz', label: 'Vector Viz', icon: '🌌' },
-  { id: 'quality', label: 'Chunk Quality', icon: '⭐' },
-  { id: 'trace', label: 'Trace', icon: '🔎' },
-  { id: 'abtest', label: 'A/B Test', icon: '🔬' },
-  { id: 'alerts', label: 'Alerts', icon: '🔔' },
-  { id: 'capacity', label: 'Capacity', icon: '📈' },
-  { id: 'selfheal', label: 'Self-Heal', icon: '🔧' },
-  { id: 'cost', label: 'Cost', icon: '💰' },
-  { id: 'users', label: 'Users', icon: '👥' },
-  { id: 'reports', label: 'Reports', icon: '📑' },
-  { id: 'health', label: 'Health', icon: '❤️' },
+const addVariant = () => {
+  newTestForm.value.variants.push({ name: 'variant_' + newTestForm.value.variants.length, config: { top_k: 3, temperature: 0.7, similarity_threshold: 0.6, reranker_enabled: false } })
+  newTestForm.value.traffic_split.push(0)
+}
+
+const removeVariant = (index) => {
+  newTestForm.value.variants.splice(index, 1)
+  newTestForm.value.traffic_split.splice(index, 1)
+}
+
+const variantConfigText = (config) => {
+  const c = config || {}
+  const parts = []
+  if (c.top_k != null) parts.push('top_k=' + c.top_k)
+  if (c.temperature != null) parts.push('temp=' + c.temperature)
+  if (c.similarity_threshold != null) parts.push('sim=' + c.similarity_threshold)
+  if (c.reranker_enabled != null) parts.push('reranker=' + (c.reranker_enabled ? 'on' : 'off'))
+  return parts.join(' · ') || '(default config)'
+}
+
+const tabGroups = [
+  {
+    label: 'System',
+    items: [
+      {
+        id: 'overview',
+        label: 'Overview',
+        icon: 'M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z',
+      },
+    ],
+  },
+  {
+    label: 'Retrieval',
+    items: [
+      {
+        id: 'retrieval',
+        label: 'Retrieval Debug',
+        icon: 'M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z',
+      },
+      {
+        id: 'clusters',
+        label: 'Query Clusters',
+        icon: 'M12 8c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm8 12c0-2.21-1.79-4-4-4H8c-2.21 0-4 1.79-4 4v2h16v-2zM4 16.5V15c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v1.5a6 6 0 0 0-16 0z',
+      },
+      {
+        id: 'viz',
+        label: 'Vector Viz',
+        icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+      },
+      {
+        id: 'quality',
+        label: 'Chunk Quality',
+        icon: 'M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z',
+      },
+    ],
+  },
+  {
+    label: 'Documents',
+    items: [
+      {
+        id: 'documents',
+        label: 'Documents',
+        icon: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z',
+      },
+      {
+        id: 'analytics',
+        label: 'Analytics',
+        icon: 'M5 9.2h3V19H5V9.2zM10.6 5h2.8v14h-2.8V5zm5.6 8H19v6h-2.8v-6z',
+      },
+    ],
+  },
+  {
+    label: 'Research',
+    items: [
+      {
+        id: 'abtest',
+        label: 'A/B Test',
+        icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5v-4.58l.99.99 4-4 4 4 4-4 4.01 4.01V19z',
+      },
+      {
+        id: 'users',
+        label: 'Users',
+        icon: 'M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z',
+      },
+      {
+        id: 'reports',
+        label: 'Reports',
+        icon: 'M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm6 8h-4v-2h4v2zm0-4h-4v-2h4v2zm-1-5V3.5L18.5 9H13z',
+      },
+    ],
+  },
 ]
 
 const chartOptions = computed(() => ({
@@ -235,11 +322,11 @@ const loadDocuments = async () => {
   }
 }
 
-const loadChunks = async (docId, page = 1) => {
+const loadChunks = async (docId, page = 1, search = '') => {
   chunksLoading.value = true
   currentPage.value = page
   try {
-    const data = await getAdminDocumentChunks(docId, page, pageSize.value)
+    const data = await getAdminDocumentChunks(docId, page, pageSize.value, search)
     documentChunks.value = data.chunks
     totalChunks.value = data.total
   } catch (err) {
@@ -247,6 +334,17 @@ const loadChunks = async (docId, page = 1) => {
   } finally {
     chunksLoading.value = false
   }
+}
+
+let chunkSearchDebounceTimer = null
+const debouncedLoadChunks = () => {
+  clearTimeout(chunkSearchDebounceTimer)
+  chunkSearchDebounceTimer = setTimeout(() => {
+    if (selectedDoc.value) {
+      currentPage.value = 1
+      loadChunks(selectedDoc.value.id, 1, chunkSearch.value)
+    }
+  }, 300)
 }
 
 const handleDebugSearch = async () => {
@@ -267,22 +365,28 @@ const handleDebugSearch = async () => {
 
 const handleDeleteDocument = async (docId) => {
   if (!confirmAction(`Delete document "${docId}"? This will rebuild the index.`)) return
-  
+
+  actionDocId.value = docId
   try {
     await deleteAdminDocument(docId)
     notify('Document deleted successfully', 'success')
     await loadDocuments()
   } catch (err) {
     notify('Failed to delete document: ' + err.message, 'error')
+  } finally {
+    actionDocId.value = null
   }
 }
 
 const handleReindexDocument = async (docId) => {
+  actionDocId.value = docId
   try {
     await reindexAdminDocument(docId)
     notify('Document reindexed successfully', 'success')
   } catch (err) {
     notify('Failed to reindex document: ' + err.message, 'error')
+  } finally {
+    actionDocId.value = null
   }
 }
 
@@ -293,8 +397,17 @@ const handleViewChunks = (doc) => {
 
 const handleViewDocAnalytics = async (doc) => {
   selectedDocForAnalytics.value = doc
+  selectedDocForAnalyticsId.value = doc.id
   await loadDocumentAnalytics(doc.id)
   activeTab.value = 'analytics'
+}
+
+const handleDocAnalyticsSelect = async (docId) => {
+  const doc = documents.value.find(d => d.id === docId)
+  if (!doc) return
+  selectedDocForAnalytics.value = doc
+  selectedDocForAnalyticsId.value = docId
+  await loadDocumentAnalytics(docId)
 }
 
 const handleCloseChunks = () => {
@@ -316,6 +429,45 @@ const getHealthColor = (status) => {
   }
 }
 
+// Query type distribution bar helpers
+const maxTypeCount = computed(() =>
+  Math.max(...(queryStats.value.type_distribution || []).map(item => item.count), 1)
+)
+
+const typeBarWidth = (item) => `${Math.round((item.count / maxTypeCount.value) * 100)}%`
+
+const typeColor = (index) => {
+  const colors = ['#818cf8', '#a855f7', '#22c55e', '#f59e0b', '#ec4899', '#06b6d4', '#f97316', '#ef4444']
+  return colors[index % colors.length]
+}
+
+// Success rate display (null when no query logs exist yet)
+const successRate = computed(() => {
+  const rate = stats.value.queries?.success_rate
+  return rate === null || rate === undefined ? null : rate
+})
+
+const successRateText = computed(() =>
+  successRate.value === null ? '—' : `${successRate.value}%`
+)
+
+const successRateSub = computed(() =>
+  successRate.value === null ? 'No queries in the last 7 days' : '7-day average'
+)
+
+// Latency display (— when no query logs exist yet)
+const queryCount = computed(() => stats.value.queries?.query_count || 0)
+
+const avgLatencyText = computed(() =>
+  queryCount.value > 0 ? `${stats.value.queries.avg_latency_ms}ms` : '—'
+)
+
+const latencySub = computed(() =>
+  queryCount.value > 0
+    ? `P95: ${stats.value.queries.p95_latency_ms}ms · ${queryCount.value} queries`
+    : 'No queries in the last 7 days'
+)
+
 const loadIndexingStatus = async () => {
   try {
     const data = await getAdminIndexingStatus()
@@ -327,14 +479,20 @@ const loadIndexingStatus = async () => {
 
 // Phase 2: Analytics functions
 const loadDocumentAnalytics = async (docId) => {
-  analyticsLoading.value = true
+  docAnalyticsLoading.value = true
+  docAnalytics.value = null
   try {
     const data = await getAdminDocumentAnalytics(docId)
     docAnalytics.value = data
   } catch (err) {
     console.error('Failed to load document analytics:', err)
+    docAnalytics.value = {
+      retrieval_stats: { appearance_count: 0, avg_score: 0, click_count: 0, click_rate: 0 },
+      top_queries: [],
+      error: err?.response?.data?.detail || err.message || 'Failed to load document analytics',
+    }
   } finally {
-    analyticsLoading.value = false
+    docAnalyticsLoading.value = false
   }
 }
 
@@ -345,18 +503,11 @@ const loadQueryClusters = async () => {
     queryClusters.value = data
   } catch (err) {
     console.error('Failed to load query clusters:', err)
-  } finally {
-    analyticsLoading.value = false
-  }
-}
-
-const loadFailureAnalysis = async () => {
-  analyticsLoading.value = true
-  try {
-    const data = await getAdminFailureAnalysis(24)
-    failureAnalysis.value = data
-  } catch (err) {
-    console.error('Failed to load failure analysis:', err)
+    queryClusters.value = {
+      clusters: [],
+      total_queries: 0,
+      message: err?.response?.data?.detail || err.message || 'Failed to load cluster data',
+    }
   } finally {
     analyticsLoading.value = false
   }
@@ -369,6 +520,11 @@ const loadEmbeddingViz = async () => {
     embeddingViz.value = data
   } catch (err) {
     console.error('Failed to load embedding viz:', err)
+    embeddingViz.value = {
+      points: [],
+      documents: [],
+      error: err?.response?.data?.detail || err.message || 'Failed to load visualization',
+    }
   } finally {
     analyticsLoading.value = false
   }
@@ -381,6 +537,12 @@ const loadChunkQuality = async () => {
     chunkQuality.value = data
   } catch (err) {
     console.error('Failed to load chunk quality:', err)
+    chunkQuality.value = {
+      top_chunks: [],
+      low_quality_chunks: [],
+      overall_score: 0,
+      error: err?.response?.data?.detail || err.message || 'Failed to load chunk quality',
+    }
   } finally {
     analyticsLoading.value = false
   }
@@ -412,7 +574,15 @@ const handleCreateTest = async () => {
   try {
     await createABTest(newTestForm.value)
     await loadABTests()
-    newTestForm.value = { name: '', description: '', variants: [{ name: 'control', config: {} }, { name: 'variant_a', config: {} }] }
+    newTestForm.value = {
+      name: '',
+      description: '',
+      traffic_split: [50, 50],
+      variants: [
+        { name: 'control', config: { top_k: 3, temperature: 0.7, similarity_threshold: 0.6, reranker_enabled: false } },
+        { name: 'variant_a', config: { top_k: 5, temperature: 0.9, similarity_threshold: 0.5, reranker_enabled: true } },
+      ],
+    }
     notify('Test created!', 'success')
   } catch (err) {
     notify('Failed to create test: ' + err.message, 'error')
@@ -443,43 +613,6 @@ const handleViewResults = async (testId) => {
     abTestResults.value = data
   } catch (err) {
     console.error('Failed to load results:', err)
-  }
-}
-
-// Phase 3: Load functions
-const loadAlerts = async () => {
-  try {
-    const data = await getCurrentAlerts()
-    alerts.value = data
-  } catch (err) {
-    console.error('Failed to load alerts:', err)
-  }
-}
-
-const loadCapacityForecast = async () => {
-  try {
-    const data = await getCapacityForecast(3)
-    capacityForecast.value = data
-  } catch (err) {
-    console.error('Failed to load forecast:', err)
-  }
-}
-
-const loadSelfHealing = async () => {
-  try {
-    const data = await getSelfHealingEvents()
-    selfHealingEvents.value = data
-  } catch (err) {
-    console.error('Failed to load self-healing:', err)
-  }
-}
-
-const loadCostAnalysis = async () => {
-  try {
-    const data = await getCostAnalysis()
-    costAnalysis.value = data
-  } catch (err) {
-    console.error('Failed to load cost analysis:', err)
   }
 }
 
@@ -522,21 +655,17 @@ const handleGenerateReport = async () => {
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus(), loadABTests(), loadAlerts(), loadCapacityForecast(), loadSelfHealing(), loadCostAnalysis(), loadUserBehavior(), loadReports(), loadHealthScore()])
+  await Promise.all([loadStats(), loadQueryStats(), loadDocuments(), loadIndexingStatus(), loadABTests(), loadUserBehavior(), loadReports(), loadHealthScore(), loadQueryClusters(), loadEmbeddingViz(), loadChunkQuality()])
   loading.value = false
-  
+
   // Poll indexing status
   indexingInterval = setInterval(loadIndexingStatus, 3000)
-  // Poll alerts
-  alertsInterval = setInterval(loadAlerts, 60000)
 })
 
 let indexingInterval = null
-let alertsInterval = null
 
 onBeforeUnmount(() => {
   if (indexingInterval) clearInterval(indexingInterval)
-  if (alertsInterval) clearInterval(alertsInterval)
 })
 </script>
 
@@ -568,18 +697,25 @@ onBeforeUnmount(() => {
     </div>
 
     <!-- Tab Navigation -->
-    <div class="tab-nav">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="tab-btn"
-        :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
-      >
-        <span class="tab-icon">{{ tab.icon }}</span>
-        <span>{{ tab.label }}</span>
-      </button>
-    </div>
+    <nav class="tab-nav">
+      <div v-for="group in tabGroups" :key="group.label" class="tab-group">
+        <span class="tab-group-label">{{ group.label }}</span>
+        <div class="tab-group-items">
+          <button
+            v-for="tab in group.items"
+            :key="tab.id"
+            class="tab-btn"
+            :class="{ active: activeTab === tab.id }"
+            @click="activeTab = tab.id"
+          >
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path :d="tab.icon" />
+            </svg>
+            <span>{{ tab.label }}</span>
+          </button>
+        </div>
+      </div>
+    </nav>
 
     <div class="admin-content">
       <!-- Loading State -->
@@ -593,7 +729,9 @@ onBeforeUnmount(() => {
         <!-- Stats Grid -->
         <div class="stats-grid">
           <div class="stat-card">
-            <div class="stat-icon docs">📄</div>
+            <div class="stat-icon docs">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" /></svg>
+            </div>
             <div class="stat-body">
               <div class="stat-value">{{ stats.documents.total }}</div>
               <div class="stat-label">Documents</div>
@@ -602,7 +740,9 @@ onBeforeUnmount(() => {
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon vectors">📏</div>
+            <div class="stat-icon vectors">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M4 6h2v2H4V6zm0 4h2v2H4v-2zm0 4h2v2H4v-2zm4-8h2v2H8V6zm0 4h2v2H8v-2zm0 4h2v2H8v-2zm4-8h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2zM16 6h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z" /></svg>
+            </div>
             <div class="stat-body">
               <div class="stat-value">{{ stats.vectors.count.toLocaleString() }}</div>
               <div class="stat-label">Vectors</div>
@@ -611,7 +751,9 @@ onBeforeUnmount(() => {
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon queries">⚡</div>
+            <div class="stat-icon queries">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2.05v2.02c3.95.49 7 3.85 7 7.93 0 3.03-1.69 5.67-4.19 7.02l1.4 1.42A10.95 10.95 0 0 0 22 12c0-5.19-3.95-9.45-9-9.95zM11 2.05C5.95 2.55 2 6.81 2 12c0 2.62 1.01 5.02 2.65 6.83l1.41-1.41A8.93 8.93 0 0 1 4 12c0-4.08 3.05-7.44 7-7.93v-2.02zM11 4v4h2V4c2.87.48 5 2.95 5 5.93 0 1.49-.55 2.86-1.46 3.92l2.03 2.03A7.94 7.94 0 0 0 20 9.93C20 6.19 17.22 3.15 13.55 2.4L11 4z" /></svg>
+            </div>
             <div class="stat-body">
               <div class="stat-value">{{ stats.queries.today }}</div>
               <div class="stat-label">Today's Queries</div>
@@ -620,25 +762,31 @@ onBeforeUnmount(() => {
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon latency">⏱️</div>
+            <div class="stat-icon latency">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
+            </div>
             <div class="stat-body">
-              <div class="stat-value">{{ stats.queries.avg_latency_ms }}ms</div>
+              <div class="stat-value">{{ avgLatencyText }}</div>
               <div class="stat-label">Avg Latency</div>
-              <div class="stat-sub">P95: {{ stats.queries.p95_latency_ms }}ms</div>
+              <div class="stat-sub">{{ latencySub }}</div>
             </div>
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon cache">💾</div>
+            <div class="stat-icon cache">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+            </div>
             <div class="stat-body">
-              <div class="stat-value">{{ stats.queries.cache_hit_rate }}%</div>
-              <div class="stat-label">Cache Hit Rate</div>
-              <div class="stat-sub">7-day average</div>
+              <div class="stat-value">{{ successRateText }}</div>
+              <div class="stat-label">Success Rate</div>
+              <div class="stat-sub">{{ successRateSub }}</div>
             </div>
           </div>
           
           <div class="stat-card">
-            <div class="stat-icon storage">💽</div>
+            <div class="stat-icon storage">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z" /></svg>
+            </div>
             <div class="stat-body">
               <div class="stat-value">{{ formatSize(stats.storage.faiss_size_kb) }}</div>
               <div class="stat-label">Index Size</div>
@@ -647,33 +795,119 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
+        <!-- Quick Actions -->
+        <div class="quick-actions">
+          <button type="button" class="quick-action" @click="activeTab = 'retrieval'">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" /></svg>
+            <span>Retrieval Debug</span>
+          </button>
+          <button type="button" class="quick-action" @click="activeTab = 'documents'">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" /></svg>
+            <span>Documents</span>
+          </button>
+          <button type="button" class="quick-action" @click="activeTab = 'quality'">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            <span>Chunk Quality</span>
+          </button>
+          <button type="button" class="quick-action" @click="activeTab = 'alerts'">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" /></svg>
+            <span>Alerts</span>
+          </button>
+          <button type="button" class="quick-action" @click="activeTab = 'viz'">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+            <span>Vector Viz</span>
+          </button>
+        </div>
+
+        <!-- Indexing Status Banner -->
+        <div class="indexing-banner" :class="indexingStatus.status">
+          <div class="banner-icon">
+            <svg v-if="indexingStatus.status === 'running'" class="spin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z" />
+            </svg>
+            <svg v-else viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+            </svg>
+          </div>
+          <div class="banner-body">
+            <span class="banner-title">
+              {{ indexingStatus.status === 'running' ? 'Indexing in progress' : 'Index is ready' }}
+            </span>
+            <span v-if="indexingStatus.current_file" class="banner-sub">{{ indexingStatus.current_file }}</span>
+            <span v-else class="banner-sub">
+              {{ stats.documents.total }} documents · {{ stats.vectors.count.toLocaleString() }} vectors
+            </span>
+          </div>
+          <div v-if="indexingStatus.status === 'running'" class="banner-progress">
+            <div class="banner-progress-track">
+              <div class="banner-progress-fill" :style="{ width: (indexingStatus.progress || 0) + '%' }"></div>
+            </div>
+            <span class="banner-percent">{{ indexingStatus.progress || 0 }}%</span>
+          </div>
+        </div>
+
         <!-- Health Status -->
         <div class="health-section">
           <h3 class="section-title">System Health</h3>
           <div class="health-grid">
             <div class="health-item">
-              <span class="health-label">FAISS Index</span>
-              <span class="health-status" :style="{ color: getHealthColor(stats.health.faiss_index) }">
-                {{ stats.health.faiss_index }}
-              </span>
+              <span class="health-dot" :style="{ background: getHealthColor(stats.health.faiss_index) }" aria-hidden="true"></span>
+              <div class="health-item-body">
+                <span class="health-label">FAISS Index</span>
+                <span class="health-status" :style="{ color: getHealthColor(stats.health.faiss_index) }">
+                  {{ stats.health.faiss_index }}
+                </span>
+              </div>
             </div>
             <div class="health-item">
-              <span class="health-label">LLM Service</span>
-              <span class="health-status" :style="{ color: getHealthColor(stats.health.llm_service) }">
-                {{ stats.health.llm_service }}
-              </span>
+              <span class="health-dot" :style="{ background: getHealthColor(stats.health.llm_service) }" aria-hidden="true"></span>
+              <div class="health-item-body">
+                <span class="health-label">LLM Service</span>
+                <span class="health-status" :style="{ color: getHealthColor(stats.health.llm_service) }">
+                  {{ stats.health.llm_service }}
+                </span>
+              </div>
             </div>
             <div class="health-item">
-              <span class="health-label">Disk Space</span>
-              <span class="health-status" :style="{ color: getHealthColor(stats.health.disk_space) }">
-                {{ stats.health.disk_space }}
-              </span>
+              <span class="health-dot" :style="{ background: getHealthColor(stats.health.disk_space) }" aria-hidden="true"></span>
+              <div class="health-item-body">
+                <span class="health-label">Disk Space</span>
+                <span class="health-status" :style="{ color: getHealthColor(stats.health.disk_space) }">
+                  {{ stats.health.disk_space }}
+                </span>
+              </div>
             </div>
             <div class="health-item">
-              <span class="health-label">Memory</span>
-              <span class="health-status" :style="{ color: getHealthColor(stats.health.memory) }">
-                {{ stats.health.memory }}
-              </span>
+              <span class="health-dot" :style="{ background: getHealthColor(stats.health.memory) }" aria-hidden="true"></span>
+              <div class="health-item-body">
+                <span class="health-label">Memory</span>
+                <span class="health-status" :style="{ color: getHealthColor(stats.health.memory) }">
+                  {{ stats.health.memory }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="healthScore.overall_score" class="health-score-card">
+            <div class="health-score-main">
+              <span class="score-big">{{ healthScore.overall_score }}</span>
+              <span class="score-label">/ 100</span>
+            </div>
+            <div class="dimension-scores">
+              <div v-for="(dim, key) in healthScore.dimensions" :key="key" class="dim-item">
+                <span class="dim-name">{{ dim.label }}</span>
+                <div class="dim-bar">
+                  <div class="dim-bar-fill" :style="{ width: (dim.score ?? 0) + '%' }"></div>
+                </div>
+                <span class="dim-score">{{ dim.score ?? '—' }}</span>
+              </div>
+            </div>
+            <div v-if="healthScore.issues?.length" class="health-issues">
+              <span class="issues-label">Issues to address</span>
+              <div v-for="issue in healthScore.issues" :key="issue.message" class="issue-item" :class="issue.priority">
+                <span class="issue-priority">{{ issue.priority }}</span>
+                <span class="issue-message">{{ issue.message }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -692,8 +926,18 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div v-if="queryStats.type_distribution?.length" class="type-dist">
-            <div v-for="item in queryStats.type_distribution" :key="item.query_type" class="type-item">
+            <div
+              v-for="(item, index) in queryStats.type_distribution"
+              :key="item.query_type"
+              class="type-item"
+            >
               <span class="type-name">{{ item.query_type }}</span>
+              <div class="type-track">
+                <span
+                  class="type-fill"
+                  :style="{ width: typeBarWidth(item), background: typeColor(index) }"
+                />
+              </div>
               <span class="type-count">{{ item.count }}</span>
             </div>
           </div>
@@ -741,7 +985,7 @@ onBeforeUnmount(() => {
           <div v-if="debugResults" class="debug-results">
             <div class="result-section">
               <h4>BM25 <span class="time">{{ debugResults.bm25?.time_ms }}ms</span></h4>
-              <div class="result-list">
+              <div v-if="debugResults.bm25?.results?.length" class="result-list">
                 <div v-for="(r, i) in debugResults.bm25?.results" :key="'bm25-'+i" class="result-item">
                   <span class="result-rank">{{ i + 1 }}</span>
                   <div class="result-content">
@@ -751,11 +995,12 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </div>
+              <div v-else class="result-empty">No BM25 results</div>
             </div>
 
             <div class="result-section">
               <h4>Dense (Vector) <span class="time">{{ debugResults.dense?.time_ms }}ms</span></h4>
-              <div class="result-list">
+              <div v-if="debugResults.dense?.results?.length" class="result-list">
                 <div v-for="(r, i) in debugResults.dense?.results" :key="'dense-'+i" class="result-item">
                   <span class="result-rank">{{ i + 1 }}</span>
                   <div class="result-content">
@@ -765,11 +1010,12 @@ onBeforeUnmount(() => {
                   </div>
                 </div>
               </div>
+              <div v-else class="result-empty">No Dense results</div>
             </div>
 
             <div class="result-section">
               <h4>Hybrid <span class="time">{{ debugResults.hybrid?.time_ms }}ms ({{ debugResults.hybrid?.fusion_method }})</span></h4>
-              <div class="result-list">
+              <div v-if="debugResults.hybrid?.results?.length" class="result-list">
                 <div v-for="(r, i) in debugResults.hybrid?.results" :key="'hybrid-'+i" class="result-item">
                   <span class="result-rank">{{ i + 1 }}</span>
                   <div class="result-content">
@@ -777,6 +1023,46 @@ onBeforeUnmount(() => {
                     <div class="result-text">{{ r.text }}</div>
                     <div class="result-source">{{ r.source }}</div>
                   </div>
+                </div>
+              </div>
+              <div v-else class="result-empty">No Hybrid results</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pipeline Trace (merged from Trace tab) -->
+        <div class="trace-section">
+          <div class="section-header">
+            <h3>Pipeline Trace</h3>
+            <span class="trace-hint">Inspect stage timings for a query</span>
+          </div>
+          <div class="trace-input">
+            <input
+              v-model="traceQuery"
+              type="text"
+              placeholder="Enter query to trace..."
+              class="query-input"
+              @keyup.enter="handleTrace"
+            />
+            <button class="search-btn" @click="handleTrace" :disabled="traceLoading">
+              {{ traceLoading ? 'Tracing...' : 'Trace' }}
+            </button>
+          </div>
+
+          <div v-if="traceResults" class="trace-results">
+            <div class="trace-summary">
+              <span class="total-time">{{ traceResults.total_time }}ms</span>
+              <span class="bottleneck">Bottleneck: {{ traceResults.bottleneck }}</span>
+            </div>
+
+            <div v-for="stage in traceResults.stages" :key="stage.name" class="trace-stage">
+              <div class="stage-header">
+                <span class="stage-name">{{ stage.name }}</span>
+                <span class="stage-time">{{ stage.time_ms }}ms</span>
+              </div>
+              <div v-if="stage.results" class="stage-results">
+                <div v-for="(r, i) in stage.results.slice(0, 3)" :key="i" class="result-preview">
+                  {{ r.source || r.id }}: {{ r.score }}
                 </div>
               </div>
             </div>
@@ -816,8 +1102,12 @@ onBeforeUnmount(() => {
               <div class="doc-actions">
                 <button class="action-btn view" @click="handleViewChunks(doc)">Chunks</button>
                 <button class="action-btn analytics" @click="handleViewDocAnalytics(doc)">Analytics</button>
-                <button class="action-btn reindex" @click="handleReindexDocument(doc.id)">Reindex</button>
-                <button class="action-btn delete" @click="handleDeleteDocument(doc.id)">Delete</button>
+                <button class="action-btn reindex" :disabled="actionDocId === doc.id" @click="handleReindexDocument(doc.id)">
+                  {{ actionDocId === doc.id ? 'Reindexing...' : 'Reindex' }}
+                </button>
+                <button class="action-btn delete" :disabled="actionDocId === doc.id" @click="handleDeleteDocument(doc.id)">
+                  {{ actionDocId === doc.id ? 'Deleting...' : 'Delete' }}
+                </button>
               </div>
             </div>
             
@@ -832,6 +1122,13 @@ onBeforeUnmount(() => {
           <div class="chunks-header">
             <button class="back-btn" @click="handleCloseChunks">← Back</button>
             <h3 class="section-title">{{ selectedDoc.name }}</h3>
+            <input
+              v-model="chunkSearch"
+              type="text"
+              placeholder="Search chunks..."
+              class="search-input chunk-search"
+              @input="debouncedLoadChunks"
+            />
             <span class="chunks-count">{{ totalChunks }} chunks</span>
           </div>
 
@@ -844,10 +1141,8 @@ onBeforeUnmount(() => {
                 <span v-if="chunk.page" class="chunk-page">Page {{ chunk.page }}</span>
               </div>
               <div class="chunk-text">{{ chunk.text }}</div>
-              <div v-if="chunk.embedding_preview" class="chunk-embedding">
-                Embedding: [{{ chunk.embedding_preview.join(', ') }}...]
-              </div>
             </div>
+            <div v-if="documentChunks.length === 0" class="empty-state">No chunks found</div>
           </div>
 
           <!-- Pagination -->
@@ -874,42 +1169,59 @@ onBeforeUnmount(() => {
         <div class="analytics-section">
           <div v-if="selectedDocForAnalytics" class="doc-analytics">
             <div class="section-header">
-              <button class="back-btn" @click="selectedDocForAnalytics = null">← Back</button>
+              <button class="back-btn" @click="selectedDocForAnalytics = null; selectedDocForAnalyticsId = ''">← Back</button>
               <h3>{{ selectedDocForAnalytics.name }}</h3>
             </div>
             
-            <div v-if="docAnalytics" class="analytics-stats">
-              <div class="stat-card">
-                <div class="stat-value">{{ docAnalytics.retrieval_stats.appearance_count }}</div>
-                <div class="stat-label">Appearance Count</div>
+            <div v-if="docAnalyticsLoading" class="loading-small">Loading analytics...</div>
+            <template v-else-if="docAnalytics">
+              <div v-if="docAnalytics.error" class="quality-error">{{ docAnalytics.error }}</div>
+
+              <div class="analytics-stats">
+                <div class="stat-card">
+                  <div class="stat-value">{{ docAnalytics.retrieval_stats.appearance_count }}</div>
+                  <div class="stat-label">Appearance Count</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ Number(docAnalytics.retrieval_stats.avg_score).toFixed(3) }}</div>
+                  <div class="stat-label">Avg Score</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ docAnalytics.retrieval_stats.click_count }}</div>
+                  <div class="stat-label">Click Count</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value">{{ (docAnalytics.retrieval_stats.click_rate * 100).toFixed(1) }}%</div>
+                  <div class="stat-label">Click Rate</div>
+                </div>
               </div>
-              <div class="stat-card">
-                <div class="stat-value">{{ docAnalytics.retrieval_stats.avg_score }}</div>
-                <div class="stat-label">Avg Score</div>
+              
+              <div class="top-queries">
+                <h4>Top Queries</h4>
+                <div v-if="docAnalytics.top_queries?.length" class="query-list">
+                  <div v-for="q in docAnalytics.top_queries" :key="q.query" class="query-item">
+                    <span class="query-text">{{ q.query }}</span>
+                    <span class="query-count">{{ q.count }} times</span>
+                  </div>
+                </div>
+                <div v-else class="quality-empty">No query data for this document</div>
               </div>
-              <div class="stat-card">
-                <div class="stat-value">{{ docAnalytics.retrieval_stats.click_count }}</div>
-                <div class="stat-label">Click Count</div>
-              </div>
-              <div class="stat-card">
-                <div class="stat-value">{{ (docAnalytics.retrieval_stats.click_rate * 100).toFixed(1) }}%</div>
-                <div class="stat-label">Click Rate</div>
-              </div>
-            </div>
-            
-            <div v-if="docAnalytics" class="top-queries">
-              <h4>Top Queries</h4>
-              <div v-for="q in docAnalytics.top_queries" :key="q.query" class="query-item">
-                <span class="query-text">{{ q.query }}</span>
-                <span class="query-count">{{ q.count }} times</span>
-              </div>
-            </div>
-            <div v-else class="empty-state">Failed to load document analytics</div>
+            </template>
           </div>
           
           <div v-else class="select-doc">
             <h3>Select a Document</h3>
-            <p>Choose a document from the Documents tab to view analytics</p>
+            <p>Choose a document to view its retrieval analytics</p>
+            <select
+              v-model="selectedDocForAnalyticsId"
+              class="doc-select"
+              @change="handleDocAnalyticsSelect(selectedDocForAnalyticsId)"
+            >
+              <option value="">Choose a document...</option>
+              <option v-for="d in documents" :key="d.id" :value="d.id">
+                {{ d.name }} ({{ d.chunk_count }} chunks)
+              </option>
+            </select>
             <button class="action-btn" @click="activeTab = 'documents'">Go to Documents</button>
           </div>
         </div>
@@ -920,182 +1232,46 @@ onBeforeUnmount(() => {
         <div class="clusters-section">
           <div class="section-header">
             <h3>Query Semantic Clusters</h3>
-            <button class="refresh-btn" aria-label="Refresh query clusters" title="Refresh query clusters" @click="loadQueryClusters">↻</button>
+            <button class="refresh-btn" :disabled="analyticsLoading" aria-label="Refresh query clusters" title="Refresh query clusters" @click="loadQueryClusters">{{ analyticsLoading ? '⟳' : '↻' }}</button>
           </div>
-          
+
           <div v-if="queryClusters.clusters?.length" class="clusters-list">
+            <div class="clusters-summary">
+              <span>{{ queryClusters.total_queries }} unique queries</span>
+              <span v-if="queryClusters.days">· last {{ queryClusters.days }} days</span>
+            </div>
             <div v-for="cluster in queryClusters.clusters" :key="cluster.name" class="cluster-item">
               <div class="cluster-header">
                 <span class="cluster-color" :style="{ background: cluster.color }"></span>
                 <span class="cluster-name">{{ cluster.name.replace('_', ' ') }}</span>
+                <span class="cluster-count">{{ cluster.count }}</span>
                 <span class="cluster-pct">{{ cluster.percentage }}%</span>
               </div>
-              <div class="cluster-patterns">
+              <div v-if="cluster.patterns?.length" class="cluster-patterns">
                 <span v-for="p in cluster.patterns" :key="p" class="pattern-tag">{{ p }}</span>
               </div>
-              <div class="cluster-sample">
-                <strong>Representative:</strong> {{ cluster.representative }}
-              </div>
-            </div>
-          </div>
-          <div v-else class="empty-state">No cluster data available</div>
-        </div>
-      </div>
-
-      <!-- Failures Tab -->
-      <div v-else-if="activeTab === 'failures'" class="tab-content">
-        <div class="failures-section">
-          <div class="section-header">
-            <h3>Retrieval Failure Analysis</h3>
-            <button class="refresh-btn" aria-label="Refresh failure analysis" title="Refresh failure analysis" @click="loadFailureAnalysis">↻</button>
-          </div>
-          
-          <div class="failure-rate">
-            <span class="rate-value">{{ (failureAnalysis.failure_rate * 100).toFixed(1) }}%</span>
-            <span class="rate-label">Failure Rate (24h)</span>
-          </div>
-          
-          <div v-if="failureAnalysis.breakdown?.length" class="breakdown">
-            <div v-for="item in failureAnalysis.breakdown" :key="item.type" class="breakdown-item">
-              <span class="breakdown-type">{{ item.type.replace('_', ' ') }}</span>
-              <span class="breakdown-pct">{{ item.percentage }}%</span>
-              <span class="breakdown-count">({{ item.count }} queries)</span>
-            </div>
-          </div>
-          
-          <div v-if="failureAnalysis.suggestions?.length" class="suggestions">
-            <h4>Suggestions</h4>
-            <ul>
-              <li v-for="s in failureAnalysis.suggestions" :key="s">{{ s }}</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-
-      <!-- Vector Viz Tab -->
-      <div v-else-if="activeTab === 'viz'" class="tab-content">
-        <div class="viz-section">
-          <div class="section-header">
-            <h3>Embedding Visualization</h3>
-            <div class="viz-controls">
-              <select v-model="vizMethod" @change="loadEmbeddingViz">
-                <option value="pca">PCA</option>
-                <option value="tsne">t-SNE</option>
-              </select>
-              <button class="refresh-btn" aria-label="Refresh embedding visualization" title="Refresh embedding visualization" @click="loadEmbeddingViz">↻</button>
-            </div>
-          </div>
-          
-          <div v-if="embeddingViz.points?.length" class="viz-container">
-            <div class="viz-stats">
-              <span>{{ embeddingViz.points.length }} points</span>
-              <span>{{ embeddingViz.documents?.length }} documents</span>
-            </div>
-            <div class="viz-canvas">
-              <div v-for="(point, i) in embeddingViz.points" :key="i" 
-                class="viz-point"
-                :style="{ 
-                  left: ((point.x - embeddingBounds.minX) / embeddingBounds.xRange * 100) + '%',
-                  top: ((point.y - embeddingBounds.minY) / embeddingBounds.yRange * 100) + '%',
-                  background: point.document_color
-                }"
-                :title="point.text_preview"
-              ></div>
-            </div>
-            <div class="viz-legend">
-              <div v-for="doc in embeddingViz.documents" :key="doc" class="legend-item">
-                <span class="legend-color" :style="{ background: embeddingViz.points.find(p => p.document === doc)?.document_color }"></span>
-                <span>{{ doc }}</span>
-              </div>
-            </div>
-          </div>
-          <div v-else class="empty-state">No visualization data available</div>
-        </div>
-      </div>
-
-      <!-- Chunk Quality Tab -->
-      <div v-else-if="activeTab === 'quality'" class="tab-content">
-        <div class="quality-section">
-          <div class="section-header">
-            <h3>Chunk Quality Assessment</h3>
-            <button class="refresh-btn" aria-label="Refresh chunk quality metrics" title="Refresh chunk quality metrics" @click="loadChunkQuality">↻</button>
-          </div>
-          
-          <div class="overall-score">
-            <span class="score-value">{{ chunkQuality.overall_score || 0 }}</span>
-            <span class="score-label">/ 100 Overall Score</span>
-          </div>
-          
-          <div class="quality-list">
-            <h4>Top Quality Chunks</h4>
-            <div v-for="chunk in chunkQuality.top_chunks" :key="chunk.index" class="quality-item high">
-              <div class="quality-header">
-                <span class="quality-score">{{ chunk.quality_score }}</span>
-                <span class="quality-source">{{ chunk.source }}</span>
-              </div>
-              <div class="quality-text">{{ chunk.text_preview }}</div>
-              <div class="quality-meta">Hits: {{ chunk.retrieval_hits }} · Issues: {{ chunk.issues?.length || 0 }}</div>
-            </div>
-          </div>
-          
-          <div class="quality-list">
-            <h4>Low Quality Chunks (Needs Fix)</h4>
-            <div v-for="chunk in chunkQuality.low_quality_chunks" :key="chunk.index" class="quality-item low">
-              <div class="quality-header">
-                <span class="quality-score">{{ chunk.quality_score }}</span>
-                <span class="quality-source">{{ chunk.source }}</span>
-              </div>
-              <div class="quality-text">{{ chunk.text_preview }}</div>
-              <div v-if="chunk.issues?.length" class="quality-issues">
-                <span v-for="issue in chunk.issues" :key="issue" class="issue-tag">{{ issue }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Trace Tab -->
-      <div v-else-if="activeTab === 'trace'" class="tab-content">
-        <div class="trace-section">
-          <div class="trace-input">
-            <input
-              v-model="traceQuery"
-              type="text"
-              placeholder="Enter query to trace..."
-              class="query-input"
-              @keyup.enter="handleTrace"
-            />
-            <button class="search-btn" @click="handleTrace" :disabled="traceLoading">
-              {{ traceLoading ? 'Tracing...' : 'Trace' }}
-            </button>
-          </div>
-          
-          <div v-if="traceResults" class="trace-results">
-            <div class="trace-summary">
-              <span class="total-time">{{ traceResults.total_time }}ms</span>
-              <span class="bottleneck">Bottleneck: {{ traceResults.bottleneck }}</span>
-            </div>
-            
-            <div v-for="stage in traceResults.stages" :key="stage.name" class="trace-stage">
-              <div class="stage-header">
-                <span class="stage-name">{{ stage.name }}</span>
-                <span class="stage-time">{{ stage.time_ms }}ms</span>
-              </div>
-              <div v-if="stage.results" class="stage-results">
-                <div v-for="(r, i) in stage.results.slice(0, 3)" :key="i" class="result-preview">
-                  {{ r.source || r.id }}: {{ r.score }}
+              <div v-if="cluster.sample_queries?.length" class="cluster-samples">
+                <div v-for="(q, qi) in cluster.sample_queries" :key="qi" class="sample-query">
+                  <span class="sample-index">{{ qi + 1 }}</span>
+                  <span class="sample-text">{{ q }}</span>
                 </div>
               </div>
             </div>
           </div>
+          <div v-else class="empty-state">{{ queryClusters.message || 'No cluster data available' }}</div>
         </div>
       </div>
-
+      <!-- Trace Tab -->
       <!-- A/B Test Tab -->
       <div v-else-if="activeTab === 'abtest'" class="tab-content">
         <div class="abtest-section">
           <div class="create-test">
             <h3>Create New A/B Test</h3>
+            <p class="abtest-hint">
+              While a test is <strong>running</strong>, chat requests are split by session
+              (X-Session-Id) across variants, and each variant's config overrides
+              top_k / temperature / similarity_threshold / reranker for that request.
+            </p>
             <div class="form-group">
               <label>Test Name</label>
               <input v-model="newTestForm.name" type="text" placeholder="Test name..." />
@@ -1105,10 +1281,44 @@ onBeforeUnmount(() => {
               <textarea v-model="newTestForm.description" placeholder="Description..."></textarea>
             </div>
             <div class="form-group">
-              <label>Variants</label>
-              <div v-for="(v, i) in newTestForm.variants" :key="i" class="variant-input">
-                <input v-model="v.name" type="text" :placeholder="'Variant ' + (i + 1)" />
+              <label>Traffic Split (%)</label>
+              <div class="split-inputs">
+                <input
+                  v-for="(v, i) in newTestForm.variants"
+                  :key="i"
+                  v-model.number="newTestForm.traffic_split[i]"
+                  type="number"
+                  min="0"
+                  max="100"
+                  :title="v.name"
+                />
               </div>
+            </div>
+            <div class="form-group">
+              <label>Variants</label>
+              <div v-for="(v, i) in newTestForm.variants" :key="i" class="variant-editor">
+                <div class="variant-name-row">
+                  <input v-model="v.name" type="text" :placeholder="'Variant ' + (i + 1)" />
+                  <button
+                    v-if="newTestForm.variants.length > 2"
+                    type="button"
+                    class="action-btn delete"
+                    @click="removeVariant(i)"
+                  >✕</button>
+                </div>
+                <div class="variant-config">
+                  <label>top_k</label>
+                  <input v-model.number="v.config.top_k" type="number" min="1" max="20" />
+                  <label>temp</label>
+                  <input v-model.number="v.config.temperature" type="number" min="0" max="2" step="0.1" />
+                  <label>sim</label>
+                  <input v-model.number="v.config.similarity_threshold" type="number" min="0" max="1" step="0.05" />
+                  <label class="checkbox-label">
+                    <input v-model="v.config.reranker_enabled" type="checkbox" /> reranker
+                  </label>
+                </div>
+              </div>
+              <button type="button" class="action-btn" @click="addVariant">+ Add variant</button>
             </div>
             <button class="btn btn-primary" @click="handleCreateTest">Create Test</button>
           </div>
@@ -1120,12 +1330,19 @@ onBeforeUnmount(() => {
                 <span class="test-name">{{ test.name }}</span>
                 <span class="test-status" :class="test.status">{{ test.status }}</span>
               </div>
+              <div v-if="test.variants?.length" class="test-variants">
+                <div v-for="v in test.variants" :key="v.name" class="test-variant">
+                  <span class="test-variant-name">{{ v.name }}</span>
+                  <span class="test-variant-config">{{ variantConfigText(v.config) }}</span>
+                </div>
+              </div>
               <div class="test-actions">
                 <button v-if="test.status === 'draft'" class="action-btn" @click="handleStartTest(test.id)">Start</button>
                 <button v-if="test.status === 'running'" class="action-btn" @click="handleStopTest(test.id)">Stop</button>
                 <button class="action-btn" @click="handleViewResults(test.id)">Results</button>
               </div>
             </div>
+            <div v-if="!abTests.length" class="quality-empty">No tests yet — create one above</div>
           </div>
           
           <div v-if="abTestResults" class="results-modal">
@@ -1140,122 +1357,6 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
-
-      <!-- Alerts Tab -->
-      <div v-else-if="activeTab === 'alerts'" class="tab-content">
-        <div class="alerts-section">
-          <div class="section-header">
-            <h3>🔔 Smart Alerts</h3>
-            <button class="refresh-btn" aria-label="Refresh alerts" title="Refresh alerts" @click="loadAlerts">↻</button>
-          </div>
-          
-          <div class="active-alerts">
-            <h4>Active Alerts ({{ alerts.active_alerts?.length || 0 }})</h4>
-            <div v-for="alert in alerts.active_alerts" :key="alert.id" class="alert-item" :class="alert.severity">
-              <div class="alert-header">
-                <span class="alert-type">{{ alert.type }}</span>
-                <span class="alert-time">{{ alert.start_time }}</span>
-              </div>
-              <div class="alert-message">{{ alert.message }}</div>
-              <div class="alert-details">
-                <span>Current: {{ alert.current_value }}</span>
-                <span>Baseline: {{ alert.baseline?.avg }}</span>
-              </div>
-              <div class="alert-actions">
-                <button class="action-btn" @click="acknowledgeAlert(alert.id, 'acknowledge')">Acknowledge</button>
-                <button class="action-btn" @click="acknowledgeAlert(alert.id, 'ignore')">Ignore</button>
-              </div>
-            </div>
-            <div v-if="!alerts.active_alerts?.length" class="empty-state">No active alerts</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Capacity Tab -->
-      <div v-else-if="activeTab === 'capacity'" class="tab-content">
-        <div class="capacity-section">
-          <div class="section-header">
-            <h3>📈 Capacity Forecast</h3>
-            <button class="refresh-btn" aria-label="Refresh capacity forecast" title="Refresh capacity forecast" @click="loadCapacityForecast">↻</button>
-          </div>
-          
-          <div class="forecast-stats">
-            <div class="forecast-card">
-              <div class="forecast-label">Documents</div>
-              <div class="forecast-value">{{ capacityForecast.forecast?.documents?.value || 0 }}</div>
-              <div class="forecast-range">({{ capacityForecast.forecast?.documents?.lower }} - {{ capacityForecast.forecast?.documents?.upper }})</div>
-            </div>
-            <div class="forecast-card">
-              <div class="forecast-label">Queries/Day</div>
-              <div class="forecast-value">{{ capacityForecast.forecast?.queries_per_day?.value || 0 }}</div>
-              <div class="forecast-range">({{ capacityForecast.forecast?.queries_per_day?.lower }} - {{ capacityForecast.forecast?.queries_per_day?.upper }})</div>
-            </div>
-          </div>
-          
-          <div v-if="capacityForecast.recommendations?.length" class="recommendations">
-            <h4>Recommendations</h4>
-            <div v-for="rec in capacityForecast.recommendations" :key="rec.date" class="rec-item">
-              <span class="rec-date">{{ rec.date }}</span>
-              <span class="rec-action">{{ rec.action }}</span>
-              <span class="rec-details">{{ rec.details }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Self-Heal Tab -->
-      <div v-else-if="activeTab === 'selfheal'" class="tab-content">
-        <div class="selfheal-section">
-          <div class="section-header">
-            <h3>🔧 Self-Healing Events</h3>
-            <button class="refresh-btn" aria-label="Refresh self-healing events" title="Refresh self-healing events" @click="loadSelfHealing">↻</button>
-          </div>
-          
-          <div class="events-list">
-            <div v-for="event in selfHealingEvents.events" :key="event.id" class="event-item">
-              <div class="event-time">{{ event.timestamp }}</div>
-              <div class="event-trigger">{{ event.trigger }}</div>
-              <div class="event-action">{{ event.action_taken }}</div>
-              <div class="event-result">{{ event.result }}</div>
-            </div>
-            <div v-if="!selfHealingEvents.events?.length" class="empty-state">No self-healing events</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cost Tab -->
-      <div v-else-if="activeTab === 'cost'" class="tab-content">
-        <div class="cost-section">
-          <div class="section-header">
-            <h3>💰 Cost Analysis</h3>
-            <button class="refresh-btn" aria-label="Refresh cost analysis" title="Refresh cost analysis" @click="loadCostAnalysis">↻</button>
-          </div>
-          
-          <div class="cost-summary">
-            <div class="cost-total">
-              <span class="cost-value">${{ costAnalysis.total || 0 }}</span>
-              <span class="cost-label">Total Cost</span>
-            </div>
-          </div>
-          
-          <div class="cost-breakdown">
-            <div v-for="item in costAnalysis.breakdown" :key="item.category" class="cost-item">
-              <span class="cost-name">{{ item.name }}</span>
-              <div class="cost-bar">
-                <div class="cost-bar-fill" :style="{ width: item.percentage + '%' }"></div>
-              </div>
-              <span class="cost-amount">${{ item.cost }}</span>
-              <span class="cost-pct">{{ item.percentage }}%</span>
-            </div>
-          </div>
-          
-          <div v-if="costAnalysis.recommendations?.length" class="cost-recs">
-            <h4>Optimization Suggestions</h4>
-            <div v-for="rec in costAnalysis.recommendations" :key="rec" class="rec-text">{{ rec }}</div>
-          </div>
-        </div>
-      </div>
-
       <!-- Users Tab -->
       <div v-else-if="activeTab === 'users'" class="tab-content">
         <div class="users-section">
@@ -1316,37 +1417,6 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Health Tab -->
-      <div v-else-if="activeTab === 'health'" class="tab-content">
-        <div class="health-section">
-          <div class="section-header">
-            <h3>❤️ Knowledge Base Health</h3>
-            <button class="refresh-btn" aria-label="Refresh health score" title="Refresh health score" @click="loadHealthScore">↻</button>
-          </div>
-          
-          <div class="health-score">
-            <span class="score-big">{{ healthScore.overall_score || 0 }}</span>
-            <span class="score-label">/ 100</span>
-          </div>
-          
-          <div class="dimension-scores">
-            <div v-for="(dim, key) in healthScore.dimensions" :key="key" class="dim-item">
-              <span class="dim-name">{{ dim.label }}</span>
-              <div class="dim-bar">
-                <div class="dim-bar-fill" :style="{ width: dim.score + '%' }"></div>
-              </div>
-              <span class="dim-score">{{ dim.score }}</span>
-            </div>
-          </div>
-          
-          <div v-if="healthScore.issues?.length" class="health-issues">
-            <h4>Issues to Address</h4>
-            <div v-for="issue in healthScore.issues" :key="issue.message" class="issue-item" :class="issue.priority">
-              <span class="issue-priority">{{ issue.priority }}</span>
-              <span class="issue-message">{{ issue.message }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -1475,24 +1545,50 @@ onBeforeUnmount(() => {
 
 .tab-nav {
   display: flex;
-  gap: 4px;
+  gap: 18px;
   padding: 8px 16px;
   background: var(--surface-container-low);
   border-bottom: 1px solid var(--outline-variant);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tab-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.tab-group-label {
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  opacity: 0.75;
+}
+
+.tab-group-items {
+  display: flex;
+  gap: 4px;
 }
 
 .tab-btn {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  border: none;
+  padding: 7px 12px;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--on-surface-variant);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
+  white-space: nowrap;
+  transition: all 0.15s;
 }
 
 .tab-btn:hover {
@@ -1501,12 +1597,90 @@ onBeforeUnmount(() => {
 }
 
 .tab-btn.active {
-  background: var(--primary-container);
-  color: var(--on-primary);
+  background: rgba(99, 102, 241, 0.14);
+  border-color: var(--primary-container);
+  color: var(--primary);
 }
 
 .tab-icon {
-  font-size: 14px;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* Quick actions (overview) */
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.quick-action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.quick-action svg {
+  width: 15px;
+  height: 15px;
+  color: var(--accent);
+}
+
+/* Health score card (overview) */
+.health-score-card {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+}
+
+.health-score-main {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.health-score-main .score-big {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.health-score-main .score-label {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.health-score-card .issues-label {
+  display: block;
+  margin: 12px 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.trace-hint {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 .admin-content {
@@ -1562,6 +1736,12 @@ onBeforeUnmount(() => {
   background: var(--surface-container-high);
   border: 1px solid var(--outline-variant);
   border-radius: 12px;
+  transition: border-color 0.15s, transform 0.15s;
+}
+
+.stat-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .stat-icon {
@@ -1571,16 +1751,20 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
   flex-shrink: 0;
 }
 
-.stat-icon.docs { background: rgba(34, 197, 94, 0.15); }
-.stat-icon.vectors { background: rgba(99, 102, 241, 0.15); }
-.stat-icon.queries { background: rgba(251, 191, 36, 0.15); }
-.stat-icon.latency { background: rgba(168, 85, 247, 0.15); }
-.stat-icon.cache { background: rgba(236, 72, 153, 0.15); }
-.stat-icon.storage { background: rgba(6, 182, 212, 0.15); }
+.stat-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.stat-icon.docs { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.stat-icon.vectors { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
+.stat-icon.queries { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.stat-icon.latency { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+.stat-icon.cache { background: rgba(236, 72, 153, 0.15); color: #ec4899; }
+.stat-icon.storage { background: rgba(6, 182, 212, 0.15); color: #06b6d4; }
 
 .stat-body {
   flex: 1;
@@ -1605,9 +1789,105 @@ onBeforeUnmount(() => {
   margin-top: 2px;
 }
 
-/* Health Section */
-.health-section, .query-section {
+/* Indexing status banner */
+.indexing-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   margin-bottom: 24px;
+}
+
+.indexing-banner.running {
+  border-color: rgba(99, 102, 241, 0.4);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.indexing-banner.error {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.banner-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.indexing-banner.running .banner-icon {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent);
+}
+
+.indexing-banner.error .banner-icon {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.banner-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.banner-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.banner-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.banner-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.banner-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+}
+
+.banner-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.banner-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), #a855f7);
+  transition: width 0.3s ease;
+}
+
+.banner-percent {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .section-title {
@@ -1623,14 +1903,33 @@ onBeforeUnmount(() => {
   gap: 12px;
 }
 
+/* Health Section */
+.health-section, .query-section {
+  margin-bottom: 24px;
+}
+
 .health-item {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   padding: 12px;
   background: var(--surface-container-high);
   border: 1px solid var(--outline-variant);
   border-radius: 10px;
+}
+
+.health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.health-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
 .health-label {
@@ -1647,51 +1946,76 @@ onBeforeUnmount(() => {
 /* Query Section */
 .query-stats {
   display: flex;
-  gap: 24px;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .query-stat {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  background: var(--surface-container-high);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
 }
 
 .query-value {
   font-size: 24px;
   font-weight: 700;
-  color: var(--on-surface);
+  color: var(--accent);
 }
 
 .query-label {
   font-size: 11px;
   color: var(--on-surface-variant);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .type-dist {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
 .type-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--surface-container-high);
-  border-radius: 6px;
+  gap: 12px;
 }
 
 .type-name {
   font-size: 12px;
   color: var(--on-surface-variant);
   text-transform: capitalize;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.type-track {
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.type-fill {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
 }
 
 .type-count {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--on-surface);
+  font-weight: 700;
+  color: var(--text-main);
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Debug Section */
@@ -1804,6 +2128,15 @@ onBeforeUnmount(() => {
   overflow-y: auto;
 }
 
+.result-empty {
+  padding: 24px 16px;
+  border: 1px dashed var(--outline-variant);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 .result-item {
   display: flex;
   gap: 10px;
@@ -1887,6 +2220,11 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .loading-small {
   text-align: center;
   padding: 40px;
@@ -1959,6 +2297,12 @@ onBeforeUnmount(() => {
   color: var(--on-tertiary);
 }
 
+.action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .empty-state {
   text-align: center;
   padding: 40px;
@@ -1986,6 +2330,21 @@ onBeforeUnmount(() => {
   font-size: 12px;
   color: var(--on-surface-variant);
   margin-left: auto;
+}
+
+.chunk-search {
+  max-width: 280px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 12px;
+  outline: none;
+}
+
+.chunk-search:focus {
+  border-color: var(--accent);
 }
 
 .chunks-list {
@@ -2027,14 +2386,6 @@ onBeforeUnmount(() => {
   font-size: 13px;
   color: var(--on-surface-variant);
   line-height: 1.5;
-}
-
-.chunk-embedding {
-  font-size: 10px;
-  color: var(--on-surface-variant);
-  margin-top: 8px;
-  font-family: monospace;
-  opacity: 0.6;
 }
 
 .pagination {
@@ -2161,6 +2512,23 @@ onBeforeUnmount(() => {
   color: var(--on-surface-variant);
 }
 
+.doc-select {
+  display: block;
+  margin: 16px auto;
+  padding: 10px 14px;
+  min-width: 320px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 13px;
+}
+
+.doc-select:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
 /* Clusters Section */
 .clusters-list {
   display: flex;
@@ -2217,9 +2585,45 @@ onBeforeUnmount(() => {
   color: var(--on-surface-variant);
 }
 
-.cluster-sample {
+.clusters-summary {
   font-size: 12px;
   color: var(--on-surface-variant);
+  margin-bottom: 4px;
+}
+
+.cluster-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--on-surface-variant);
+  background: var(--surface-container);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.cluster-samples {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.sample-query {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.sample-index {
+  color: var(--primary-container);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sample-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Failures Section */
@@ -2352,6 +2756,110 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   cursor: pointer;
   transform: translate(-50%, -50%);
+  transition: transform 0.1s, opacity 0.15s;
+}
+
+.viz-point.viz-hover {
+  transform: translate(-50%, -50%) scale(1.8);
+  z-index: 5;
+}
+
+.viz-point.viz-selected {
+  transform: translate(-50%, -50%) scale(1.8);
+  box-shadow: 0 0 0 2px var(--surface-container-high), 0 0 0 4px #fff;
+  z-index: 6;
+}
+
+.viz-point.viz-dim {
+  opacity: 0.1;
+}
+
+.viz-tooltip {
+  position: absolute;
+  z-index: 20;
+  max-width: 300px;
+  max-height: 140px;
+  overflow: hidden;
+  padding: 8px 10px;
+  background: var(--surface-container-highest);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.tooltip-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary-container);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tooltip-text {
+  font-size: 11px;
+  color: var(--on-surface-variant);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.viz-quality {
+  color: var(--tertiary);
+}
+
+.legend-item {
+  cursor: pointer;
+}
+
+.legend-item.active {
+  color: var(--on-surface);
+}
+
+.legend-item.active .legend-color {
+  box-shadow: 0 0 0 2px var(--surface-container-high), 0 0 0 3px var(--primary-container);
+}
+
+.viz-detail {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 10px;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.detail-meta {
+  color: var(--on-surface-variant);
+  flex: 1;
+}
+
+.detail-close {
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+
+.detail-text {
+  font-size: 12px;
+  color: var(--on-surface);
+  line-height: 1.5;
+  max-height: 160px;
+  overflow-y: auto;
 }
 
 .viz-legend {
@@ -2399,6 +2907,39 @@ onBeforeUnmount(() => {
 
 .quality-list {
   margin-bottom: 20px;
+}
+
+.quality-chunks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quality-summary {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  text-align: center;
+  margin-top: -10px;
+  margin-bottom: 16px;
+}
+
+.quality-error {
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.quality-empty {
+  padding: 20px 16px;
+  border: 1px dashed var(--outline-variant);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
 }
 
 .quality-list h4 {
@@ -2563,6 +3104,116 @@ onBeforeUnmount(() => {
 
 .variant-input {
   margin-bottom: 6px;
+}
+
+.abtest-hint {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}
+
+.split-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.split-inputs input {
+  width: 70px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.variant-editor {
+  border: 1px solid var(--outline-variant);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface-container);
+}
+
+.variant-name-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.variant-name-row input {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.variant-config {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.variant-config label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.variant-config input[type="number"] {
+  width: 64px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-lowest);
+  color: var(--text-main);
+  font-size: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  text-transform: none !important;
+}
+
+.test-variants {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  margin: 0 12px;
+  min-width: 0;
+}
+
+.test-variant {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  align-items: baseline;
+}
+
+.test-variant-name {
+  font-weight: 600;
+  color: var(--on-surface);
+  flex-shrink: 0;
+}
+
+.test-variant-config {
+  color: var(--on-surface-variant);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .tests-list {

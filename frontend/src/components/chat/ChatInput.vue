@@ -5,7 +5,7 @@ const props = defineProps({
   isLoading: Boolean
 })
 
-const emit = defineEmits(['send'])
+const emit = defineEmits(['send', 'stop'])
 
 const question = ref('')
 const textareaRef = ref(null)
@@ -51,15 +51,23 @@ const resizeTextarea = () => {
     ></textarea>
     <button
       type="button"
+      class="chat-send-btn stop-btn"
+      aria-label="Stop generating"
+      title="Stop generating"
+      @click="emit('stop')"
+      v-if="isLoading"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+    </button>
+    <button
+      v-else
+      type="button"
       class="chat-send-btn"
       aria-label="Send message"
       @click="sendMessage"
-      :disabled="isLoading || !question.trim()"
+      :disabled="!question.trim()"
     >
-      <svg v-if="isLoading" class="send-spinner" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-dasharray="31.4 31.4" stroke-linecap="round"/>
-      </svg>
-      <svg v-else viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </div>
 </template>
@@ -90,8 +98,8 @@ const resizeTextarea = () => {
   flex: 1;
   padding: 10px 16px;
   border-radius: 10px;
-  border: 1px solid rgba(69, 70, 83, 0.15);
-  background: var(--surface-container-lowest);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
   color: var(--on-surface);
   font-family: var(--font-body);
   font-size: 13px;
@@ -157,13 +165,12 @@ const resizeTextarea = () => {
   transform: none;
 }
 
-.send-spinner {
-  animation: spin 1s linear infinite;
+.chat-send-btn.stop-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+  color: #fff;
 }
 
-@keyframes spin {
-  100% {
-    transform: rotate(360deg);
-  }
+.chat-send-btn.stop-btn:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
 }
 </style>

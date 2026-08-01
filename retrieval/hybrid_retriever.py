@@ -109,6 +109,7 @@ class HybridRetriever:
         dense_top_k: int = 20,
         rrf_k: int = 60,
         alpha: float = 0.3,
+        candidate_top_k: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
         Main hybrid retrieval method.
@@ -121,9 +122,10 @@ class HybridRetriever:
             dense_top_k: Number of dense retrieval candidates
             rrf_k: RRF constant (default 60)
             alpha: Dense retrieval weight (only for weighted fusion, 0.3 means dense 30%, BM25 70%)
+            candidate_top_k: If set, over-fetch this many candidates before returning top_k
 
         Returns:
-            List[Dict] - Each result contains id, text, score, source, metadata
+            List[Dict] - Each result contains id, text, score, cosine_similarity, source, metadata
         """
         if not query or not query.strip():
             return []
@@ -131,11 +133,17 @@ class HybridRetriever:
         # Use provided fusion method or default
         method = fusion_method if fusion_method else self.fusion_method
 
+        # Determine how many candidates to fetch (for over-fetching before threshold)
+        fetch_k = candidate_top_k if candidate_top_k is not None else top_k
+
         # 1. BM25 retrieval
-        bm25_results = self.bm25_index.search(query, top_k=bm25_top_k)
+        bm25_results = self.bm25_index.search(query, top_k=max(bm25_top_k, fetch_k))
 
         # 2. Dense retrieval
-        dense_results = self.dense_retriever.search(query, top_k=dense_top_k)
+        dense_results = self.dense_retriever.search(query, top_k=max(dense_top_k, fetch_k))
+
+        # Build dense score lookup for cosine_similarity
+        dense_score_map: Dict[str, float] = {doc_id: score for doc_id, score in dense_results}
 
         # 3. Fuse results
         if method == FusionMethod.RRF:
@@ -150,7 +158,7 @@ class HybridRetriever:
 
         # Build final results with document content
         final_results: List[Dict[str, Any]] = []
-        for doc_id, score in sorted_results[:top_k]:
+        for doc_id, score in sorted_results[:fetch_k]:
             if doc_id in self.doc_store:
                 doc = self.doc_store[doc_id]
                 final_results.append(
@@ -158,6 +166,7 @@ class HybridRetriever:
                         "id": doc_id,
                         "text": doc.get("text", ""),
                         "score": score,
+                        "cosine_similarity": dense_score_map.get(doc_id, 0.0),
                         "source": doc.get("source", "unknown"),
                         "metadata": doc.get("metadata", {}),
                     }

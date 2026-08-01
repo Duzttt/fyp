@@ -183,16 +183,11 @@ def _build_retrieved_chunks(sources: Any) -> List[Dict[str, Any]]:
     if not isinstance(sources, list):
         return chunks
 
-    distances = [r.get("distance", 0) for r in sources if isinstance(r, dict)]
-    max_distance = max(distances) if distances else 1.0
-    max_distance = max(max_distance, 0.001)
-
     for r in sources:
         if not isinstance(r, dict):
             continue
 
-        distance = r.get("distance", 0)
-        similarity = max(0.0, 1.0 - (distance / max_distance))
+        similarity = max(0.0, r.get("cosine_similarity", r.get("distance", 0.0)))
         text = r.get("text", "")
 
         chunks.append(
@@ -200,9 +195,10 @@ def _build_retrieved_chunks(sources: Any) -> List[Dict[str, Any]]:
                 "text": text,
                 "preview": text[:100] + ("..." if len(text) > 100 else ""),
                 "score": round(similarity, 3),
-                "distance": round(distance, 4),
+                "distance": round(r.get("distance", 0.0), 4),
                 "source": str(r.get("source", "unknown")),
                 "page": r.get("page"),
+                "chunk_index": r.get("index", -1),
             }
         )
 
@@ -246,6 +242,8 @@ def _load_rag_config() -> Dict[str, Any]:
         or get_default_model_for_provider(runtime_settings["provider"] or "local_llm"),
         "top_k": 3,
         "temperature": 0.7,
+        "similarity_threshold": 0.6,
+        "reranker_enabled": False,
     }
     if not RAG_CONFIG_FILE.exists():
         return default_config

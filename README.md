@@ -9,7 +9,7 @@ The system lets you:
 - Parse and split content into chunks (LangChain-powered)
 - Embed chunks into vectors
 - Retrieve relevant chunks for a question
-- Generate grounded answers using Gemini, OpenRouter, or Local Qwen models
+- Generate grounded answers using Gemini, OpenRouter, or Local LLM models
 
 ## Architecture Overview
 
@@ -38,7 +38,7 @@ The system lets you:
 | **Backend** | Django 5.2, Pydantic, Requests |
 | **RAG** | LangChain, Sentence Transformers, FAISS |
 | **Frontend** | Vue 3, Vite, TailwindCSS |
-| **LLM** | Gemini, OpenRouter, Local Qwen (llama.cpp) |
+| **LLM** | Gemini, OpenRouter, Local LLM (llama.cpp) |
 | **Testing** | Pytest, Ruff, Black, MyPy |
 
 ## Repository Structure
@@ -482,14 +482,16 @@ GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
 OPENROUTER_API_KEY=your_openrouter_key
 OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
-# Local Qwen (llama.cpp)
-LOCAL_QWEN_MODEL=qwen2.5:3b
-LOCAL_QWEN_BASE_URL=http://localhost:8080
-LOCAL_QWEN_TIMEOUT_SECONDS=300
-LOCAL_QWEN_KEEP_ALIVE=30m
+# Local LLM (llama.cpp)
+# Example model alias; use any model name exposed by your llama.cpp server.
+LOCAL_LLM_MODEL=qwen2.5:3b
+LOCAL_LLM_BASE_URL=http://localhost:8080
+LOCAL_LLM_TIMEOUT_SECONDS=300
 ```
 
 ### RAG Configuration (data/rag_config.json)
+
+The model value is configurable and is not restricted to Qwen.
 
 ```json
 {

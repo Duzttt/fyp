@@ -20,20 +20,20 @@ A one-click dropdown in the TopBar reduces this to a single click.
 
 **File:** `django_app/views/helpers.py:13`
 
-Change `VALID_PROVIDERS = {"gemini", "openrouter"}` to include `local_qwen`.
+Change `VALID_PROVIDERS = {"gemini", "openrouter"}` to include `local_llm`.
 
 #### 2. Fix _build_runtime_llm_settings
 
 **File:** `django_app/views/helpers.py:250-271`
 
-Add `local_qwen` branch: use `settings.LOCAL_QWEN_MODEL` as default model,
+Add `local_llm` branch: use `settings.LOCAL_LLM_MODEL` as default model,
 no API key required.
 
 #### 3. Fix settings_handler GET
 
 **File:** `django_app/views/rag.py:244-266`
 
-Add `local_qwen` branch in the GET handler to return correct default model.
+Add `local_llm` branch in the GET handler to return correct default model.
 
 #### 4. New Endpoint: GET /api/settings/providers
 
@@ -59,8 +59,8 @@ Returns:
       "has_api_key": true
     },
     {
-      "id": "local_qwen",
-      "name": "Local Qwen (llama.cpp)",
+      "id": "local_llm",
+      "name": "Local LLM (llama.cpp)",
       "models": [" ", " ", "qwen2.5:3b", "qwen3.5:4b"],
       "requires_api_key": false,
       "has_api_key": false
@@ -132,8 +132,8 @@ User clicks dropdown → selects model
 
 | File | Action | Description |
 |------|--------|-------------|
-| `django_app/views/helpers.py` | Modify | Add local_qwen to VALID_PROVIDERS, fix _build_runtime_llm_settings |
-| `django_app/views/rag.py` | Modify | Add providers_handler, fix settings_handler for local_qwen |
+| `django_app/views/helpers.py` | Modify | Add local_llm to VALID_PROVIDERS, fix _build_runtime_llm_settings |
+| `django_app/views/rag.py` | Modify | Add providers_handler, fix settings_handler for local_llm |
 | `django_app/views/__init__.py` | Modify | Export providers_handler |
 | `django_backend/urls.py` | Modify | Add /api/settings/providers route |
 | `frontend/src/services/api.js` | Modify | Add getProviders() |
@@ -146,5 +146,5 @@ User clicks dropdown → selects model
 
 - Manual: switch between all 3 providers via dropdown, verify chat uses correct provider
 - Backend: verify GET /api/settings/providers returns correct data
-- Backend: verify POST /api/settings with local_qwen works
+- Backend: verify POST /api/settings with local_llm works
 - Frontend: verify dropdown shows correct current selection after page reload

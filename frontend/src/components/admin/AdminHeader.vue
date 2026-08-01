@@ -27,8 +27,8 @@ const emit = defineEmits(['close'])
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(99, 102, 241, 0.1);
+  border-bottom: 1px solid var(--outline-variant);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .admin-title {
@@ -37,7 +37,7 @@ const emit = defineEmits(['close'])
   gap: 10px;
   font-size: 16px;
   font-weight: 600;
-  color: white;
+  color: var(--text-main);
 }
 
 .title-icon {
@@ -69,8 +69,8 @@ const emit = defineEmits(['close'])
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--outline-variant);
+  background: rgba(128, 128, 128, 0.1);
   color: var(--text-muted);
   cursor: pointer;
   display: flex;

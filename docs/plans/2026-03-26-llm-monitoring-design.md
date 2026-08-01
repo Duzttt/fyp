@@ -6,14 +6,14 @@
 
 ## 背景
 
-当前项目有 3 个 LLM 提供商（Gemini、OpenRouter、本地 Qwen），分布在 5 个服务模块中调用：
+当前项目有 3 个 LLM 提供商（Gemini、OpenRouter、llama.cpp 本地 LLM），分布在 5 个服务模块中调用：
 - `app/services/local_rag.py` — 主要问答生成
 - `app/services/rag_pipeline.py` — RAGPipeline 类
 - `app/services/citation_rag.py` — 引用感知 RAG
 - `app/services/summarizer.py` — 文档摘要
 - `app/services/question_suggestions.py` — 问题建议
 
-目前只有 `ask_qwen` 视图通过 `log_query()` 记录查询日志，其他调用路径没有记录。需要统一采集所有 LLM 调用并提供可视化页面。
+目前只有 `ask` 视图通过 `log_query()` 记录查询日志，其他调用路径没有记录。需要统一采集所有 LLM 调用并提供可视化页面。
 
 ## 需求
 
@@ -33,7 +33,7 @@
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `llm_provider` | CharField(20) | `""` | LLM 提供商：gemini / openrouter / local_qwen |
+| `llm_provider` | CharField(20) | `""` | LLM 提供商：gemini / openrouter / local_llm |
 | `llm_status` | CharField(10) | `"success"` | 调用状态：success / error |
 | `error_message` | TextField | `""` | 失败时的错误信息 |
 | `call_type` | CharField(20) | `"qa"` | 调用类型：qa / summary / suggestion / citation |
@@ -48,7 +48,7 @@
 
 ```python
 def call_llm(
-    provider: str,           # "gemini" / "openrouter" / "local_qwen"
+    provider: str,           # "gemini" / "openrouter" / "local_llm"
     model: str,              # 模型名称
     call_type: str,          # "qa" / "summary" / "suggestion" / "citation"
     messages: list[dict],    # 标准 messages 格式 [{"role": "system", "content": ...}, ...]
@@ -68,11 +68,11 @@ def call_llm(
 
 5 个服务模块需要改造，将直接的 HTTP 调用替换为 `call_llm()` 调用：
 
-- `local_rag.py`: `generate_with_local_qwen()`、`generate_with_openrouter()`
+- `local_rag.py`: `generate_with_local_llm()`、`generate_with_openrouter()`
 - `rag_pipeline.py`: `_generate_gemini()`、`_generate_openrouter()`
-- `citation_rag.py`: `_generate_with_qwen()`、`generate_with_openrouter()`
-- `summarizer.py`: `_call_local_qwen()`、`_call_gemini()`、`_call_openrouter()`
-- `question_suggestions.py`: `_call_local_qwen()`、`_call_gemini()`、`_call_openrouter()`
+- `citation_rag.py`: `_generate_with_local_llm()`、`generate_with_openrouter()`
+- `summarizer.py`: `_call_local_llm()`、`_call_gemini()`、`_call_openrouter()`
+- `question_suggestions.py`: `_call_local_llm()`、`_call_gemini()`、`_call_openrouter()`
 
 每个模块的 `_call_*` 方法改为构建 messages 并调用 `call_llm()`。
 

@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
             field=models.CharField(
                 blank=True,
                 default="",
-                help_text="LLM provider: gemini / openrouter / local_qwen",
+                help_text="LLM provider: gemini / openrouter / local_llm",
                 max_length=20,
             ),
         ),

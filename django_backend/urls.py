@@ -26,8 +26,6 @@ urlpatterns = [
     path("api/ask/", views.ask_question),
     path("api/chat", views.ask),
     path("api/chat/", views.ask),
-    path("api/ask_qwen", views.ask),
-    path("api/ask_qwen/", views.ask),
     path("api/rag-demo/trace", views.rag_demo_trace),
     path("api/rag-demo/trace/", views.rag_demo_trace),
     path("api/chat/citations", views.ask_with_citations),
@@ -92,8 +90,6 @@ urlpatterns = [
     path("api/admin/analytics/document/<str:doc_id>/", views.admin_document_analytics),
     path("api/admin/analytics/query-clusters", views.admin_query_clusters),
     path("api/admin/analytics/query-clusters/", views.admin_query_clusters),
-    path("api/admin/analytics/failures", views.admin_failure_analysis),
-    path("api/admin/analytics/failures/", views.admin_failure_analysis),
     path("api/admin/visualization/embeddings", views.admin_embedding_visualization),
     path("api/admin/visualization/embeddings/", views.admin_embedding_visualization),
     path("api/admin/analytics/chunk-quality", views.admin_chunk_quality),
@@ -113,19 +109,6 @@ urlpatterns = [
     path("api/admin/abtest/record/", views.admin_ab_test_record),
     path("api/admin/abtest/<int:test_id>/results", views.admin_ab_test_results),
     path("api/admin/abtest/<int:test_id>/results/", views.admin_ab_test_results),
-    # Phase 3: Smart Operations
-    path("api/admin/alerts/current", views.admin_alerts_current),
-    path("api/admin/alerts/current/", views.admin_alerts_current),
-    path("api/admin/alerts/acknowledge", views.admin_alerts_acknowledge),
-    path("api/admin/alerts/acknowledge/", views.admin_alerts_acknowledge),
-    path("api/admin/capacity/forecast", views.admin_capacity_forecast),
-    path("api/admin/capacity/forecast/", views.admin_capacity_forecast),
-    path("api/admin/selfhealing/events", views.admin_selfhealing_events),
-    path("api/admin/selfhealing/events/", views.admin_selfhealing_events),
-    path("api/admin/selfhealing/config", views.admin_selfhealing_config),
-    path("api/admin/selfhealing/config/", views.admin_selfhealing_config),
-    path("api/admin/cost/analysis", views.admin_cost_analysis),
-    path("api/admin/cost/analysis/", views.admin_cost_analysis),
     path("api/admin/analytics/users", views.admin_user_behavior),
     path("api/admin/analytics/users/", views.admin_user_behavior),
     path("api/admin/reports/generate", views.admin_generate_report),
@@ -177,8 +160,10 @@ urlpatterns = [
     path("api/conversations/<str:conversation_id>", views.get_conversation),
     path("api/conversations/<str:conversation_id>/", views.get_conversation),
     path("api/conversations/<str:conversation_id>/delete", views.delete_conversation),
-    # SPA catch-all: serve Vue frontend for any non-API route
-    re_path(r"^(?!api/).*$", views.index_page),
+    # SPA catch-all: serve Vue frontend for any non-API, non-media route.
+    # media/ is excluded so /media/... static files (e.g. source PDFs) are
+    # served by the static handler below instead of the SPA index page.
+    re_path(r"^(?!api/|media/).*$", views.index_page),
 ]
 
 # Serve media files in development

@@ -2,8 +2,9 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List, Tuple
 
+import faiss
 import numpy as np
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -12,6 +13,12 @@ from django.views.decorators.http import require_http_methods
 from app.config import settings
 from app.services.runtime_embedding import load_runtime_embedding_settings
 
+from django_app.admin_utils import (
+    QUERY_TYPE_COLORS,
+    QUERY_TYPE_LABELS,
+    QUERY_TYPE_PATTERNS,
+    classify_query_type,
+)
 from django_app.views.helpers import _error_response, _get_json_body
 
 
@@ -20,10 +27,14 @@ def admin_document_analytics(request: HttpRequest, doc_id: str) -> JsonResponse:
     from django_app.models import QueryLog
 
     decoded_doc_id = urllib.parse.unquote(doc_id)
+    days = int(request.GET.get("days", 90))
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     # To avoid N+1 queries and high memory usage, we fetch only the necessary fields.
     # We use values_list and an iterator to drastically reduce memory usage and avoid model instantiation overhead.
-    logs = QueryLog.objects.values_list("retrieved_documents", "user_feedback", "query")
+    logs = QueryLog.objects.filter(created_at__gte=cutoff).values_list(
+        "retrieved_documents", "user_feedback", "query"
+    )
 
     appearance_count = 0
     click_count = 0
@@ -33,9 +44,11 @@ def admin_document_analytics(request: HttpRequest, doc_id: str) -> JsonResponse:
 
     for retrieved, user_feedback, query in logs.iterator(chunk_size=1000):
         retrieved = retrieved or []
+        matched = False
         for item in retrieved:
             source = item.get("source", "")
             if decoded_doc_id in source or source.endswith(decoded_doc_id):
+                matched = True
                 appearance_count += 1
                 score = item.get("score", 0)
                 if score > 0:
@@ -44,13 +57,11 @@ def admin_document_analytics(request: HttpRequest, doc_id: str) -> JsonResponse:
                 if user_feedback is True:
                     click_count += 1
 
-        query_text = query.lower()
-        for item in retrieved:
-            source = item.get("source", "")
-            if decoded_doc_id in source or source.endswith(decoded_doc_id):
-                if query_text not in query_counts:
-                    query_counts[query_text] = 0
-                query_counts[query_text] += 1
+        # Count each log entry once per document, regardless of how many
+        # chunks of that document were retrieved in the same query.
+        if matched:
+            query_text = query.lower()
+            query_counts[query_text] = query_counts.get(query_text, 0) + 1
 
     top_queries = sorted(
         [{"query": q, "count": c} for q, c in query_counts.items()],
@@ -71,6 +82,7 @@ def admin_document_analytics(request: HttpRequest, doc_id: str) -> JsonResponse:
                 "click_rate": round(click_rate, 3),
             },
             "top_queries": top_queries,
+            "days": days,
         }
     )
 
@@ -85,7 +97,7 @@ def admin_query_clusters(request: HttpRequest) -> JsonResponse:
     start_time = datetime.now(timezone.utc) - timedelta(days=days)
     queries = list(
         QueryLog.objects.filter(created_at__gte=start_time)
-        .values_list("query", "query_type")
+        .values_list("query", flat=True)
         .distinct()[:limit]
     )
 
@@ -98,57 +110,34 @@ def admin_query_clusters(request: HttpRequest) -> JsonResponse:
             }
         )
 
-    type_counts: Dict[str, int] = {}
-    for _, qtype in queries:
-        qtype = qtype or "other"
-        type_counts[qtype] = type_counts.get(qtype, 0) + 1
-
     total = len(queries)
-    cluster_definitions = {
-        "concept": {
-            "name": "concept_definition",
-            "patterns": ["what is", "define", "explain", "meaning of", "what does"],
-            "color": "#22c55e",
-        },
-        "method": {
-            "name": "method_process",
-            "patterns": ["how to", "steps to", "process of", "how does", "method"],
-            "color": "#3b82f6",
-        },
-        "comparison": {
-            "name": "comparison",
-            "patterns": ["difference between", "compare", "vs ", "versus", " versus "],
-            "color": "#f59e0b",
-        },
-        "reason": {
-            "name": "reason_explanation",
-            "patterns": ["why does", "reason", "because", "explain why"],
-            "color": "#8b5cf6",
-        },
-        "example": {
-            "name": "example_application",
-            "patterns": ["example", "application", "use case", "instance of"],
-            "color": "#ec4899",
-        },
+
+    # Group queries by keyword patterns (classify_query_type), not by the
+    # stored query_type field, so historical logs cluster correctly too.
+    cluster_queries: Dict[str, List[str]] = {
+        qtype: [] for qtype in QUERY_TYPE_PATTERNS
     }
+    cluster_queries["other"] = []
+
+    for q in queries:
+        cluster_queries[classify_query_type(q)].append(q)
 
     clusters = []
-    for qtype, info in cluster_definitions.items():
-        count = type_counts.get(qtype, 0)
-        if count > 0:
-            queries_of_type = [q for q, t in queries if t == qtype]
-            clusters.append(
-                {
-                    "name": info["name"],
-                    "query_type": qtype,
-                    "percentage": round(count / total * 100, 1),
-                    "count": count,
-                    "patterns": info["patterns"],
-                    "color": info["color"],
-                    "representative": queries_of_type[0] if queries_of_type else "",
-                    "sample_queries": queries_of_type[:5],
-                }
-            )
+    for qtype, qlist in cluster_queries.items():
+        if not qlist:
+            continue
+        clusters.append(
+            {
+                "name": QUERY_TYPE_LABELS.get(qtype, qtype),
+                "query_type": qtype,
+                "percentage": round(len(qlist) / total * 100, 1),
+                "count": len(qlist),
+                "patterns": QUERY_TYPE_PATTERNS.get(qtype, []),
+                "color": QUERY_TYPE_COLORS.get(qtype, "#6b7280"),
+                "representative": qlist[0],
+                "sample_queries": qlist[:5],
+            }
+        )
 
     clusters.sort(key=lambda x: x["count"], reverse=True)
 
@@ -161,71 +150,9 @@ def admin_query_clusters(request: HttpRequest) -> JsonResponse:
     )
 
 
-@require_http_methods(["GET"])
-def admin_failure_analysis(request: HttpRequest) -> JsonResponse:
-    from django_app.models import QueryLog
-
-    hours = int(request.GET.get("time_range", 24))
-    start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
-
-    logs = QueryLog.objects.filter(created_at__gte=start_time)
-    total = logs.count()
-
-    if total == 0:
-        return JsonResponse(
-            {
-                "failure_rate": 0,
-                "breakdown": [],
-                "suggestions": ["No query data available for analysis"],
-            }
-        )
-
-    no_results = logs.filter(results_count=0).count()
-    low_score_count = 0
-    negative_feedback = logs.filter(user_feedback=False).count()
-
-    for log in logs:
-        if log.user_feedback is None and (log.latency_ms or 0) > 2000:
-            low_score_count += 1
-
-    failure_rate = (no_results + low_score_count + negative_feedback) / total
-
-    suggestions = []
-    if no_results > total * 0.05:
-        suggestions.append("Consider adding synonym expansion for technical terms")
-        suggestions.append("Review document coverage for common query topics")
-    if low_score_count > total * 0.05:
-        suggestions.append("Adjust similarity threshold or increase top_k")
-        suggestions.append("Consider adding more descriptive content to documents")
-    if negative_feedback > total * 0.02:
-        suggestions.append("Review retrieved chunks for relevance")
-        suggestions.append("Improve chunk boundaries for better context")
-
-    return JsonResponse(
-        {
-            "failure_rate": round(failure_rate, 3),
-            "time_range_hours": hours,
-            "total_queries": total,
-            "breakdown": [
-                {
-                    "type": "no_results",
-                    "count": no_results,
-                    "percentage": round(no_results / total * 100, 1),
-                },
-                {
-                    "type": "low_score",
-                    "count": low_score_count,
-                    "percentage": round(low_score_count / total * 100, 1),
-                },
-                {
-                    "type": "negative_feedback",
-                    "count": negative_feedback,
-                    "percentage": round(negative_feedback / total * 100, 1),
-                },
-            ],
-            "suggestions": suggestions if suggestions else ["System performing well"],
-        }
-    )
+# In-memory cache of 2D projections keyed by (method, perplexity, index fingerprint).
+# The fingerprint includes index size + file mtime, so it invalidates on reindex.
+_PROJECTION_CACHE: Dict[Tuple[str, int, str], Dict[str, Any]] = {}
 
 
 @require_http_methods(["GET"])
@@ -265,20 +192,53 @@ def admin_embedding_visualization(request: HttpRequest) -> JsonResponse:
         for i, doc in enumerate(documents)
     }
 
+    index_file = index_path / "index.faiss"
+    if not index_file.exists():
+        return JsonResponse(
+            {
+                "points": [],
+                "documents": documents,
+                "error": "No FAISS index found",
+            }
+        )
+
+    try:
+        index = faiss.read_index(str(index_file))
+    except Exception:
+        return JsonResponse(
+            {
+                "points": [],
+                "documents": documents,
+                "error": "Failed to load FAISS index",
+            }
+        )
+
+    if index.ntotal != len(all_chunks):
+        return JsonResponse(
+            {
+                "points": [],
+                "documents": documents,
+                "error": (
+                    f"Index/chunk mismatch: {index.ntotal} vectors vs "
+                    f"{len(all_chunks)} chunks"
+                ),
+            }
+        )
+
+    # Embeddings live in the FAISS index (index.faiss), not in chunks.npy,
+    # so recover each vector by position — chunks.npy order matches index order.
     chunks_with_embeddings = []
     for i, chunk in enumerate(all_chunks):
         if isinstance(chunk, dict):
-            embedding = chunk.get("embedding")
-            if embedding and isinstance(embedding, (list, np.ndarray)):
-                chunks_with_embeddings.append(
-                    {
-                        "index": i,
-                        "text": chunk.get("text", "")[:100],
-                        "document": chunk.get("source", "unknown"),
-                        "page": chunk.get("page"),
-                        "embedding": embedding,
-                    }
-                )
+            chunks_with_embeddings.append(
+                {
+                    "index": i,
+                    "text": chunk.get("text", ""),
+                    "document": chunk.get("source", "unknown"),
+                    "page": chunk.get("page"),
+                    "embedding": index.reconstruct(i),
+                }
+            )
 
     if len(chunks_with_embeddings) < 10:
         return JsonResponse(
@@ -301,23 +261,40 @@ def admin_embedding_visualization(request: HttpRequest) -> JsonResponse:
             }
         )
 
+    projection_start = time.perf_counter()
+    explained_variance: Any = None
     try:
         from sklearn.decomposition import PCA
         from sklearn.manifold import TSNE
 
-        if method == "tsne":
-            n_components = 2
-            n_iter = 1000
-            tsne = TSNE(
-                n_components=n_components,
-                perplexity=min(perplexity, len(embeddings) - 1),
-                n_iter=n_iter,
-                random_state=42,
-            )
-            projected = tsne.fit_transform(embeddings)
+        # Cache projections so switching PCA/t-SNE is instant between requests.
+        fingerprint = f"{index.ntotal}:{index_file.stat().st_mtime_ns}"
+        cache_key = (method, perplexity, fingerprint)
+        cached = _PROJECTION_CACHE.get(cache_key)
+
+        if cached is not None:
+            projected = cached["projected"]
+            explained_variance = cached.get("explained_variance")
         else:
-            pca = PCA(n_components=2, random_state=42)
-            projected = pca.fit_transform(embeddings)
+            if method == "tsne":
+                tsne = TSNE(
+                    n_components=2,
+                    perplexity=min(perplexity, len(embeddings) - 1),
+                    max_iter=1000,
+                    random_state=42,
+                )
+                projected = tsne.fit_transform(embeddings)
+            else:
+                pca = PCA(n_components=2, random_state=42)
+                projected = pca.fit_transform(embeddings)
+                explained_variance = float(
+                    sum(pca.explained_variance_ratio_[:2]) * 100
+                )
+
+            _PROJECTION_CACHE[cache_key] = {
+                "projected": projected,
+                "explained_variance": explained_variance,
+            }
     except Exception:
         return JsonResponse(
             {
@@ -326,6 +303,7 @@ def admin_embedding_visualization(request: HttpRequest) -> JsonResponse:
                 "error": "Projection failed",
             }
         )
+    projection_time_ms = round((time.perf_counter() - projection_start) * 1000, 1)
 
     points = []
     for i, chunk in enumerate(chunks_with_embeddings):
@@ -347,6 +325,8 @@ def admin_embedding_visualization(request: HttpRequest) -> JsonResponse:
             "documents": documents,
             "method": method,
             "total_chunks": len(chunks_with_embeddings),
+            "explained_variance_ratio": explained_variance,
+            "projection_time_ms": projection_time_ms,
         }
     )
 
@@ -374,11 +354,14 @@ def admin_chunk_quality(request: HttpRequest) -> JsonResponse:
 
     from django_app.models import QueryLog
 
+    days = int(request.GET.get("days", 90))
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
     chunk_stats: Dict[int, Dict[str, Any]] = {}
 
-    for log in QueryLog.objects.all():
+    for log in QueryLog.objects.filter(created_at__gte=cutoff):
         retrieved = log.retrieved_documents or []
-        for i, item in enumerate(retrieved):
+        for item in retrieved:
             chunk_idx = item.get("chunk_index", -1)
             if chunk_idx >= 0:
                 if chunk_idx not in chunk_stats:
@@ -394,14 +377,18 @@ def admin_chunk_quality(request: HttpRequest) -> JsonResponse:
         text = chunk.get("text", "")
         stats = chunk_stats.get(i, {"hits": 0, "total_score": 0})
 
+        # Base score with text-quality bonuses, retrieval signal,
+        # and penalty deductions that stay in sync with the issue list.
         quality_score = 0.5
 
         if len(text) > 100:
-            quality_score += 0.1
+            quality_score += 0.15
+        if len(text) >= 300:
+            quality_score += 0.05
         if text and text[0].isupper():
-            quality_score += 0.1
+            quality_score += 0.05
         if " " in text.strip():
-            quality_score += 0.1
+            quality_score += 0.05
 
         if stats["hits"] > 0:
             quality_score += 0.1
@@ -410,16 +397,21 @@ def admin_chunk_quality(request: HttpRequest) -> JsonResponse:
                 quality_score += 0.2
             elif avg_score > 0.5:
                 quality_score += 0.1
-
-        quality_score = min(quality_score, 1.0)
+        else:
+            quality_score -= 0.05
 
         issues = []
         if len(text) < 50:
             issues.append("Too short")
+            quality_score -= 0.15
         if text.startswith("As mentioned") or text.startswith("Figure"):
             issues.append("Context dependent")
+            quality_score -= 0.15
         if not text.endswith((".", "!", "?", ")")):
             issues.append("Incomplete sentence")
+            quality_score -= 0.1
+
+        quality_score = max(0.0, min(1.0, quality_score))
 
         chunk_qualities.append(
             {
@@ -455,6 +447,7 @@ def admin_chunk_quality(request: HttpRequest) -> JsonResponse:
             "low_quality_chunks": low_chunks,
             "overall_score": round(overall * 100),
             "total_chunks": len(chunk_qualities),
+            "days": days,
         }
     )
 

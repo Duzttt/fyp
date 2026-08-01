@@ -10,7 +10,7 @@ def test_configure_llm_unsupported_provider():
 
 
 def test_configure_llm_local_sets_settings():
-    """配置local provider应设置Settings.llm为OpenAILike实例"""
+    """配置local_llm provider应设置Settings.llm为OpenAILike实例"""
     mock_local_instance = MagicMock()
     mock_local_class = MagicMock(return_value=mock_local_instance)
 
@@ -19,15 +19,15 @@ def test_configure_llm_local_sets_settings():
         patch("app.services.llama_llm_config.Settings") as mock_settings,
     ):
         configure_llm(
-            provider="local",
-            model="qwen2.5:3b",
+            provider="local_llm",
+            model="local-model",
             base_url="http://localhost:8080/v1",
         )
         assert mock_settings.llm == mock_local_instance
 
     mock_local_class.assert_called_once()
     call_kwargs = mock_local_class.call_args.kwargs
-    assert call_kwargs.get("model") == "qwen2.5:3b"
+    assert call_kwargs.get("model") == "local-model"
     assert call_kwargs.get("api_base") == "http://localhost:8080/v1"
 
 
@@ -40,7 +40,7 @@ def test_configure_llm_local_default_model():
         patch("app.services.llama_llm_config.OpenAILike", mock_local_class),
         patch("app.services.llama_llm_config.Settings"),
     ):
-        configure_llm(provider="local")
+        configure_llm(provider="local_llm")
 
     call_kwargs = mock_local_class.call_args.kwargs
     assert call_kwargs.get("model") == "qwen2.5:3b"
@@ -55,7 +55,7 @@ def test_configure_llm_local_default_base_url():
         patch("app.services.llama_llm_config.OpenAILike", mock_local_class),
         patch("app.services.llama_llm_config.Settings"),
     ):
-        configure_llm(provider="local")
+        configure_llm(provider="local_llm")
 
     call_kwargs = mock_local_class.call_args.kwargs
     assert call_kwargs.get("api_base") == "http://localhost:8080/v1"
@@ -134,4 +134,4 @@ def test_configure_llm_local_unavailable():
     """OpenAILike不可用时应抛出LLMConfigError"""
     with patch("app.services.llama_llm_config.OpenAILike", None):
         with pytest.raises(LLMConfigError, match="OpenAILike LLM not available"):
-            configure_llm(provider="local")
+            configure_llm(provider="local_llm")

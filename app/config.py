@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
     EMBEDDING_DIM: int = 384
 
+    SIMILARITY_THRESHOLD: float = 0.6
+    RERANKER_ENABLED: bool = False
+    CROSS_ENCODER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
+
     FAISS_INDEX_PATH: str = "data/faiss_index"
     DOCUMENTS_PATH: str = "media/data_source"
 

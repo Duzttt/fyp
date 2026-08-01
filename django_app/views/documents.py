@@ -252,7 +252,14 @@ def summarize_doc(request: HttpRequest) -> JsonResponse:
     )
 
     try:
-        retrieved_sources = retrieve_with_faiss(query=query, top_k=6)
+        from app.config import settings
+
+        retrieved_sources = retrieve_with_faiss(
+            query=query,
+            top_k=6,
+            similarity_threshold=settings.SIMILARITY_THRESHOLD,
+            reranker_enabled=settings.RERANKER_ENABLED,
+        )
         target = str(filename).lower()
         filtered = [
             s for s in retrieved_sources if target in str(s.get("source", "")).lower()

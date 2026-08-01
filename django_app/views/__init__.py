@@ -74,7 +74,6 @@ from django_app.views.admin import (
 from django_app.views.analytics import (
     admin_document_analytics,
     admin_query_clusters,
-    admin_failure_analysis,
     admin_embedding_visualization,
     admin_chunk_quality,
     admin_retrieval_trace,
@@ -122,12 +121,6 @@ from django_app.views.llm_logs import (
 
 # Smart Operations
 from django_app.views.ops import (
-    admin_alerts_current,
-    admin_alerts_acknowledge,
-    admin_capacity_forecast,
-    admin_selfhealing_events,
-    admin_selfhealing_config,
-    admin_cost_analysis,
     admin_user_behavior,
     admin_generate_report,
     admin_reports_history,
@@ -189,7 +182,6 @@ __all__ = [
     # Analytics
     "admin_document_analytics",
     "admin_query_clusters",
-    "admin_failure_analysis",
     "admin_embedding_visualization",
     "admin_chunk_quality",
     "admin_retrieval_trace",
@@ -214,12 +206,6 @@ __all__ = [
     "llm_logs_stats",
     "llm_logs_page",
     # Smart Operations
-    "admin_alerts_current",
-    "admin_alerts_acknowledge",
-    "admin_capacity_forecast",
-    "admin_selfhealing_events",
-    "admin_selfhealing_config",
-    "admin_cost_analysis",
     "admin_user_behavior",
     "admin_generate_report",
     "admin_reports_history",

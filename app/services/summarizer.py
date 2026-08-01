@@ -46,9 +46,7 @@ class DocumentSummarizer:
 
     # Language options
     LANGUAGE_OPTIONS = {
-        "zh": "Chinese",
         "en": "English",
-        "ja": "Japanese",
     }
 
     def __init__(self, llm_provider: str = None, model: str = None):
@@ -386,7 +384,7 @@ Output the synthesized summary directly:"""
         documents: List[Dict[str, Any]],
     ) -> List[Dict[str, Any]]:
         """
-        Generate a comparison table for multiple documents.
+        Generate a comparison table for multiple documents using LLM.
 
         Args:
             documents: List of document dicts
@@ -394,10 +392,27 @@ Output the synthesized summary directly:"""
         Returns:
             List of comparison dicts per document
         """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
         comparison: List[Dict[str, Any]] = []
         for doc in documents:
             text = str(doc.get("text", ""))
-            summary = self._extractive_summary(text, "short")
+            name = doc.get("name", "unknown")
+
+            main_points = ""
+            try:
+                prompt = (
+                    f"Extract 3-5 key main points from this document. "
+                    f"Output ONLY the bullet points, no headers or extra text.\n\n"
+                    f"Document: {name}\nContent: {text[:3000]}"
+                )
+                main_points = self._call_llm(prompt)
+            except Exception as e:
+                logger.warning("LLM comparison failed for %s: %s", name, e)
+                main_points = self._extractive_summary(text, "short") or "No sufficient content"
+
             tokens = [w.lower() for w in re.findall(r"[A-Za-z][A-Za-z0-9_-]{3,}", text)]
             keyword_counts: Dict[str, int] = {}
             for token in tokens:
@@ -406,14 +421,13 @@ Output the synthesized summary directly:"""
                 keyword_counts.keys(),
                 key=lambda k: keyword_counts[k],
                 reverse=True,
-            )[:3]
+            )[:5]
+
             comparison.append(
                 {
-                    "name": doc.get("name", "unknown"),
-                    "mainPoints": summary or "No sufficient content",
+                    "name": name,
+                    "mainPoints": main_points,
                     "keywords": top_keywords,
-                    "methodology": "",
-                    "conclusions": summary or "",
                 }
             )
         return comparison

@@ -26,7 +26,12 @@ def retrieve_with_faiss(
     from app.services.local_rag import retrieve_with_faiss as runtime_retrieve
 
     try:
-        return runtime_retrieve(query=query, top_k=top_k, source_filter=source_filter)
+        return runtime_retrieve(
+            query=query,
+            top_k=top_k,
+            source_filter=source_filter,
+            similarity_threshold=0.0,
+        )
     except RuntimeLocalRAGError as exc:
         raise LocalRAGError(str(exc)) from exc
 

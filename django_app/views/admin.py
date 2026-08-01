@@ -1,8 +1,9 @@
+import hashlib
 import json
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import faiss
 import numpy as np
@@ -17,6 +18,7 @@ from app.services.pdf_indexing import (
 )
 from app.services.runtime_embedding import load_runtime_embedding_settings
 
+from django_app.admin_utils import get_health_status as _admin_health_status
 from django_app.views.helpers import (
     _error_response,
     _get_json_body,
@@ -28,7 +30,6 @@ from django_app.views.helpers import (
 @require_http_methods(["GET"])
 def admin_stats(request: HttpRequest) -> JsonResponse:
     from django_app.models import QueryLog
-    from django.db.models import Avg, Max
 
     doc_path = Path(settings.DOCUMENTS_PATH)
     pdf_files = list(doc_path.glob("*.pdf")) if doc_path.exists() else []
@@ -68,22 +69,41 @@ def admin_stats(request: HttpRequest) -> JsonResponse:
     today_queries = QueryLog.objects.filter(created_at__gte=today_start).count()
     week_queries = QueryLog.objects.filter(created_at__gte=week_start).count()
 
-    latency_stats = QueryLog.objects.filter(created_at__gte=week_start).aggregate(
-        avg_latency=Avg("latency_ms"),
-        p95_latency=Max("latency_ms"),
+    latency_values = list(
+        QueryLog.objects.filter(created_at__gte=week_start).values_list(
+            "latency_ms", flat=True
+        )
+    )
+    query_count = len(latency_values)
+    avg_latency = sum(latency_values) / query_count if query_count else 0
+    p95_latency = (
+        round(float(np.percentile(latency_values, 95)), 2) if query_count else 0
     )
 
     cache_hits = QueryLog.objects.filter(
         created_at__gte=week_start, cache_hit=True
     ).count()
     cache_total = QueryLog.objects.filter(created_at__gte=week_start).count()
-    cache_hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else 0
+    cache_hit_rate = (cache_hits / cache_total * 100) if cache_total > 0 else None
+
+    week_success = QueryLog.objects.filter(
+        created_at__gte=week_start, results_count__gt=0
+    ).count()
+    success_rate = (week_success / cache_total * 100) if cache_total > 0 else None
+
+    # Real health checks from admin_utils (LLM probe, psutil memory, disk usage)
+    admin_health = _admin_health_status().get("checks", {})
+
+    def _map_health(check: Dict[str, Any]) -> str:
+        if not check:
+            return "unknown"
+        return "healthy" if check.get("healthy") else "warning"
 
     health_status = {
         "faiss_index": "healthy" if total_vectors > 0 else "empty",
-        "llm_service": "unknown",
-        "disk_space": "healthy" if faiss_size_kb < 500000 else "warning",
-        "memory": "unknown",
+        "llm_service": _map_health(admin_health.get("llm_service")),
+        "disk_space": _map_health(admin_health.get("disk_space")),
+        "memory": _map_health(admin_health.get("memory")),
     }
 
     return JsonResponse(
@@ -105,9 +125,11 @@ def admin_stats(request: HttpRequest) -> JsonResponse:
             "queries": {
                 "today": today_queries,
                 "week": week_queries,
-                "avg_latency_ms": round(latency_stats.get("avg_latency") or 0, 2),
-                "p95_latency_ms": latency_stats.get("p95_latency") or 0,
-                "cache_hit_rate": round(cache_hit_rate, 2),
+                "query_count": query_count,
+                "avg_latency_ms": round(avg_latency, 2),
+                "p95_latency_ms": p95_latency,
+                "cache_hit_rate": cache_hit_rate,
+                "success_rate": success_rate,
             },
             "health": health_status,
         }
@@ -185,7 +207,7 @@ def admin_debug_retrieval(request: HttpRequest) -> JsonResponse:
         if not isinstance(all_chunks, list):
             all_chunks = []
 
-        if fusion_method == "rrf":
+        if fusion_method in ("rrf", "weighted"):
             from retrieval.hybrid_retriever import (
                 HybridRetriever,
                 FusionMethod as HMFusion,
@@ -209,9 +231,14 @@ def admin_debug_retrieval(request: HttpRequest) -> JsonResponse:
                 )
 
             if docs_for_hybrid:
+                fusion_enum = (
+                    HMFusion.RRF
+                    if fusion_method == "rrf"
+                    else HMFusion.WEIGHTED
+                )
                 hybrid_retriever = HybridRetriever(
                     documents=docs_for_hybrid,
-                    fusion_method=HMFusion.RRF,
+                    fusion_method=fusion_enum,
                 )
 
                 start = time.perf_counter()
@@ -219,6 +246,7 @@ def admin_debug_retrieval(request: HttpRequest) -> JsonResponse:
                     query=query,
                     top_k=top_k,
                     rrf_k=rrf_k,
+                    alpha=_alpha,
                 )
                 hybrid_time = (time.perf_counter() - start) * 1000
 
@@ -233,7 +261,8 @@ def admin_debug_retrieval(request: HttpRequest) -> JsonResponse:
                         for r in hybrid_results
                     ],
                     "time_ms": round(hybrid_time, 2),
-                    "fusion_method": "rrf",
+                    "fusion_method": fusion_method,
+                    "alpha": _alpha,
                 }
 
         start = time.perf_counter()
@@ -372,38 +401,46 @@ def admin_document_chunks(request: HttpRequest, doc_id: str) -> JsonResponse:
         page = 1
         page_size = 20
 
+    search = str(request.GET.get("search", "")).strip().lower()
+
     index_path = Path(settings.FAISS_INDEX_PATH)
     chunks_file = index_path / "chunks.npy"
 
     if not chunks_file.exists():
-        return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+        return JsonResponse(
+            {"chunks": [], "total": 0, "total_chars": 0, "page": 1, "page_size": 20}
+        )
 
     try:
         all_chunks = np.load(chunks_file, allow_pickle=True).tolist()
         if not isinstance(all_chunks, list):
-            return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+            return JsonResponse(
+                {"chunks": [], "total": 0, "total_chars": 0, "page": 1, "page_size": 20}
+            )
     except Exception:
-        return JsonResponse({"chunks": [], "total": 0, "page": 1, "page_size": 20})
+        return JsonResponse(
+            {"chunks": [], "total": 0, "total_chars": 0, "page": 1, "page_size": 20}
+        )
 
     doc_chunks = []
     for i, chunk in enumerate(all_chunks):
         if isinstance(chunk, dict):
             source = str(chunk.get("source", ""))
             if source == doc_id or source.endswith(doc_id):
+                chunk_text = str(chunk.get("text", ""))
+                if search and search not in chunk_text.lower():
+                    continue
                 chunk_data = {
                     "index": i,
-                    "text": chunk.get("text", ""),
+                    "text": chunk_text,
                     "page": chunk.get("page"),
                     "source": chunk.get("source", ""),
                 }
 
-                embedding = chunk.get("embedding")
-                if embedding and isinstance(embedding, list):
-                    chunk_data["embedding_preview"] = embedding[:5]
-
                 doc_chunks.append(chunk_data)
 
     total = len(doc_chunks)
+    total_chars = sum(len(c["text"]) for c in doc_chunks)
     start = (page - 1) * page_size
     end = start + page_size
     paginated_chunks = doc_chunks[start:end]
@@ -412,6 +449,7 @@ def admin_document_chunks(request: HttpRequest, doc_id: str) -> JsonResponse:
         {
             "chunks": paginated_chunks,
             "total": total,
+            "total_chars": total_chars,
             "page": page,
             "page_size": page_size,
             "total_pages": (total + page_size - 1) // page_size,
@@ -514,6 +552,69 @@ def _save_ab_tests(tests: List[Dict[str, Any]]) -> None:
         json.dump(tests, f, indent=2)
 
 
+def get_active_ab_test() -> Optional[Dict[str, Any]]:
+    """Return the first running A/B test, or None when none is active."""
+    for test in _load_ab_tests():
+        if test.get("status") == "running":
+            return test
+    return None
+
+
+def select_ab_variant(
+    test: Dict[str, Any], session_id: str = ""
+) -> Dict[str, Any]:
+    """Deterministically assign a variant to a session via traffic_split."""
+    variants = test.get("variants", []) or []
+    if not variants:
+        return {}
+    if len(variants) == 1:
+        return variants[0]
+
+    split = test.get("traffic_split") or []
+    if len(split) < len(variants):
+        split = [100 // len(variants)] * len(variants)
+    total = sum(split) or 1
+
+    bucket = int(hashlib.md5(session_id.encode("utf-8")).hexdigest(), 16) % 10000 / 100
+    cumulative = 0.0
+    for i, variant in enumerate(variants):
+        share = split[i] if i < len(split) else 0
+        cumulative += share / total * 100
+        if bucket < cumulative:
+            return variant
+    return variants[-1]
+
+
+def record_ab_sample(
+    test_id: int, variant: str, metrics: Optional[Dict[str, Any]] = None
+) -> bool:
+    """Record one sample for a running test; returns True on success."""
+    metrics = metrics or {}
+    tests = _load_ab_tests()
+    for test in tests:
+        if test["id"] == test_id and test["status"] == "running":
+            test["samples"] = test.get("samples", 0) + 1
+
+            if variant not in test["results"]:
+                test["results"][variant] = {
+                    "samples": 0,
+                    "total_score": 0,
+                    "total_latency": 0,
+                    "positive_feedback": 0,
+                }
+
+            result = test["results"][variant]
+            result["samples"] += 1
+            result["total_score"] += metrics.get("score", 0)
+            result["total_latency"] += metrics.get("latency_ms", 0)
+            if metrics.get("feedback") is True:
+                result["positive_feedback"] += 1
+
+            _save_ab_tests(tests)
+            return True
+    return False
+
+
 @require_http_methods(["GET"])
 def admin_ab_tests(request: HttpRequest) -> JsonResponse:
     tests = _load_ab_tests()
@@ -612,28 +713,8 @@ def admin_ab_test_record(request: HttpRequest) -> JsonResponse:
     variant = str(payload.get("variant", ""))
     metrics = payload.get("metrics", {})
 
-    tests = _load_ab_tests()
-    for test in tests:
-        if test["id"] == test_id and test["status"] == "running":
-            test["samples"] = test.get("samples", 0) + 1
-
-            if variant not in test["results"]:
-                test["results"][variant] = {
-                    "samples": 0,
-                    "total_score": 0,
-                    "total_latency": 0,
-                    "positive_feedback": 0,
-                }
-
-            result = test["results"][variant]
-            result["samples"] += 1
-            result["total_score"] += metrics.get("score", 0)
-            result["total_latency"] += metrics.get("latency_ms", 0)
-            if metrics.get("feedback") is True:
-                result["positive_feedback"] += 1
-
-            _save_ab_tests(tests)
-            return JsonResponse({"success": True})
+    if record_ab_sample(test_id, variant, metrics):
+        return JsonResponse({"success": True})
 
     return _error_response("Test not found or not running", status=404)
 

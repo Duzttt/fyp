@@ -15,7 +15,7 @@ The diagram uses a portrait layout with a top-to-bottom vertical flow. It contai
 2. **Text Preparation & Smart Chunking** (Preparation color)
    - Processes: Text extraction via `PDFLoader` -> Split into 500-character chunks with 100-character overlap.
 3. **QA Pair Generation (LLM-based)** (Preparation color)
-   - Processes: Prompt generator LLM (Gemini/Qwen) to generate `{question, ground_truth}` pairs -> Export as JSONL.
+   - Processes: Prompt generator LLM (Gemini or llama.cpp-hosted model) to generate `{question, ground_truth}` pairs -> Export as JSONL.
 4. **Hybrid Retrieval Engine** (RAG Pipeline color)
    - Processes: Dense retrieval (FAISS) + Sparse keyword retrieval (BM25) -> Reciprocal Rank Fusion (RRF, `k=60`) -> Extract top `top_k` chunks as context.
 5. **Answer Generation** (RAG Pipeline color)

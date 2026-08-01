@@ -16,7 +16,7 @@
 - Modify: `django_app/views/helpers.py:13`
 - Modify: `django_app/views/helpers.py:250-271`
 
-**Step 1: Add local_qwen to VALID_PROVIDERS**
+**Step 1: Add local_llm to VALID_PROVIDERS**
 
 In `django_app/views/helpers.py:13`, change:
 ```python
@@ -24,10 +24,10 @@ VALID_PROVIDERS = {"gemini", "openrouter"}
 ```
 to:
 ```python
-VALID_PROVIDERS = {"gemini", "openrouter", "local_qwen"}
+VALID_PROVIDERS = {"gemini", "openrouter", "local_llm"}
 ```
 
-**Step 2: Fix _build_runtime_llm_settings for local_qwen**
+**Step 2: Fix _build_runtime_llm_settings for local_llm**
 
 In `django_app/views/helpers.py:250-271`, change:
 ```python
@@ -41,8 +41,8 @@ def _build_runtime_llm_settings() -> Dict[str, Optional[str]]:
     if provider == "gemini":
         default_model = settings.GEMINI_MODEL
         default_key = settings.GEMINI_API_KEY
-    elif provider == "local_qwen":
-        default_model = settings.LOCAL_QWEN_MODEL
+    elif provider == "local_llm":
+        default_model = settings.LOCAL_LLM_MODEL
         default_key = None
     else:
         default_model = "anthropic/claude-3-haiku"
@@ -67,15 +67,15 @@ Expected: No errors
 
 ```bash
 git add django_app/views/helpers.py
-git commit -m "feat: extend VALID_PROVIDERS to include local_qwen"
+git commit -m "feat: extend VALID_PROVIDERS to include local_llm"
 ```
 
-## Task 2: Backend — Fix settings_handler for local_qwen
+## Task 2: Backend — Fix settings_handler for local_llm
 
 **Files:**
 - Modify: `django_app/views/rag.py:241-308`
 
-**Step 1: Fix settings_handler GET branch for local_qwen**
+**Step 1: Fix settings_handler GET branch for local_llm**
 
 In `django_app/views/rag.py:250-256`, change the GET handler:
 ```python
@@ -88,8 +88,8 @@ In `django_app/views/rag.py:250-256`, change the GET handler:
         if provider == "gemini":
             default_model = app_settings.GEMINI_MODEL
             default_key = app_settings.GEMINI_API_KEY
-        elif provider == "local_qwen":
-            default_model = app_settings.LOCAL_QWEN_MODEL
+        elif provider == "local_llm":
+            default_model = app_settings.LOCAL_LLM_MODEL
             default_key = None
         else:
             default_model = "anthropic/claude-3-haiku"
@@ -116,7 +116,7 @@ Expected: No errors
 
 ```bash
 git add django_app/views/rag.py
-git commit -m "fix: settings_handler GET supports local_qwen provider"
+git commit -m "fix: settings_handler GET supports local_llm provider"
 ```
 
 ## Task 3: Backend — New providers endpoint
@@ -150,8 +150,8 @@ LLM_PROVIDERS_CATALOG = [
         "requires_api_key": True,
     },
     {
-        "id": "local_qwen",
-        "name": "Local Qwen (llama.cpp)",
+        "id": "local_llm",
+        "name": "Local LLM (llama.cpp)",
         "models": [" ", " ", "qwen2.5:3b", "qwen3.5:4b"],
         "requires_api_key": False,
     },
@@ -172,8 +172,8 @@ def providers_handler(request: HttpRequest) -> JsonResponse:
     if not current_model:
         if current_provider == "gemini":
             current_model = app_settings.GEMINI_MODEL
-        elif current_provider == "local_qwen":
-            current_model = app_settings.LOCAL_QWEN_MODEL
+        elif current_provider == "local_llm":
+            current_model = app_settings.LOCAL_LLM_MODEL
         else:
             current_model = "anthropic/claude-3-haiku"
 
@@ -354,7 +354,7 @@ const switchStatus = ref('')
 const PROVIDER_ICONS = {
   gemini: '✨',
   openrouter: '🔗',
-  local_qwen: '🏠',
+  local_llm: '🏠',
 }
 
 const toggle = () => {
@@ -688,7 +688,7 @@ Expected: JSON with providers array and current selection
 ```bash
 curl -X POST http://localhost:8000/api/settings \
   -H "Content-Type: application/json" \
-  -d '{"provider": "local_qwen", "model": "qwen2.5:3b"}'
+  -d '{"provider": "local_llm", "model": "qwen2.5:3b"}'
 ```
 Expected: `{"success": true, "message": "Settings updated"}`
 
@@ -697,7 +697,7 @@ Expected: `{"success": true, "message": "Settings updated"}`
 ```bash
 curl http://localhost:8000/api/settings
 ```
-Expected: `{"provider": "local_qwen", "model": "qwen2.5:3b", ...}`
+Expected: `{"provider": "local_llm", "model": "qwen2.5:3b", ...}`
 
 **Step 4: Open frontend and test dropdown**
 

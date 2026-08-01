@@ -73,7 +73,9 @@ def test_call_llm_success_local_llm():
     from app.services.llm_client import call_llm
 
     mock_response = MagicMock()
-    mock_response.json.return_value = {"choices": [{"message": {"content": "Local LLM response"}}]}
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": "Local LLM response"}}]
+    }
     mock_response.raise_for_status.return_value = None
 
     with patch("app.services.llm_client.requests.post", return_value=mock_response):
@@ -89,6 +91,31 @@ def test_call_llm_success_local_llm():
     log = QueryLog.objects.latest("created_at")
     assert log.llm_provider == "local_llm"
     assert log.call_type == "citation"
+
+
+@pytest.mark.django_db
+def test_call_llm_local_llm_accepts_v1_base_url_without_duplication():
+    from app.services.llm_client import call_llm
+
+    mock_response = MagicMock()
+    mock_response.json.return_value = {
+        "choices": [{"message": {"content": "Local LLM response"}}]
+    }
+    mock_response.raise_for_status.return_value = None
+
+    with patch(
+        "app.services.llm_client.requests.post",
+        return_value=mock_response,
+    ) as mocked_post:
+        call_llm(
+            provider="local_llm",
+            model="test-model",
+            call_type="qa",
+            messages=[{"role": "user", "content": "hi"}],
+            base_url="http://localhost:8080/v1/",
+        )
+
+    assert mocked_post.call_args.args[0] == "http://localhost:8080/v1/chat/completions"
 
 
 @pytest.mark.django_db
@@ -128,14 +155,39 @@ def test_call_llm_returns_log_id_with_thinking_when_both_flags_enabled():
 
 
 @pytest.mark.django_db
-def test_call_llm_local_llm_falls_back_to_fast_model_on_timeout():
+def test_call_llm_local_llm_does_not_switch_models_without_fallback():
+    from app.services.llm_client import call_llm
+    import requests
+
+    timeout_error = requests.Timeout("Read timed out")
+
+    with patch(
+        "app.services.llm_client.requests.post",
+        side_effect=timeout_error,
+    ) as mocked_post:
+        with pytest.raises(requests.Timeout):
+            call_llm(
+                provider="local_llm",
+                model="gemma4:latest",
+                call_type="qa",
+                messages=[{"role": "user", "content": "Explain this topic"}],
+                base_url="http://localhost:8080",
+            )
+
+    assert mocked_post.call_count == 1
+
+
+@pytest.mark.django_db
+def test_call_llm_local_llm_uses_explicit_fallback_model_on_timeout():
     from app.services.llm_client import call_llm
     import requests
 
     timeout_error = requests.Timeout("Read timed out")
     fallback_response = MagicMock()
     fallback_response.raise_for_status.return_value = None
-    fallback_response.json.return_value = {"choices": [{"message": {"content": "Fast fallback answer"}}]}
+    fallback_response.json.return_value = {
+        "choices": [{"message": {"content": "Fast fallback answer"}}]
+    }
 
     with patch(
         "app.services.llm_client.requests.post",
@@ -143,18 +195,19 @@ def test_call_llm_local_llm_falls_back_to_fast_model_on_timeout():
     ) as mocked_post:
         result = call_llm(
             provider="local_llm",
-            model="gemma4:latest",
+            model="primary-local-model",
             call_type="qa",
             messages=[{"role": "user", "content": "Explain this topic"}],
             base_url="http://localhost:8080",
+            fallback_model="small-local-model",
         )
 
     assert result == "Fast fallback answer"
     assert mocked_post.call_count == 2
     first_payload = mocked_post.call_args_list[0].kwargs["json"]
     second_payload = mocked_post.call_args_list[1].kwargs["json"]
-    assert first_payload["model"] == "gemma4:latest"
-    assert second_payload["model"] == "qwen3.5:0.8b"
+    assert first_payload["model"] == "primary-local-model"
+    assert second_payload["model"] == "small-local-model"
 
 
 @pytest.mark.django_db
@@ -245,7 +298,9 @@ def test_call_llm_local_llm_retries_without_thinking_on_http_400():
 
     retry_response = MagicMock()
     retry_response.raise_for_status.return_value = None
-    retry_response.json.return_value = {"choices": [{"message": {"content": "Retry success"}}]}
+    retry_response.json.return_value = {
+        "choices": [{"message": {"content": "Retry success"}}]
+    }
 
     with patch(
         "app.services.llm_client.requests.post",

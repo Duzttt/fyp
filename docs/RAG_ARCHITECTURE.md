@@ -82,11 +82,11 @@ User → POST /api/chat {query: "...", sources?: [...]}
          │
          ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ django_app/views.py: ask_qwen()                                             │
+│ django_app/views/rag.py: ask()                                              │
 │  1. Load RAG config (top_k, llm_model, temperature)                         │
 │  2. Call retrieve_with_faiss()                                              │
 │  3. Build context from sources                                              │
-│  4. Call generate_with_local_qwen()                                         │
+│  4. Call generate() using the configured provider                           │
 │  5. Return {answer, sources, source_snippets, retrieved_chunks}             │
 └─────────────────────────────────────────────────────────────────────────────┘
          │
@@ -105,9 +105,10 @@ User → POST /api/chat {query: "...", sources?: [...]}
          │
          ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│ app/services/local_rag.py: generate_with_local_qwen()                       │
+│ app/services/local_rag.py: generate()                                       │
 │  1. Build prompt with context + question                                    │
-│  2. Call llama.cpp API (http://localhost:8080/v1/chat/completions)           │
+│  2. Dispatch through app/services/llm_client.py                              │
+│     (llama.cpp uses http://localhost:8080/v1/chat/completions)               │
 │  3. Parse response                                                          │
 │  4. Return answer string                                                    │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -130,7 +131,7 @@ User → POST /api/chat {query: "...", sources?: [...]}
 | **`pdf_chunking.py`** | `chunk_pdf_with_metadata()` | Sentence-aware chunking | → Regex sentence splitting |
 | **`chunker.py`** | `TextChunker` | LangChain splitter | → `RecursiveCharacterTextSplitter` |
 | **`local_rag.py`** | `retrieve_with_faiss()` | FAISS retrieval | → `EmbeddingService`, `VectorStore` |
-| **`summarizer.py`** | `DocumentSummarizer` | LLM summarization | → Local Qwen, Gemini |
+| **`summarizer.py`** | `DocumentSummarizer` | LLM summarization | → Local LLM, Gemini |
 | **`question_suggestions.py`** | `QuestionSuggestionService` | Generate suggestions | → TF-IDF, LLM |
 | **`config.py`** | `Settings` | Pydantic config | → `.env` |
 
@@ -147,7 +148,7 @@ User → POST /api/chat {query: "...", sources?: [...]}
 | Endpoint | Method | Handler | Purpose |
 |----------|--------|---------|---------|
 | `/api/upload` | POST | `upload_pdf()` | Upload & index PDF |
-| `/api/chat` | POST | `ask_qwen()` | **Primary Q&A endpoint** |
+| `/api/chat` | POST | `ask()` | **Primary Q&A endpoint** |
 | `/api/ask` | POST | `ask_question()` | Legacy Q&A |
 | `/api/files` | GET | `list_files()` | List uploaded PDFs |
 | `/api/settings` | GET/POST | `settings_handler()` | LLM config |
@@ -177,8 +178,8 @@ User → POST /api/chat {query: "...", sources?: [...]}
 | Integration | Files | Data Flow |
 |-------------|-------|-----------|
 | **PDF Upload** | `views.upload_pdf()` → `pdf_indexing.index_pdf_file()` → `pdf_chunking.chunk_pdf_with_metadata()` → `embedding.EmbeddingService` → `vector_store.VectorStore` | File → Text → Chunks → Embeddings → FAISS |
-| **Query Processing** | `views.ask_qwen()` → `local_rag.retrieve_with_faiss()` → `embedding.EmbeddingService` + `vector_store.VectorStore` | Query → Embedding → FAISS Search → Chunks |
-| **Answer Generation** | `views.ask_qwen()` → `local_rag.generate_with_local_qwen()` → llama.cpp API | Context + Query → Prompt → LLM → Answer |
+| **Query Processing** | `views.ask()` → `local_rag.retrieve_with_faiss()` → `embedding.EmbeddingService` + `vector_store.VectorStore` | Query → Embedding → FAISS Search → Chunks |
+| **Answer Generation** | `views.ask()` → `local_rag.generate_with_local_llm()` → llama.cpp API | Context + Query → Prompt → LLM → Answer |
 | **Embedding Model Switch** | `views.switch_embedding_model()` → `embedding_manager.EmbeddingModelManager` → Reindex | Model ID → Load → Validate → Reindex |
 | **Question Suggestions** | `views.get_question_suggestions()` → `question_suggestions.QuestionSuggestionService` → LLM | Docs → Keywords → Candidates → LLM → Questions |
 | **WebSocket Updates** | `consumers.DashboardConsumer` ↔ `views._get_upload_indexing_state()` | State → JSON → WS → Frontend |
@@ -204,10 +205,10 @@ User → POST /api/chat {query: "...", sources?: [...]}
 ### High Priority
 
 1. **Hybrid Retrieval Integration** - `retrieval/` module exists but NOT used by views
-   - **Action:** Integrate `HybridRetriever` into `views.ask_qwen()`
+   - **Action:** Integrate `HybridRetriever` into `views.ask()`
    
 2. **RAGPipeline Usage** - `app/services/rag_pipeline.py` not used by main views
-   - **Action:** Migrate `views.ask_qwen()` to use `RAGPipeline`
+   - **Action:** Migrate `views.ask()` to use `RAGPipeline`
 
 3. **Redis Configuration** - Using in-memory channels
    - **Action:** Uncomment Redis config for production

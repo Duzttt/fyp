@@ -90,14 +90,22 @@ class HybridRetrieverService:
             cls._instance = None
             cls._initialized = False
 
-    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        hybrid_results = self._retriever.retrieve(query=query, top_k=top_k)
+    def search(
+        self,
+        query: str,
+        top_k: int = 5,
+        candidate_top_k: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        hybrid_results = self._retriever.retrieve(
+            query=query, top_k=top_k, candidate_top_k=candidate_top_k
+        )
         return [
             {
                 "text": r.get("text", ""),
                 "source": r.get("source", "unknown"),
                 "page": r.get("metadata", {}).get("page"),
                 "score": r.get("score", 0.0),
+                "cosine_similarity": r.get("cosine_similarity", 0.0),
             }
             for r in hybrid_results
         ]

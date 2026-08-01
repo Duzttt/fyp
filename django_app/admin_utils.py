@@ -6,7 +6,6 @@ Helper functions for monitoring, analytics, and system diagnostics.
 
 from __future__ import annotations
 
-import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -16,7 +15,7 @@ from django.db.models import Avg, Count
 
 from app.config import settings
 from app.services.runtime_embedding import load_runtime_embedding_settings
-from app.services.vector_store import VectorStore
+from app.services.runtime_llm import resolve_local_llm_urls
 from django_app.models import ConfigHistory, QueryLog, SystemMetric
 
 
@@ -171,7 +170,8 @@ def get_health_status() -> Dict[str, Any]:
         import httpx
 
         try:
-            response = httpx.get(f"{settings.LOCAL_LLM_BASE_URL}/health", timeout=5)
+            server_root, _ = resolve_local_llm_urls(settings.LOCAL_LLM_BASE_URL)
+            response = httpx.get(f"{server_root}/health", timeout=5)
             llm_healthy = response.status_code == 200
             llm_message = "OK" if llm_healthy else "llama.cpp not responding"
         except Exception:
@@ -340,218 +340,53 @@ def _analyze_slow_query(query_log: QueryLog) -> str:
     return "; ".join(reasons) if reasons else "Unknown"
 
 
-def get_retrieval_debug_results(
-    query: str, params: Optional[Dict[str, Any]] = None
-) -> Dict[str, Any]:
+# Query classification patterns — single source of truth shared by
+# analytics (query clusters) and query logging (rag.py).
+QUERY_TYPE_PATTERNS: Dict[str, List[str]] = {
+    "concept": ["what is", "what are", "what's", "define", "explain", "meaning of", "what does"],
+    "method": ["how to", "how do", "how does", "steps to", "process of", "method"],
+    "comparison": ["difference between", "compare", " vs ", "versus"],
+    "reason": ["why does", "why is", "why do", "reason", "because", "explain why"],
+    "example": ["example", "application", "use case", "instance of"],
+}
+
+QUERY_TYPE_LABELS: Dict[str, str] = {
+    "concept": "concept_definition",
+    "method": "method_process",
+    "comparison": "comparison",
+    "reason": "reason_explanation",
+    "example": "example_application",
+    "other": "other_queries",
+}
+
+QUERY_TYPE_COLORS: Dict[str, str] = {
+    "concept": "#22c55e",
+    "method": "#3b82f6",
+    "comparison": "#f59e0b",
+    "reason": "#8b5cf6",
+    "example": "#ec4899",
+    "other": "#6b7280",
+}
+
+
+def classify_query_type(query: str) -> str:
     """
-    Get retrieval results for debugging with different strategies.
+    Classify a query into a cluster type based on keyword patterns.
+
+    Patterns are checked in definition order, so the first matching
+    category wins. Returns "other" when no pattern matches.
 
     Args:
-        query: The query text
-        params: Optional parameters (alpha, fusion method, etc.)
+        query: The raw query text
 
     Returns:
-        Dictionary containing results from BM25, dense, and hybrid retrieval.
+        One of "concept", "method", "comparison", "reason", "example", or "other".
     """
-    from app.services.embedding import EmbeddingService
-    from app.services.vector_store import VectorStore
-
-    params = params or {}
-    alpha = params.get("alpha", 0.3)
-    fusion_method = params.get("fusion", "rrf")
-
-    rt = load_runtime_embedding_settings()
-    embedding_service = EmbeddingService(model_name=rt["model_id"])
-    vector_store = VectorStore.get_cached(
-        index_path=settings.FAISS_INDEX_PATH,
-        embedding_dim=rt["embedding_dim"],
-    )
-
-    results = {}
-
-    # Dense retrieval (vector search)
-    start_time = time.time()
-    query_embedding = embedding_service.embed_query(query)
-    dense_results = vector_store.search_with_metadata(query_embedding, top_k=10)
-    dense_time = (time.time() - start_time) * 1000
-
-    results["dense"] = {
-        "results": [
-            {
-                "document_id": r.get("source", "unknown"),
-                "score": float(1.0 - r.get("distance", 1.0)),
-                "text_preview": str(r.get("text", ""))[:200],
-                "page": r.get("page"),
-            }
-            for r in dense_results[:5]
-        ],
-        "time_ms": round(dense_time, 2),
-    }
-
-    # BM25 retrieval (keyword-based) - placeholder
-    # In a real implementation, you'd use a library like rank-bm25
-    start_time = time.time()
-    bm25_results = _bm25_search(query, vector_store)
-    bm25_time = (time.time() - start_time) * 1000
-
-    results["bm25"] = {
-        "results": bm25_results[:5],
-        "time_ms": round(bm25_time, 2),
-    }
-
-    # Hybrid retrieval
-    start_time = time.time()
-    if fusion_method == "rrf":
-        hybrid_results = _reciprocal_rank_fusion(dense_results, bm25_results, k=60)
-    else:  # weighted
-        hybrid_results = _weighted_fusion(dense_results, bm25_results, alpha=alpha)
-    hybrid_time = (time.time() - start_time) * 1000
-
-    results["hybrid"] = {
-        "results": hybrid_results[:5],
-        "time_ms": round(hybrid_time, 2),
-        "fusion_method": fusion_method,
-        "alpha": alpha,
-    }
-
-    return results
-
-
-def _bm25_search(query: str, vector_store: VectorStore) -> List[Dict[str, Any]]:
-    """
-    Simple BM25-like search using keyword matching.
-
-    This is a simplified implementation. For production, use rank-bm25 library.
-    """
-    query_terms = set(query.lower().split())
-
-    scored_chunks = []
-    for chunk in vector_store.chunks:
-        text = str(chunk.get("text", "")).lower()
-
-        # Simple term matching score
-        score = sum(1 for term in query_terms if term in text)
-
-        if score > 0:
-            scored_chunks.append(
-                {
-                    "document_id": chunk.get("source", "unknown"),
-                    "score": score / len(query_terms),
-                    "text_preview": chunk.get("text", "")[:200],
-                    "page": chunk.get("page"),
-                }
-            )
-
-    # Sort by score descending
-    scored_chunks.sort(key=lambda x: x["score"], reverse=True)
-    return scored_chunks
-
-
-def _reciprocal_rank_fusion(
-    dense_results: List[Dict], bm25_results: List[Dict], k: int = 60
-) -> List[Dict[str, Any]]:
-    """
-    Reciprocal Rank Fusion for combining retrieval results.
-    """
-    # Create rank maps
-    dense_ranks = {}
-    for i, r in enumerate(dense_results):
-        key = (r.get("source"), r.get("page"))
-        dense_ranks[key] = i + 1
-
-    bm25_ranks = {}
-    for i, r in enumerate(bm25_results):
-        key = (r.get("source"), r.get("page"))
-        bm25_ranks[key] = i + 1
-
-    # Calculate RRF scores
-    all_keys = set(dense_ranks.keys()) | set(bm25_ranks.keys())
-
-    fused_scores = {}
-    for key in all_keys:
-        dense_rank = dense_ranks.get(key, len(dense_results) + 1)
-        bm25_rank = bm25_ranks.get(key, len(bm25_results) + 1)
-
-        rrf_score = (1 / (k + dense_rank)) + (1 / (k + bm25_rank))
-        fused_scores[key] = rrf_score
-
-    # Sort by RRF score
-    sorted_keys = sorted(
-        fused_scores.keys(), key=lambda k: fused_scores[k], reverse=True
-    )
-
-    # Build results
-    results = []
-    for key in sorted_keys[:10]:
-        # Find original result
-        for r in dense_results + bm25_results:
-            if (r.get("source"), r.get("page")) == key:
-                results.append(
-                    {
-                        "document_id": r.get("source", "unknown"),
-                        "score": fused_scores[key],
-                        "text_preview": r.get("text", "")[:200],
-                        "page": r.get("page"),
-                    }
-                )
-                break
-
-    return results
-
-
-def _weighted_fusion(
-    dense_results: List[Dict], bm25_results: List[Dict], alpha: float = 0.3
-) -> List[Dict[str, Any]]:
-    """
-    Weighted fusion for combining retrieval results.
-    """
-    # Create score maps
-    dense_scores = {}
-    for r in dense_results:
-        key = (r.get("source"), r.get("page"))
-        dense_scores[key] = r.get("distance", 1.0)
-
-    bm25_scores = {}
-    for r in bm25_results:
-        key = (r.get("source"), r.get("page"))
-        bm25_scores[key] = r.get("score", 0.0)
-
-    # Normalize scores
-    max_dense = max(dense_scores.values()) if dense_scores else 1
-    max_bm25 = max(bm25_scores.values()) if bm25_scores else 1
-
-    all_keys = set(dense_scores.keys()) | set(bm25_scores.keys())
-
-    fused_scores = {}
-    for key in all_keys:
-        dense_norm = 1 - (dense_scores.get(key, 1) / max_dense)
-        bm25_norm = bm25_scores.get(key, 0) / max_bm25
-
-        fused_score = alpha * dense_norm + (1 - alpha) * bm25_norm
-        fused_scores[key] = fused_score
-
-    # Sort by fused score
-    sorted_keys = sorted(
-        fused_scores.keys(), key=lambda k: fused_scores[k], reverse=True
-    )
-
-    # Build results
-    results = []
-    for key in sorted_keys[:10]:
-        # Find original result
-        for r in dense_results + bm25_results:
-            if (r.get("source"), r.get("page")) == key:
-                results.append(
-                    {
-                        "document_id": r.get("source", "unknown"),
-                        "score": fused_scores[key],
-                        "text_preview": r.get("text", "")[:200],
-                        "page": r.get("page"),
-                    }
-                )
-                break
-
-    return results
+    text = str(query).lower()
+    for qtype, patterns in QUERY_TYPE_PATTERNS.items():
+        if any(pattern in text for pattern in patterns):
+            return qtype
+    return "other"
 
 
 def log_query(

@@ -1,11 +1,31 @@
 import axios from 'axios'
 
+// Stable per-browser session id, persisted so A/B test traffic split works
+// across requests (sent as X-Session-Id on every API call).
+const SESSION_KEY = 'rag_session_id'
+let sessionId = ''
+try {
+  sessionId = localStorage.getItem(SESSION_KEY) || ''
+  if (!sessionId) {
+    sessionId = 's_' + Math.random().toString(36).slice(2) + Date.now().toString(36)
+    localStorage.setItem(SESSION_KEY, sessionId)
+  }
+} catch (e) {
+  sessionId = 's_' + Math.random().toString(36).slice(2)
+}
+
 const api = axios.create({
   baseURL: '/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
+})
+
+api.interceptors.request.use((config) => {
+  config.headers = config.headers || {}
+  config.headers['X-Session-Id'] = sessionId
+  return config
 })
 
 export const uploadPDF = async (file, onProgress) => {
@@ -255,8 +275,10 @@ export const getAdminDocuments = async (search = '') => {
   return response.data
 }
 
-export const getAdminDocumentChunks = async (docId, page = 1, pageSize = 20) => {
-  const response = await api.get(`/admin/documents/${encodeURIComponent(docId)}/chunks?page=${page}&page_size=${pageSize}`)
+export const getAdminDocumentChunks = async (docId, page = 1, pageSize = 20, search = '') => {
+  const params = new URLSearchParams({ page, page_size: pageSize })
+  if (search) params.set('search', search)
+  const response = await api.get(`/admin/documents/${encodeURIComponent(docId)}/chunks?${params.toString()}`)
   return response.data
 }
 
@@ -283,11 +305,6 @@ export const getAdminDocumentAnalytics = async (docId) => {
 
 export const getAdminQueryClusters = async (days = 30, limit = 1000) => {
   const response = await api.get(`/admin/analytics/query-clusters?days=${days}&limit=${limit}`)
-  return response.data
-}
-
-export const getAdminFailureAnalysis = async (timeRange = 24) => {
-  const response = await api.get(`/admin/analytics/failures?time_range=${timeRange}`)
   return response.data
 }
 
@@ -341,41 +358,6 @@ export const recordABTest = async (testId, variant, metrics) => {
 
 export const getABTestResults = async (testId) => {
   const response = await api.get(`/admin/abtest/${testId}/results`)
-  return response.data
-}
-
-// Phase 3: Smart Operations API
-export const getCurrentAlerts = async () => {
-  const response = await api.get('/admin/alerts/current')
-  return response.data
-}
-
-export const acknowledgeAlert = async (alertId, action = 'acknowledge') => {
-  const response = await api.post('/admin/alerts/acknowledge', {
-    alert_id: alertId,
-    action,
-  })
-  return response.data
-}
-
-export const getCapacityForecast = async (months = 3) => {
-  const response = await api.get(`/admin/capacity/forecast?months=${months}`)
-  return response.data
-}
-
-export const getSelfHealingEvents = async () => {
-  const response = await api.get('/admin/selfhealing/events')
-  return response.data
-}
-
-export const updateSelfHealingConfig = async (policies) => {
-  const response = await api.put('/admin/selfhealing/config', { policies })
-  return response.data
-}
-
-export const getCostAnalysis = async (month = '') => {
-  const url = month ? `/admin/cost/analysis?month=${month}` : '/admin/cost/analysis'
-  const response = await api.get(url)
   return response.data
 }
 

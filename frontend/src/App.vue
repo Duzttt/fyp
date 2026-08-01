@@ -86,7 +86,7 @@ onBeforeUnmount(() => {
       v-if="showRagDemo"
       @close="handleCloseRagDemo"
     />
-    <main id="main-content" class="main" tabindex="-1">
+    <main v-if="!showRagDemo" id="main-content" class="main" tabindex="-1">
       <SourcesPanel
         @selection-change="handleSelectionChange"
         @toggle-compare="handleToggleCompare"

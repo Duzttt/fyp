@@ -168,7 +168,6 @@ const generateFallbackSuggestions = () => {
 
 const handleChipClick = async (suggestion) => {
   emit('question-select', suggestion.text)
-  collapsed.value = true
 
   try {
     const docIds = props.selectedDocuments.map(doc => doc.name || doc.filename)
@@ -181,7 +180,7 @@ const handleChipClick = async (suggestion) => {
 const handleRefresh = async () => {
   if (!canGenerate.value) return
   // Clear cache for current key to force regeneration
-  suggestionsCache.value.delete(suggestionCacheKey.value)
+  suggestionsCache.delete(suggestionCacheKey.value)
   collapsed.value = false
   const docIds = props.selectedDocuments.map(doc => doc.name || doc.filename)
   try {
@@ -262,6 +261,7 @@ onUnmounted(() => {
           class="suggestion-chip"
           @click="handleChipClick(suggestion)"
           :disabled="disabled"
+          :title="suggestion.text"
         >
             <span class="chip-text">{{ suggestion.text }}</span>
             <svg class="chip-arrow" viewBox="0 0 12 12" fill="none" aria-hidden="true">
@@ -389,7 +389,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   white-space: nowrap;
-  max-width: 320px;
+  max-width: 360px;
   overflow: hidden;
   text-overflow: ellipsis;
 }

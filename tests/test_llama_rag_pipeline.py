@@ -13,7 +13,7 @@ def _make_mock_node(text: str, source: str, page: int, score: float):
 
 def test_llama_rag_pipeline_creation():
     mock_index = Mock()
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     assert pipeline is not None
 
 
@@ -26,7 +26,7 @@ def test_llama_rag_pipeline_retrieve_transforms_nodes():
     mock_retriever.retrieve.return_value = [node1, node2]
     mock_index.as_retriever.return_value = mock_retriever
 
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     results = pipeline.retrieve("test query", top_k=2)
 
     assert len(results) == 2
@@ -48,11 +48,13 @@ def test_llama_rag_pipeline_retrieve_handles_none_score():
     mock_retriever.retrieve.return_value = [node]
     mock_index.as_retriever.return_value = mock_retriever
 
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     results = pipeline.retrieve("query")
 
     assert len(results) == 1
-    assert results[0]["distance"] == 1.0  # score defaults to 0.0 when None, distance = 1 - 0
+    assert (
+        results[0]["distance"] == 1.0
+    )  # score defaults to 0.0 when None, distance = 1 - 0
 
 
 def test_llama_rag_pipeline_query_full_flow():
@@ -69,7 +71,7 @@ def test_llama_rag_pipeline_query_full_flow():
     mock_retriever.retrieve.return_value = [node]
     mock_index.as_retriever.return_value = mock_retriever
 
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     result = pipeline.query("test question")
 
     assert result["answer"] == "generated answer"
@@ -82,7 +84,7 @@ def test_llama_rag_pipeline_query_full_flow():
 
 def test_llama_rag_pipeline_generate_answer_empty_context():
     mock_index = Mock()
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     result = pipeline.generate_answer("query", [])
     assert "cannot answer" in result.lower()
 
@@ -93,7 +95,7 @@ def test_llama_rag_pipeline_retrieve_raises_on_error():
     mock_retriever.retrieve.side_effect = RuntimeError("network error")
     mock_index.as_retriever.return_value = mock_retriever
 
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     with pytest.raises(LlamaRAGError, match="Retrieval failed"):
         pipeline.retrieve("query")
 
@@ -104,7 +106,7 @@ def test_llama_rag_pipeline_generate_raises_on_llm_error():
     mock_query_engine.query.side_effect = RuntimeError("LLM timeout")
     mock_index.as_query_engine.return_value = mock_query_engine
 
-    pipeline = LlamaRAGPipeline(mock_index, provider="local")
+    pipeline = LlamaRAGPipeline(mock_index, provider="local_llm")
     sources = [{"text": "ctx", "source": "s", "page": 1}]
     with pytest.raises(LlamaRAGError, match="Answer generation failed"):
         pipeline.generate_answer("query", sources)

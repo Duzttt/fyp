@@ -82,13 +82,13 @@
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
       justify-content: center; align-items: center;
-      padding: 60px 80px;
+      padding: 60px 40px;
       opacity: 0; visibility: hidden;
       transition: opacity 0.4s ease, visibility 0.4s ease;
     }
     .slide.active { opacity: 1; visibility: visible; }
 
-    .slide-content { max-width: 960px; width: 100%; }
+    .slide-content { width: 100%; max-width: 1400px; padding: 0 20px; }
 
     .slide .slide-content > * {
       opacity: 0; transform: translateY(16px);
@@ -104,22 +104,22 @@
 
     /* ── Navigation ── */
     .slide-counter {
-      position: fixed; bottom: 24px; right: 32px;
-      font-family: var(--font-mono); font-size: 13px;
+      position: fixed; bottom: 28px; right: 36px;
+      font-family: var(--font-mono); font-size: clamp(11px, 1vw, 15px);
       color: var(--text-muted); z-index: 100; letter-spacing: 0.05em;
     }
     .nav-hint {
-      position: fixed; bottom: 24px; left: 32px;
-      font-family: var(--font-mono); font-size: 11px;
+      position: fixed; bottom: 28px; left: 36px;
+      font-family: var(--font-mono); font-size: clamp(10px, 0.9vw, 13px);
       color: var(--text-muted); opacity: 0.5; z-index: 100;
     }
 
     /* ── Typography ── */
     .slide-content h2 {
-      font-size: 30px; margin-bottom: 6px; letter-spacing: -0.01em;
+      font-size: clamp(24px, 2.5vw, 42px); margin-bottom: 8px; letter-spacing: -0.01em;
     }
     .slide-subtitle {
-      font-size: 15px; color: var(--text-secondary);
+      font-size: clamp(14px, 1.4vw, 20px); color: var(--text-secondary);
       margin-bottom: 32px; font-style: italic;
     }
 
@@ -128,19 +128,19 @@
     .title-badge {
       display: inline-block;
       background: var(--accent-soft); color: var(--accent-deep);
-      padding: 5px 16px; border-radius: 20px;
-      font-family: var(--font-mono); font-size: 12px;
+      padding: 6px 18px; border-radius: 20px;
+      font-family: var(--font-mono); font-size: clamp(11px, 1vw, 15px);
       text-transform: uppercase; letter-spacing: 1.5px;
-      margin-bottom: 28px;
+      margin-bottom: 32px;
     }
     .title-slide h1 {
-      font-size: 44px; margin-bottom: 12px; letter-spacing: -0.02em;
+      font-size: clamp(32px, 4vw, 64px); margin-bottom: 14px; letter-spacing: -0.02em;
     }
     .title-slide .subtitle {
-      font-size: 19px; color: var(--text-secondary);
+      font-size: clamp(16px, 1.8vw, 26px); color: var(--text-secondary);
       margin-bottom: 44px; font-style: italic;
     }
-    .title-meta p { font-size: 15px; color: var(--text-muted); margin: 5px 0; }
+    .title-meta p { font-size: clamp(14px, 1.4vw, 20px); color: var(--text-muted); margin: 6px 0; }
     .title-meta strong { color: var(--text-secondary); }
 
     /* ── Problem Cards ── */
@@ -154,15 +154,15 @@
       box-shadow: 0 8px 24px rgba(28,25,23,0.08); transform: translateY(-2px);
     }
     .problem-num {
-      width: 44px; height: 44px; border-radius: 50%;
+      width: 50px; height: 50px; border-radius: 50%;
       background: var(--accent-soft); color: var(--accent);
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-heading); font-size: 18px;
-      margin: 0 auto 14px;
+      font-family: var(--font-heading); font-size: clamp(16px, 1.6vw, 24px);
+      margin: 0 auto 16px;
     }
-    .problem-card h3 { font-size: 16px; margin-bottom: 6px; }
+    .problem-card h3 { font-size: clamp(14px, 1.4vw, 22px); margin-bottom: 8px; }
     .problem-card p {
-      font-size: 13px; color: var(--text-secondary); line-height: 1.55;
+      font-size: clamp(12px, 1.1vw, 16px); color: var(--text-secondary); line-height: 1.55;
     }
 
     /* ── Objectives ── */
@@ -175,20 +175,24 @@
     }
     .objective-item:hover { box-shadow: 0 4px 16px rgba(28,25,23,0.06); }
     .objective-num {
-      font-family: var(--font-heading); font-size: 22px;
-      color: var(--accent); min-width: 36px;
+      font-family: var(--font-heading); font-size: clamp(20px, 2vw, 30px);
+      color: var(--accent); min-width: 40px;
     }
-    .objective-item h3 { font-size: 15px; margin-bottom: 3px; }
+    .objective-item h3 { font-size: clamp(13px, 1.3vw, 20px); margin-bottom: 4px; }
     .objective-item p {
-      font-size: 13px; color: var(--text-secondary); line-height: 1.5;
+      font-size: clamp(11px, 1vw, 16px); color: var(--text-secondary); line-height: 1.5;
     }
 
     /* ── Architecture ── */
-    .arch-stack { display: flex; flex-direction: column; align-items: center; }
+    .arch-stack {
+      display: flex; flex-direction: column; align-items: center;
+      margin-left: clamp(-60px, -4vw, -20px);
+      margin-right: clamp(-60px, -4vw, -20px);
+    }
     .arch-block {
-      width: 100%; max-width: 700px;
+      width: 100%; max-width: 1100px;
       border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 20px 28px; text-align: center; background: var(--surface);
+      padding: 22px 32px; text-align: center; background: var(--surface);
       transition: box-shadow 0.3s ease, transform 0.3s ease;
     }
     .arch-block:hover {
@@ -196,44 +200,54 @@
     }
     .arch-label {
       display: block; font-family: var(--font-heading);
-      font-size: 17px; margin-bottom: 2px;
+      font-size: clamp(14px, 1.4vw, 22px); margin-bottom: 3px;
     }
     .arch-tech {
-      display: block; font-size: 13px; color: var(--text-muted);
+      display: block; font-size: clamp(11px, 1vw, 16px); color: var(--text-muted);
       font-family: var(--font-mono);
     }
     .arch-block.frontend { border-top: 3px solid #6b8a7a; }
     .arch-block.backend { border-top: 3px solid var(--accent); }
     .arch-block.llm { border-top: 3px solid #7a6b8a; }
     .arch-connector {
-      display: flex; flex-direction: column; align-items: center;
-      padding: 6px 0; color: var(--text-muted);
-      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.5px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 0; color: var(--text-secondary);
+      font-family: var(--font-mono); font-size: clamp(11px, 1vw, 14px);
+      letter-spacing: 0.5px;
     }
     .arch-connector::before {
-      content: ''; display: block; width: 1px; height: 16px;
-      background: var(--border); margin-bottom: 4px;
+      content: ''; display: block; width: 1px; height: 18px;
+      background: var(--border); margin-right: 10px;
+    }
+    .arch-connector::after {
+      content: ''; display: block; width: 1px; height: 18px;
+      background: var(--border); margin-left: 10px;
+    }
+    .arch-connector .arch-pill {
+      background: var(--bg-alt); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 20px;
+      font-weight: 600;
     }
     .arch-services {
       display: grid; grid-template-columns: repeat(3,1fr);
-      gap: 10px; margin-top: 14px;
+      gap: 12px; margin-top: 16px;
     }
     .arch-service {
-      background: var(--bg-alt); border-radius: 6px;
-      padding: 10px 12px; font-size: 12px;
+      background: var(--bg-alt); border-radius: 8px;
+      padding: 14px 16px; font-size: clamp(12px, 1.1vw, 15px);
       font-weight: 600; color: var(--text-secondary);
     }
     .arch-service small {
-      display: block; font-weight: 400; font-size: 11px;
-      color: var(--text-muted); margin-top: 2px;
+      display: block; font-weight: 400; font-size: clamp(11px, 1vw, 14px);
+      color: var(--text-muted); margin-top: 4px;
     }
 
     /* ── Data Table ── */
-    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: clamp(12px, 1.1vw, 16px); }
     .data-table th {
       background: var(--accent); color: #fff;
-      padding: 11px 16px; text-align: left;
-      font-family: var(--font-body); font-weight: 600; font-size: 13px;
+      padding: 12px 18px; text-align: left;
+      font-family: var(--font-body); font-weight: 600; font-size: clamp(12px, 1.1vw, 16px);
     }
     .data-table th:first-child { border-radius: var(--radius-sm) 0 0 0; }
     .data-table th:last-child { border-radius: 0 var(--radius-sm) 0 0; }
@@ -249,9 +263,9 @@
     /* ── Flow Diagram ── */
     .flow-section { margin-bottom: 28px; }
     .flow-label {
-      font-family: var(--font-mono); font-size: 11px;
+      font-family: var(--font-mono); font-size: 13px;
       text-transform: uppercase; letter-spacing: 1.5px;
-      color: var(--text-muted); margin-bottom: 12px;
+      color: var(--text-muted); margin-bottom: 14px;
     }
     .flow-row {
       display: flex; align-items: center; gap: 8px;
@@ -259,9 +273,9 @@
     }
     .flow-box {
       background: var(--surface); border: 1px solid var(--border);
-      padding: 10px 16px; border-radius: var(--radius-sm);
-      font-size: 13px; font-weight: 600; text-align: center;
-      min-width: 100px; color: var(--text-secondary);
+      padding: 12px 18px; border-radius: var(--radius-sm);
+      font-size: clamp(11px, 1vw, 16px); font-weight: 600; text-align: center;
+      min-width: 110px; color: var(--text-secondary);
     }
     .flow-box.highlight {
       background: var(--accent); color: #fff; border-color: var(--accent);
@@ -270,13 +284,13 @@
 
     /* ── Two Column ── */
     .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-    .col h3 { font-size: 15px; margin-bottom: 12px; color: var(--text-secondary); }
+    .col h3 { font-size: clamp(14px, 1.3vw, 20px); margin-bottom: 14px; color: var(--text-secondary); }
 
     /* ── Feature List ── */
     .feature-list { list-style: none; padding: 0; }
     .feature-list li {
-      padding: 6px 0 6px 20px; position: relative;
-      font-size: 13px; color: var(--text-secondary); line-height: 1.55;
+      padding: 7px 0 7px 22px; position: relative;
+      font-size: clamp(12px, 1.1vw, 16px); color: var(--text-secondary); line-height: 1.55;
     }
     .feature-list li::before {
       content: '\2713'; position: absolute; left: 0;
@@ -287,8 +301,8 @@
     /* ── Code Block ── */
     .code-block {
       background: var(--code-bg); color: var(--code-text);
-      padding: 18px 20px; border-radius: var(--radius-sm);
-      font-family: var(--font-mono); font-size: 12px;
+      padding: 20px 22px; border-radius: var(--radius-sm);
+      font-family: var(--font-mono); font-size: clamp(11px, 1vw, 15px);
       line-height: 1.65; overflow-x: auto; white-space: pre;
     }
     .code-block .kw { color: #c084fc; }
@@ -302,10 +316,10 @@
       border-radius: var(--radius-sm); padding: 20px; text-align: center;
     }
     .config-value {
-      font-family: var(--font-heading); font-size: 32px; color: var(--accent);
+      font-family: var(--font-heading); font-size: clamp(24px, 2.5vw, 42px); color: var(--accent);
     }
     .config-label {
-      font-size: 12px; color: var(--text-secondary); margin-top: 2px;
+      font-size: clamp(11px, 1vw, 15px); color: var(--text-secondary); margin-top: 3px;
     }
     .chunk-note {
       background: var(--bg-alt); border-radius: var(--radius-sm);
@@ -324,11 +338,11 @@
       border-radius: var(--radius-sm); padding: 20px;
     }
     .model-name {
-      font-family: var(--font-heading); font-size: 17px;
-      color: var(--accent); margin-bottom: 8px;
+      font-family: var(--font-heading); font-size: clamp(14px, 1.4vw, 22px);
+      color: var(--accent); margin-bottom: 10px;
     }
     .model-detail {
-      font-size: 12px; color: var(--text-muted); line-height: 1.7;
+      font-size: clamp(11px, 1vw, 15px); color: var(--text-muted); line-height: 1.7;
     }
 
     /* ── Providers ── */
@@ -345,21 +359,21 @@
     .provider-icon {
       width: 44px; height: 44px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      font-family: var(--font-mono); font-weight: 700; font-size: 14px;
+      font-family: var(--font-mono); font-weight: 700; font-size: clamp(11px, 1vw, 15px);
       margin: 0 auto 10px;
     }
     .provider-icon.p-gemini { background: #e0e7ff; color: #3730a3; }
     .provider-icon.p-openrouter { background: #d1fae5; color: #065f46; }
     .provider-icon.p-local { background: #ede9fe; color: #5b21b6; }
-    .provider-card h3 { font-size: 15px; margin-bottom: 2px; }
+    .provider-card h3 { font-size: clamp(13px, 1.3vw, 20px); margin-bottom: 3px; }
     .provider-model {
-      font-size: 12px; color: var(--accent);
-      font-family: var(--font-mono); margin-bottom: 6px;
+      font-size: clamp(11px, 1vw, 15px); color: var(--accent);
+      font-family: var(--font-mono); margin-bottom: 8px;
     }
-    .provider-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .provider-desc { font-size: clamp(11px, 1vw, 15px); color: var(--text-muted); line-height: 1.5; }
     .prompt-note {
       background: var(--bg-alt); border-radius: var(--radius-sm);
-      padding: 14px 18px; font-size: 13px; color: var(--text-secondary);
+      padding: 16px 20px; font-size: clamp(12px, 1.1vw, 16px); color: var(--text-secondary);
     }
     .prompt-note strong { color: var(--text); }
 
@@ -367,14 +381,14 @@
     .wireframe {
       border: 1px solid var(--border); border-radius: var(--radius);
       overflow: hidden; background: var(--surface);
-      max-width: 820px; margin: 0 auto;
+      max-width: 1100px; margin: 0 auto;
       transition: box-shadow 0.3s ease;
     }
     .wireframe:hover { box-shadow: 0 8px 24px rgba(28,25,23,0.1); }
     .wf-header {
-      background: var(--text); color: #fff; padding: 10px 16px;
-      display: flex; align-items: center; gap: 8px;
-      font-family: var(--font-mono); font-size: 12px;
+      background: var(--text); color: #fff; padding: 12px 18px;
+      display: flex; align-items: center; gap: 10px;
+      font-family: var(--font-mono); font-size: clamp(11px, 1vw, 15px);
     }
     .wf-dots { display: flex; gap: 5px; }
     .wf-dot {
@@ -393,7 +407,7 @@
     .wf-panel-label {
       font-family: var(--font-mono); font-weight: 600;
       text-transform: uppercase; letter-spacing: 1.5px;
-      font-size: 9px; color: var(--text-muted); margin-bottom: 10px;
+      font-size: clamp(7px, 0.7vw, 10px); color: var(--text-muted); margin-bottom: 10px;
     }
     .wf-file {
       background: var(--bg-alt); border-radius: 4px;
@@ -430,7 +444,7 @@
     }
     .wf-caption {
       text-align: center; margin-top: 16px;
-      font-size: 13px; color: var(--text-muted); font-style: italic;
+      font-size: clamp(10px, 0.9vw, 14px); color: var(--text-muted); font-style: italic;
     }
 
     /* ── Steps ── */
@@ -445,30 +459,54 @@
     }
     .step:hover { box-shadow: 0 4px 16px rgba(28,25,23,0.06); }
     .step-num {
-      width: 30px; height: 30px; background: var(--accent); color: #fff;
+      width: 34px; height: 34px; background: var(--accent); color: #fff;
       border-radius: 50%; display: flex; align-items: center;
       justify-content: center; font-family: var(--font-heading);
-      font-size: 14px; flex-shrink: 0;
+      font-size: clamp(12px, 1.2vw, 18px); flex-shrink: 0;
     }
-    .step p { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+    /* ── Overlay Step Markers ── */
+    .overlay-steps { position: relative; }
+    .overlay-step {
+      position: absolute; display: flex; align-items: center; gap: 8px;
+      z-index: 10; pointer-events: none;
+    }
+    .overlay-dot {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--accent); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-heading); font-size: 14px;
+      flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .overlay-label {
+      background: #fff; border-radius: 8px;
+      padding: 6px 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      font-size: clamp(10px, 1vw, 13px); color: var(--text-secondary);
+      font-weight: 600; white-space: nowrap;
+    }
+    .overlay-step.step-1 { left: 5%;  top: 12%; }
+    .overlay-step.step-2 { left: 5%;  top: 52%; }
+    .overlay-step.step-3 { right: 5%; bottom: 12%; }
+    .overlay-step.step-4 { right: 5%; top: 18%; }
+    .step p { font-size: clamp(12px, 1.1vw, 16px); color: var(--text-secondary); line-height: 1.4; }
 
     /* ── Chat Demo ── */
     .chat-demo {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 24px;
-      max-width: 680px; margin: 0 auto;
+      max-width: 900px; margin: 0 auto;
     }
     .chat-msg {
-      padding: 12px 16px; border-radius: var(--radius-sm);
-      margin-bottom: 10px; font-size: 13px;
+      padding: 14px 18px; border-radius: var(--radius-sm);
+      margin-bottom: 12px; font-size: clamp(12px, 1.1vw, 16px);
       line-height: 1.6; color: var(--text-secondary);
     }
     .chat-msg.user { background: var(--accent-soft); text-align: right; color: var(--accent-deep); }
     .chat-msg.assistant { background: var(--bg-alt); }
     .chat-msg strong { color: var(--text); }
     .sources-box {
-      background: var(--accent-soft); padding: 10px 16px;
-      border-radius: var(--radius-sm); font-size: 12px;
+      background: var(--accent-soft); padding: 12px 18px;
+      border-radius: var(--radius-sm); font-size: clamp(11px, 1vw, 15px);
       color: var(--accent-deep); font-family: var(--font-mono);
     }
 
@@ -478,20 +516,146 @@
     }
     .metric-card {
       background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 18px;
+      border-radius: var(--radius-sm); padding: 30px;
     }
-    .metric-name { font-weight: 600; font-size: 13px; margin-bottom: 8px; color: var(--text); }
+    .pipeline-flow {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .pipeline-step {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 14px;
+      flex: 1; min-width: 0; text-align: center;
+    }
+    .pipeline-icon {
+      font-size: clamp(18px, 1.8vw, 28px); margin-bottom: 8px;
+    }
+    .pipeline-arrow {
+      font-family: var(--font-mono); font-size: clamp(16px, 1.6vw, 26px);
+      color: var(--accent); flex-shrink: 0;
+    }
+    .metric-name { font-weight: 600; font-size: clamp(16px, 1.8vw, 26px); margin-bottom: 12px; color: var(--text); }
     .metric-bar {
       height: 6px; background: var(--bg-alt);
       border-radius: 3px; overflow: hidden; margin-bottom: 8px;
     }
     .metric-fill { height: 100%; background: var(--accent); border-radius: 3px; }
-    .metric-value { font-family: var(--font-heading); font-size: 24px; color: var(--accent); }
-    .metric-desc { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
-    .eval-note {
-      text-align: center; font-size: 12px;
-      color: var(--text-muted); margin-top: 16px; font-style: italic;
+    .metric-value { font-family: var(--font-heading); font-size: clamp(18px, 1.8vw, 28px); color: var(--accent); }
+    .metric-desc { font-size: clamp(12px, 1.3vw, 18px); color: var(--text-muted); margin-top: 8px; }
+    .metric-formula {
+      font-family: var(--font-mono); font-size: clamp(14px, 1.4vw, 21px);
+      color: var(--accent-deep); background: var(--bg-alt);
+      padding: 14px 20px; border-radius: var(--radius-sm);
+      margin: 12px 0; line-height: 1.6; text-align: center;
     }
+    .metric-formula code {
+      font-family: inherit; font-size: inherit; color: inherit;
+      background: none; padding: 0;
+    }
+    .metric-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+    .metric-value { font-family: var(--font-heading); font-size: clamp(18px, 1.8vw, 28px); color: var(--accent); }
+    .metric-desc { font-size: clamp(9px, 0.85vw, 13px); color: var(--text-muted); margin-top: 4px; }
+    .metric-formula {
+      font-family: var(--font-mono); font-size: clamp(10px, 0.95vw, 14px);
+      color: var(--accent-deep); background: var(--bg-alt);
+      padding: 8px 12px; border-radius: var(--radius-sm);
+      margin: 8px 0; line-height: 1.5; text-align: center;
+      white-space: nowrap; overflow-x: auto;
+    }
+    .metric-formula code {
+      font-family: inherit; font-size: inherit; color: inherit;
+      background: none; padding: 0;
+    }
+    .eval-note {
+      text-align: center; font-size: clamp(11px, 1.1vw, 15px);
+      color: var(--text-muted); margin-top: 12px; font-style: italic;
+    }
+    .label-current {
+      font-family: var(--font-mono); font-weight: 700;
+      color: var(--text-muted); font-size: clamp(9px, 0.85vw, 12px);
+    }
+    .label-tradeoff {
+      font-family: var(--font-mono); font-weight: 700;
+      color: var(--accent); font-size: clamp(9px, 0.85vw, 12px);
+    }
+    .model-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    }
+    .model-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px 18px;
+      height: 120px; display: flex; flex-direction: column; justify-content: center;
+    }
+    .model-label {
+      font-family: var(--font-mono); font-size: clamp(9px, 0.85vw, 12px);
+      color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .model-name {
+      font-family: var(--font-heading); font-size: clamp(16px, 1.6vw, 24px);
+      color: var(--accent); font-weight: 700; margin-bottom: 6px;
+    }
+    .model-desc {
+      font-size: clamp(9px, 0.85vw, 12px); color: var(--text-secondary); line-height: 1.4;
+    }
+    .two-col-card {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 12px;
+    }
+    .limit-card, .future-card {
+      border-radius: var(--radius-sm); padding: 14px 16px;
+    }
+    .limit-card {
+      background: #fef2f2; border: 1px solid #fecaca;
+    }
+    .future-card {
+      background: #f0fdf4; border: 1px solid #86efac;
+    }
+    .limit-card-header, .future-card-header {
+      font-family: var(--font-mono); font-size: clamp(10px, 0.9vw, 13px);
+      font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+    .limit-card-header { color: #991b1b; }
+    .future-card-header { color: #166534; }
+    .feature-list {
+      list-style: none; padding: 0; margin: 0;
+    }
+    .feature-list li {
+      margin-bottom: 8px; display: flex; flex-direction: column;
+    }
+    .li-title {
+      font-weight: 600; font-size: clamp(10px, 0.95vw, 14px); color: var(--text);
+    }
+    .li-desc {
+      font-size: clamp(9px, 0.82vw, 11.5px); color: var(--text-muted); line-height: 1.4; margin-top: 2px;
+    }
+    .roadmap-bar {
+      background: #eff6ff; border: 1px solid #93c5fd;
+      border-radius: var(--radius-sm); padding: 10px 16px;
+      font-size: clamp(9px, 0.85vw, 12px); color: #1e40af; line-height: 1.5;
+    }
+    .dataset-table-wrap {
+      max-height: 70vh; overflow-y: auto; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); margin-top: 12px;
+    }
+    .dataset-table {
+      width: 100%; border-collapse: collapse; font-size: clamp(9px, 0.85vw, 13px);
+    }
+    .dataset-table th {
+      position: sticky; top: 0; background: var(--bg-alt);
+      font-weight: 600; text-align: left; padding: 8px 10px;
+      border-bottom: 2px solid var(--border); color: var(--text);
+    }
+    .dataset-table td {
+      padding: 6px 10px; border-bottom: 1px solid var(--border);
+      color: var(--text-secondary); vertical-align: top;
+    }
+    .dataset-table tr:hover td { background: var(--accent-soft); }
+    .dataset-table td:first-child {
+      font-family: var(--font-mono); color: var(--text-muted);
+      text-align: center; width: 30px;
+    }
+    .dataset-table td:nth-child(2) { font-weight: 500; color: var(--text); }
+    .dataset-table td:nth-child(3) { color: var(--accent-deep); }
 
     /* ── Comparison ── */
     .comparison-row {
@@ -502,11 +666,11 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--radius); padding: 24px; width: 260px;
     }
-    .comparison-card h3 { font-size: 17px; margin-bottom: 10px; }
-    .comparison-card ul { list-style: none; padding: 0; margin-bottom: 14px; }
+    .comparison-card h3 { font-size: clamp(14px, 1.4vw, 22px); margin-bottom: 12px; }
+    .comparison-card ul { list-style: none; padding: 0; margin-bottom: 16px; }
     .comparison-card li {
-      font-size: 13px; color: var(--text-secondary);
-      padding: 3px 0 3px 16px; position: relative; line-height: 1.5;
+      font-size: clamp(12px, 1.1vw, 16px); color: var(--text-secondary);
+      padding: 4px 0 4px 18px; position: relative; line-height: 1.5;
     }
     .comparison-card li::before {
       content: '\00B7'; position: absolute; left: 4px;
@@ -515,32 +679,32 @@
     .comparison-card.baseline { border-top: 3px solid var(--text-muted); }
     .comparison-card.enhanced { border-top: 3px solid var(--accent); }
     .comparison-score {
-      font-family: var(--font-heading); font-size: 20px; color: var(--accent);
+      font-family: var(--font-heading); font-size: clamp(18px, 1.8vw, 28px); color: var(--accent);
     }
     .comparison-arrow { font-size: 22px; color: var(--accent); }
     .improvement-badge {
       display: inline-block; background: #dcfce7; color: #166534;
-      padding: 8px 22px; border-radius: 20px;
-      font-weight: 600; font-size: 14px;
+      padding: 10px 24px; border-radius: 20px;
+      font-weight: 600; font-size: clamp(13px, 1.3vw, 18px);
     }
     .badge-wrap { text-align: center; }
 
     /* ── Conclusion ── */
     .conclusion-points {
       display: flex; flex-direction: column; gap: 14px;
-      margin: 28px auto; max-width: 560px;
+      margin: 28px auto; max-width: 760px;
     }
     .conclusion-item { display: flex; align-items: center; gap: 14px; }
     .conclusion-check {
       width: 28px; height: 28px; background: #dcfce7; color: #166534;
       border-radius: 50%; display: flex; align-items: center;
-      justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0;
+      justify-content: center; font-weight: 700; font-size: clamp(11px, 1vw, 15px); flex-shrink: 0;
     }
-    .conclusion-item p { font-size: 15px; color: var(--text-secondary); }
+    .conclusion-item p { font-size: clamp(14px, 1.3vw, 20px); color: var(--text-secondary); }
 
     /* ── Slide Illustrations ── */
     .slide-illustration {
-      width: 100%; max-width: 960px; margin: 0 auto 24px;
+      width: 100%; max-width: 1200px; margin: 0 auto 24px;
       border-radius: var(--radius); overflow: hidden;
     }
     .slide-illustration img {
@@ -598,7 +762,7 @@
     }
     .logo-text {
       font-family: var(--font-mono);
-      font-size: 12px;
+      font-size: clamp(10px, 0.9vw, 13px);
       color: var(--text-muted);
       letter-spacing: 0.5px;
     }
@@ -613,8 +777,8 @@
     .thank-you {
       margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--border);
     }
-    .thank-you h3 { font-size: 26px; color: var(--accent); margin-bottom: 4px; }
-    .thank-you p { color: var(--text-muted); font-size: 14px; }
+    .thank-you h3 { font-size: clamp(22px, 2.2vw, 34px); color: var(--accent); margin-bottom: 5px; }
+    .thank-you p { color: var(--text-muted); font-size: clamp(12px, 1.2vw, 18px); }
 
     /* ── Scope, Evidence, Gap ── */
     .scope-grid,
@@ -630,17 +794,19 @@
       border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 22px;
+      min-height: 200px;
+      display: flex; flex-direction: column; justify-content: center;
     }
     .scope-card.in-scope { border-top: 3px solid #6b8a7a; }
     .scope-card.out-scope { border-top: 3px solid var(--accent); }
     .scope-card h3,
-    .gap-card h3 { font-size: 17px; margin-bottom: 10px; }
+    .gap-card h3 { font-size: clamp(14px, 1.4vw, 22px); margin-bottom: 12px; }
     .scope-list { list-style: none; display: grid; gap: 7px; }
     .scope-list li {
       position: relative;
-      padding-left: 18px;
+      padding-left: 20px;
       color: var(--text-secondary);
-      font-size: 13px;
+      font-size: clamp(12px, 1.1vw, 16px);
       line-height: 1.45;
     }
     .scope-list li::before {
@@ -657,20 +823,36 @@
       border: 1px solid var(--border);
       border-top: 3px solid var(--accent);
       border-radius: var(--radius);
-      padding: 18px;
-      min-height: 270px;
+      padding: 24px;
+      min-height: 280px;
+      display: flex; flex-direction: column;
     }
+    .evidence-card.blue   { border-top-color: #3b82f6; }
+    .evidence-card.orange { border-top-color: #b45309; }
+    .evidence-card.green  { border-top-color: #16a34a; }
     .evidence-rank {
       font-family: var(--font-mono);
       color: var(--accent);
-      font-size: 11px;
+      font-size: clamp(9px, 0.9vw, 12px);
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
-    .evidence-card h3 { font-size: 15px; margin: 7px 0 10px; }
-    .evidence-line { margin-top: 8px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
+    .evidence-card h3 { font-size: clamp(13px, 1.3vw, 20px); margin: 8px 0 12px; }
+    .evidence-line { margin-top: 10px; font-size: clamp(12px, 1.15vw, 14px); line-height: 1.6; color: var(--text-secondary); }
     .evidence-line strong { color: var(--text); }
-    .citation-line { margin-top: 10px; font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+    .evidence-relevance {
+      margin-top: 12px; padding: 10px 14px;
+      background: #fef3c7; border-radius: var(--radius-sm);
+      font-size: clamp(12px, 1.15vw, 14px); line-height: 1.6;
+      color: var(--text-secondary);
+    }
+    .evidence-relevance strong { color: var(--accent-deep); }
+    .citation-line {
+      margin-top: auto; padding-top: 12px;
+      font-family: var(--font-mono);
+      font-size: clamp(9px, 0.8vw, 11px);
+      color: var(--text-muted); text-align: right;
+    }
     .gap-card.contribution { background: var(--accent-soft); border-color: #f3d5a3; }
     .gap-arrow {
       display: flex;
@@ -681,11 +863,11 @@
       margin: 12px 0;
     }
 
-    /* ── Methodology Flow ── */
+    /* ── Methodology Flow (Modified for larger size) ── */
     .methodology-flow {
       display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 9px;
+      grid-template-columns: repeat(3, minmax(0, 1fr)); /* Changed to 3 columns */
+      gap: 16px; /* Increased gap */
       align-items: stretch;
     }
     .method-stage {
@@ -694,51 +876,69 @@
       border: 1px solid var(--border);
       border-top: 3px solid var(--accent);
       border-radius: var(--radius-sm);
-      padding: 16px 10px 13px;
-      min-height: 152px;
+      padding: 24px 16px 20px; /* Increased padding */
+      min-height: 200px; /* Increased height */
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
     }
+    /* Adjusted arrows to be vertically centered */
     .method-stage:not(:last-child)::after {
       content: "→";
       position: absolute;
-      right: -11px;
-      top: 62px;
+      right: -14px; /* Adjusted based on new gap */
+      top: 50%;
+      transform: translateY(-50%); /* Perfect vertical centering */
       z-index: 2;
       color: var(--accent);
       font-weight: 700;
+      font-size: 14px;
+    }
+    /* Hide the arrow for the last card in each row (3rd and 6th card) */
+    .method-stage:nth-child(3n)::after {
+      display: none;
     }
     .method-number {
-      width: 30px;
-      height: 30px;
-      margin: 0 auto 9px;
+      width: 36px; /* Enlarged */
+      height: 36px; /* Enlarged */
+      margin: 0 auto 12px;
       border-radius: 50%;
       display: grid;
       place-items: center;
       background: var(--accent-soft);
       color: var(--accent-deep);
       font-family: var(--font-heading);
+      font-size: clamp(12px, 1.2vw, 18px); /* Enlarged */
     }
-    .method-stage h3 { font-size: 12px; margin-bottom: 7px; }
-    .method-stage p { font-size: 10px; line-height: 1.4; color: var(--text-secondary); }
+    .method-stage h3 {
+      font-size: clamp(13px, 1.3vw, 20px); /* Enlarged */
+      margin-bottom: 10px;
+    }
+    .method-stage p {
+      font-size: clamp(11px, 1vw, 16px); /* Enlarged */
+      line-height: 1.5;
+      color: var(--text-secondary);
+    }
     .feedback-loop {
-      margin: 16px auto 0;
-      max-width: 760px;
+      margin: 28px auto 0;
+      max-width: 1000px;
       border: 1px dashed #d6a55b;
       border-radius: 999px;
-      padding: 8px 16px;
+      padding: 14px 28px; /* Enlarged */
       text-align: center;
-      font-size: 11px;
+      font-size: clamp(12px, 1.1vw, 16px); /* Enlarged */
       color: var(--accent-deep);
       background: var(--accent-soft);
     }
 
     /* ── RAGAS Chart ── */
-    .chart-layout { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(240px, 1fr); gap: 24px; }
+    .chart-layout { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(280px, 1fr); gap: 32px; }
     .ragas-chart {
-      height: 310px;
+      height: clamp(340px, 45vh, 480px);
       display: grid;
-      grid-template-columns: 36px 1fr;
-      grid-template-rows: 1fr 38px;
+      grid-template-columns: 48px 1fr;
+      grid-template-rows: 1fr 48px;
     }
     .chart-y-axis {
       grid-row: 1;
@@ -746,70 +946,251 @@
       flex-direction: column;
       justify-content: space-between;
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: clamp(10px, 1vw, 14px);
       color: var(--text-muted);
-      padding-right: 7px;
+      padding-right: 10px;
     }
     .chart-plot {
       grid-column: 2;
       grid-row: 1;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      gap: clamp(12px, 2vw, 28px);
       align-items: end;
       border-left: 1px solid var(--text-muted);
       border-bottom: 1px solid var(--text-muted);
       background: repeating-linear-gradient(to top, transparent 0, transparent calc(25% - 1px), var(--border) 25%);
-      padding: 0 12px;
+      padding: 0 16px;
     }
-    .chart-group { height: 100%; display: flex; gap: 5px; align-items: end; justify-content: center; }
-    .chart-bar { position: relative; width: 25%; min-width: 16px; border-radius: 4px 4px 0 0; }
+    .chart-group { height: 100%; display: flex; gap: 8px; align-items: end; justify-content: center; }
+    .chart-bar { position: relative; width: 30%; min-width: 28px; border-radius: 5px 5px 0 0; }
     .chart-bar.baseline { background: #a8a29e; }
     .chart-bar.smart { background: var(--accent); }
     .chart-bar.enhanced { background: #6b8a7a; }
     .chart-bar span {
       position: absolute;
-      top: -17px;
+      top: -22px;
       left: 50%;
       transform: translateX(-50%);
       font-family: var(--font-mono);
-      font-size: 9px;
+      font-size: clamp(10px, 1vw, 14px);
       color: var(--text-secondary);
+      font-weight: 600;
     }
     .chart-labels {
       grid-column: 2;
       grid-row: 2;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
+      gap: clamp(12px, 2vw, 28px);
       text-align: center;
-      padding: 7px 12px 0;
-      font-size: 10px;
+      padding: 10px 16px 0;
+      font-size: clamp(11px, 1.1vw, 15px);
       color: var(--text-secondary);
+      font-weight: 600;
     }
-    .chart-legend { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
-    .legend-item { font-size: 11px; color: var(--text-secondary); }
-    .legend-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 5px; }
+    .chart-legend { display: flex; gap: 18px; margin-bottom: 20px; flex-wrap: wrap; }
+    .legend-item { font-size: clamp(11px, 1.1vw, 14px); color: var(--text-secondary); }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; margin-right: 6px; }
     .finding-callout {
       background: var(--surface);
       border: 1px solid var(--border);
       border-left: 3px solid var(--accent);
       border-radius: var(--radius-sm);
-      padding: 14px;
-      margin-bottom: 10px;
-      font-size: 12px;
-      line-height: 1.45;
+      padding: clamp(14px, 1.5vw, 20px);
+      margin-bottom: 14px;
+      font-size: clamp(12px, 1.2vw, 17px);
+      line-height: 1.5;
       color: var(--text-secondary);
     }
     .finding-callout strong { color: var(--text); }
 
+    /* ── RAG Pipeline ── */
+    .rag-pipeline {
+      display: flex;
+      align-items: stretch;
+      gap: clamp(4px, 0.5vw, 8px);
+      margin-bottom: clamp(14px, 1.8vw, 22px);
+      margin-left: calc(-1 * clamp(200px, 5vw, 120px));
+      margin-right: calc(-1 * clamp(200px, 5vw, 120px));
+      padding: 0 clamp(0px, 5vw, 120px);
+    }
+    .rag-stage {
+      flex: 1;
+      min-width: 0;
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      padding: clamp(10px, 1.2vw, 16px) clamp(6px, 0.8vw, 10px);
+      border-top: 3px solid var(--stage-color, var(--accent));
+      text-align: center;
+      position: relative;
+      transition: box-shadow 0.3s ease;
+    }
+    .rag-stage:hover {
+      box-shadow: 0 4px 16px rgba(28,25,23,0.06);
+    }
+    .rag-icon {
+      font-size: clamp(16px, 1.8vw, 24px);
+      margin-bottom: clamp(3px, 0.4vw, 6px);
+    }
+    .rag-title {
+      font-family: var(--font-heading);
+      font-size: clamp(10px, 1.1vw, 14px);
+      font-weight: 700;
+      color: var(--stage-color, var(--accent));
+      margin-bottom: clamp(1px, 0.2vw, 3px);
+    }
+    .rag-subtitle {
+      font-size: clamp(8px, 0.8vw, 11px);
+      color: var(--text-secondary);
+      margin-bottom: clamp(4px, 0.5vw, 8px);
+    }
+    .rag-detail {
+      background: var(--bg-alt);
+      border-radius: 4px;
+      padding: clamp(4px, 0.5vw, 8px);
+      font-size: clamp(7px, 0.7vw, 10px);
+      color: var(--text-muted);
+      line-height: 1.4;
+      font-family: var(--font-mono);
+    }
+    .rag-arrow {
+      display: flex;
+      align-items: center;
+      color: var(--accent);
+      font-size: clamp(12px, 1.2vw, 16px);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .rag-row-connector { display: none; }
+    .rag-data-flow {
+      background: var(--bg-alt);
+      border-radius: var(--radius);
+      padding: clamp(14px, 1.8vw, 22px);
+      margin-left: calc(-1 * clamp(20px, 3vw, 60px));
+      margin-right: calc(-1 * clamp(20px, 3vw, 60px));
+    }
+    .rag-data-flow h3 {
+      font-family: var(--font-heading);
+      font-size: clamp(14px, 1.4vw, 18px);
+      margin-bottom: clamp(12px, 1.5vw, 18px);
+      color: var(--text);
+    }
+    .rag-data-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: clamp(10px, 1.2vw, 16px);
+    }
+    .rag-data-card {
+      text-align: center;
+      padding: clamp(12px, 1.5vw, 18px);
+      background: var(--surface);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .rag-data-label {
+      font-family: var(--font-mono);
+      font-size: clamp(9px, 0.9vw, 12px);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: clamp(4px, 0.5vw, 8px);
+    }
+    .rag-data-value {
+      font-family: var(--font-heading);
+      font-size: clamp(20px, 2.2vw, 30px);
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: clamp(2px, 0.3vw, 5px);
+    }
+    .rag-data-card:nth-child(1) .rag-data-value { color: #fbbf24; }
+    .rag-data-card:nth-child(2) .rag-data-value { color: #38bdf8; }
+    .rag-data-card:nth-child(3) .rag-data-value { color: #4ade80; }
+    .rag-data-card:nth-child(4) .rag-data-value { color: #f472b6; }
+    .rag-data-desc {
+      font-size: clamp(10px, 1vw, 13px);
+      color: var(--text-muted);
+    }
+
+    /* ── Hybrid Retrieval Flow ── */
+    .hybrid-flow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(14px, 1.8vw, 22px);
+    }
+    .hybrid-row {
+      display: flex;
+      align-items: center;
+      gap: clamp(12px, 1.5vw, 20px);
+    }
+    .hybrid-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: clamp(14px, 1.8vw, 22px) clamp(18px, 2.2vw, 28px);
+      text-align: center;
+      min-width: clamp(140px, 16vw, 220px);
+      border-top: 3px solid var(--stage-color, var(--accent));
+    }
+    .hybrid-card-title {
+      font-family: var(--font-heading);
+      font-size: clamp(16px, 1.6vw, 22px);
+      font-weight: 700;
+      color: var(--stage-color, var(--accent));
+      margin-bottom: clamp(3px, 0.4vw, 6px);
+    }
+    .hybrid-card-desc {
+      font-size: clamp(13px, 1.3vw, 16px);
+      color: var(--text-secondary);
+    }
+    .hybrid-card.rrf {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      border-top: 3px solid var(--accent);
+      min-width: clamp(180px, 20vw, 280px);
+    }
+    .hybrid-card.rrf .hybrid-card-title {
+      color: var(--accent);
+      font-size: clamp(18px, 1.8vw, 26px);
+    }
+    .hybrid-card.output {
+      border-top: 3px solid var(--accent);
+      background: var(--accent-soft);
+    }
+    .hybrid-card.output .hybrid-card-title {
+      color: var(--accent);
+    }
+    .hybrid-arrow {
+      color: var(--accent);
+      font-size: clamp(18px, 2vw, 26px);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .hybrid-plus {
+      color: var(--accent);
+      font-size: clamp(18px, 2vw, 26px);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .hybrid-note {
+      font-size: clamp(11px, 1.1vw, 14px);
+      color: var(--text-muted);
+      text-align: center;
+      font-style: italic;
+      max-width: 800px;
+    }
+
     /* ── Responsive ── */
     @media (max-width: 900px) {
-      .slide { padding: 40px 32px; }
+      .slide { padding: 40px 24px; }
+      .slide-content { padding: 0 8px; }
       .title-slide h1 { font-size: 30px; }
       .problem-grid, .provider-grid { grid-template-columns: 1fr; }
       .two-col { grid-template-columns: 1fr; }
       .metrics-grid { grid-template-columns: 1fr; }
+      .pipeline-flow { flex-direction: column; gap: 10px; }
+      .pipeline-arrow { transform: rotate(90deg); }
       .comparison-row { flex-direction: column; }
       .steps { flex-direction: column; align-items: center; }
       .flow-row { flex-direction: column; }
@@ -820,19 +1201,21 @@
       .evidence-grid,
       .gap-grid,
       .chart-layout { grid-template-columns: 1fr; }
-      .methodology-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .method-stage:not(:last-child)::after { display: none; }
+      .methodology-flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } /* Fallback to 2 columns on mobile */
+      .method-stage:nth-child(3n)::after { display: block; } /* Reset arrows on mobile */
+      .method-stage:nth-child(2n)::after { display: none; } /* Hide arrow for 2nd column on mobile */
       .evidence-card { min-height: auto; }
     }
   </style>
 </head>
+<body>
 <body>
   <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
 
   <div class="presentation">
 
     <!-- 1 ─ Title -->
-    <section class="slide active" aria-label="Slide 1 of 18: AI-Based Lecture Note Question Answering System" aria-hidden="false">
+    <section class="slide active" aria-label="Slide 1 of 20: AI-Based Lecture Note Question Answering System" aria-hidden="false">
       <div class="slide-content title-slide">
         <div class="slide-illustration">
           <img src="images/slide-1-hero.svg" alt="AI and Education concept illustration">
@@ -853,156 +1236,175 @@
       </div>
     </section>
 
-    <!-- 2 ─ Problem Statement -->
-    <section class="slide" aria-label="Slide 2 of 18: Problem Statement" aria-hidden="true">
-      <div class="slide-content">
-        <h2>Problem Statement</h2>
-        <div class="problem-grid">
-          <div class="problem-card">
-            <div class="problem-num">1</div>
-            <h3>Information overload</h3>
-            <p>Lecture content is distributed across long PDF files, making the right explanation difficult to locate when students need it.</p>
-          </div>
-          <div class="problem-card">
-            <div class="problem-num">2</div>
-            <h3>Slow manual searching</h3>
-            <p>Keyword search and page-by-page reading consume revision time and can miss conceptually related passages.</p>
-          </div>
-          <div class="problem-card">
-            <div class="problem-num">3</div>
-            <h3>Ungrounded AI answers</h3>
-            <p>Generic assistants may answer beyond approved course material without showing the lecture source behind the response.</p>
-          </div>
-        </div>
-        <p class="prompt-note"><strong>Need:</strong> fast, source-grounded answers drawn from the student's own lecture notes.</p>
+<!-- 2 ─ Problem Statement -->
+<section class="slide" aria-label="Slide 2 of 20: Problem Statement" aria-hidden="true">
+  <div class="slide-content">
+    <h2>Problem Statement</h2>
+    <div class="problem-grid">
+      <div class="problem-card">
+        <div class="problem-num">1</div>
+        <h3>Time‑consuming information access</h3>
+        <p>Students search across multiple PDFs for specific concepts—opening files, trying different keywords, and scanning pages repeatedly. This manual effort grows with the collection and interrupts focused revision.</p>
+        <p class="problem-insight">The problem is not a lack of information, but the effort to locate the relevant part.</p>
       </div>
-    </section>
+      <div class="problem-card">
+        <div class="problem-num">2</div>
+        <h3>Incomplete evidence from single‑method retrieval</h3>
+        <p>Keyword search misses paraphrased explanations; semantic search may overlook exact names or abbreviations. Either method alone fails to retrieve all relevant passages consistently.</p>
+        <p class="problem-insight">A single retrieval path cannot cover the full range of relevant evidence.</p>
+      </div>
+      <div class="problem-card">
+        <div class="problem-num">3</div>
+        <h3>Lack of verifiable source grounding</h3>
+        <p>General AI assistants often answer without citing specific documents or page numbers, making verification difficult. Responsible educational AI requires transparency and traceability.</p>
+        <p class="problem-insight">Answers must show their sources and indicate when evidence is insufficient.</p>
+      </div>
+    </div>
+    <p class="prompt-note"><strong>Need:</strong> a system that searches personal lecture collections using natural‑language questions, combines lexical and semantic retrieval, and generates concise answers with citations for easy verification.</p>
+  </div>
+</section>
 
-    <!-- 3 ─ Project Objectives -->
-    <section class="slide" aria-label="Slide 3 of 18: Project Objectives" aria-hidden="true">
-      <div class="slide-content">
-        <h2>Project Objectives</h2>
-        <div class="objectives-list">
-          <div class="objective-item">
-            <div class="objective-num">01</div>
-            <div>
-              <h3>Preserve lecture evidence</h3>
-              <p>Ingest PDF lecture notes while retaining source and page metadata for traceability.</p>
-            </div>
-          </div>
-          <div class="objective-item">
-            <div class="objective-num">02</div>
-            <div>
-              <h3>Retrieve relevant passages</h3>
-              <p>Combine dense semantic search with BM25 keyword matching to improve evidence discovery.</p>
-            </div>
-          </div>
-          <div class="objective-item">
-            <div class="objective-num">03</div>
-            <div>
-              <h3>Generate grounded answers</h3>
-              <p>Use retrieved context to produce answers with citations and transparent source snippets.</p>
-            </div>
-          </div>
-          <div class="objective-item">
-            <div class="objective-num">04</div>
-            <div>
-              <h3>Evaluate the complete system</h3>
-              <p>Assess retrieval, RAGAS answer quality, functionality, and practical response performance.</p>
-            </div>
-          </div>
+<!-- 3 ─ Project Objectives -->
+<section class="slide" aria-label="Slide 3 of 20: Project Objectives" aria-hidden="true">
+  <div class="slide-content">
+    <h2>Project Objectives</h2>
+    <div class="objectives-list">
+      <div class="objective-item">
+        <div class="objective-num">01</div>
+        <div>
+          <h3>Develop a web-based lecture Q&A system</h3>
+          <p>Provide an accessible interface for uploading, viewing, selecting, and deleting lecture PDFs; managing conversations; and submitting natural-language questions—without requiring knowledge of retrieval or machine-learning tools.</p>
         </div>
       </div>
-    </section>
+      <div class="objective-item">
+        <div class="objective-num">02</div>
+        <div>
+          <h3>Implement a hybrid RAG pipeline with source citations</h3>
+          <p>Process lecture PDFs to create sentence embeddings stored in FAISS, combine BM25 and dense retrieval, supply relevant context to a selected language model, and return grounded answers with document and page evidence where available.</p>
+        </div>
+      </div>
+      <div class="objective-item">
+        <div class="objective-num">03</div>
+        <div>
+          <h3>Provide supporting functions for lecture study</h3>
+          <p>Include document summarisation, question suggestions, cross-document comparison, conversation history, source filtering, and configurable language-model and retrieval settings to support varied study activities.</p>
+        </div>
+      </div>
+      <div class="objective-item">
+        <div class="objective-num">04</div>
+        <div>
+          <h3>Evaluate the quality of the implemented RAG pipeline</h3>
+          <p>Use generated or prepared question-answer datasets with RAGAS measures—faithfulness, answer relevancy, context precision, and context recall—to identify strengths and weaknesses in both retrieval and answer generation, rather than claim perfect correctness.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-    <!-- 4 ─ Project Scope and Boundaries -->
-    <section class="slide" aria-label="Slide 4 of 18: Project Scope and Boundaries" aria-hidden="true">
-      <div class="slide-content">
+<!-- 4 ─ Project Scope and Boundaries -->
+<section class="slide" aria-label="Slide 4 of 20: Project Scope and Boundaries" aria-hidden="true">
+    <div class="slide-content">
         <h2>Project Scope and Boundaries</h2>
-        <p class="slide-subtitle">A focused lecture-note assistant—not a general learning-management platform</p>
+        <p class="slide-subtitle">A focused lecture-note assistant for students and educators—not a general learning-management platform</p>
+
         <div class="scope-grid">
-          <article class="scope-card in-scope">
-            <h3>In scope</h3>
-            <ul class="scope-list">
-              <li>Text-readable PDF upload and extraction</li>
-              <li>Sentence-aware chunking with metadata</li>
-              <li>MiniLM embeddings and FAISS indexing</li>
-              <li>BM25 + dense hybrid retrieval with RRF</li>
-              <li>Gemini, OpenRouter, and local LLM generation</li>
-              <li>Cited answers, source snippets, web UI, and RAGAS evaluation</li>
-            </ul>
-          </article>
-          <article class="scope-card out-scope">
-            <h3>Out of scope</h3>
-            <ul class="scope-list">
-              <li>Non-PDF learning sources and scanned-PDF OCR</li>
-              <li>Automatic marking or student grading</li>
-              <li>Course-authoring and content-management tools</li>
-              <li>Institution-wide LMS integration</li>
-              <li>Claims of universal subject expertise</li>
-              <li>Replacement of lecturers or human academic support</li>
-            </ul>
-          </article>
+            <!-- In Scope -->
+            <article class="scope-card in-scope">
+                <h3>In scope</h3>
+                <ul class="scope-list">
+                    <li><strong>Target users:</strong> University students (primary) and educators (secondary)</li>
+                    <li><strong>Document scope:</strong> Text-based PDF lecture notes with managed document collection (view, select, delete)</li>
+                    <li><strong>Chunking &amp; indexing:</strong> Sentence-aware chunking with source and page metadata; MiniLM embeddings; persistent FAISS index</li>
+                    <li><strong>Retrieval:</strong> BM25 + dense hybrid retrieval with reciprocal-rank fusion; dense-only fallback when hybrid is unavailable</li>
+                    <li><strong>LLM providers:</strong> Gemini, OpenRouter, and local models via llama.cpp (availability depends on configuration)</li>
+                    <li><strong>Core functions:</strong> Grounded chat with citations and source snippets; document summarisation with history; suggested questions; cross-document comparison</li>
+                    <li><strong>Management:</strong> Conversation and document management; configurable model, temperature, top-k, and embedding settings</li>
+                    <li><strong>Evaluation:</strong> RAGAS metrics — faithfulness, answer relevancy, context precision, context recall; two-phase workflow (dataset prep + response evaluation)</li>
+                    <li><strong>Interface:</strong> Web-based UI requiring no ML expertise</li>
+                </ul>
+            </article>
+
+            <!-- Out of Scope -->
+            <article class="scope-card out-scope">
+                <h3>Out of scope</h3>
+                <ul class="scope-list">
+                    <li>Non-PDF sources (videos, audio, web pages, e-books)</li>
+                    <li>OCR for image-only or scanned PDFs</li>
+                    <li>Automatic marking, grading, or student assessment</li>
+                    <li>Course-authoring and content-management tools</li>
+                    <li>Institution-wide LMS integration</li>
+                    <li>Claims of universal subject expertise</li>
+                    <li>Replacement of lecturers or human academic support</li>
+                    <li>Guarantee of absolute answer correctness</li>
+                    <li>Detailed administrative analytics and operational monitoring (supporting modules only)</li>
+                </ul>
+            </article>
         </div>
-      </div>
-    </section>
+
+        <!-- System Limitations (added from scope text) -->
+        <div class="scope-limitations">
+            <h3>System limitations</h3>
+            <p>The system is designed as an <strong>academic assistance tool</strong>, not an authoritative replacement for lecturers, original notes, or independent verification. Retrieval may omit relevant passages; citations indicate supplied evidence rather than guaranteed truth; and language models may still interpret context incorrectly. The project therefore <strong>does not guarantee absolute answer correctness</strong>.</p>
+        </div>
+    </div>
+</section>
 
     <!-- 5 ─ Literature Review -->
-    <section class="slide" aria-label="Slide 5 of 18: Literature Review" aria-hidden="true">
+    <section class="slide" aria-label="Slide 5 of 20: Literature Review" aria-hidden="true">
       <div class="slide-content">
         <h2>Literature Review &mdash; Top Three Studies</h2>
         <div class="evidence-grid">
-          <article class="evidence-card" data-study-rank="1">
+          <article class="evidence-card blue" data-study-rank="1">
             <div class="evidence-rank">Rank 01 &middot; Educational QA</div>
             <h3>Alawwad et al. (2025)</h3>
             <p class="evidence-line"><strong>Method:</strong> Fine-tuned Llama-2 with semantic retrieval for textual textbook QA.</p>
-            <p class="evidence-line"><strong>Finding:</strong> 84.24% test accuracy on textual TQA.</p>
-            <p class="evidence-line"><strong>Limitation:</strong> Text only; diagrams and visual evidence are excluded.</p>
-            <p class="evidence-line"><strong>Project relevance:</strong> Closest evidence for RAG over structured lesson content.</p>
-            <p class="citation-line">Pattern Recognition &middot; doi:10.1016/j.patcog.2024.111332</p>
+            <p class="evidence-line"><strong>Finding:</strong> Achieved 84.24% test accuracy on textual TQA, outperforming prior SOTA.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Text-only; diagrams and visual evidence are excluded.</p>
+            <p class="evidence-relevance"><strong>Project relevance:</strong> Closest evidence for RAG over structured lesson content.</p>
+            <p class="citation-line">Pattern Recognition &middot; 2025</p>
           </article>
-          <article class="evidence-card" data-study-rank="2">
+          <article class="evidence-card orange" data-study-rank="2">
             <div class="evidence-rank">Rank 02 &middot; Hybrid retrieval</div>
             <h3>Hu et al. (2025)</h3>
             <p class="evidence-line"><strong>Method:</strong> Multimodal parsing with sparse-dense hybrid retrieval and LLM generation.</p>
-            <p class="evidence-line"><strong>Finding:</strong> Reported correctness improved by 20.1% under the study setup.</p>
-            <p class="evidence-line"><strong>Limitation:</strong> Real-time retrieval at document scale still needs optimization.</p>
-            <p class="evidence-line"><strong>Project relevance:</strong> Supports combining BM25 and dense retrieval.</p>
-            <p class="citation-line">IEEE Access &middot; doi:10.1109/ACCESS.2025.3544408</p>
+            <p class="evidence-line"><strong>Finding:</strong> Improved correctness by 20.1%, relevancy by 15.3%, and faithfulness by 18.7%.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Real-time retrieval at document scale needs optimization; quality depends on retrieved context.</p>
+            <p class="evidence-relevance"><strong>Project relevance:</strong> Supports combining BM25 and dense retrievers.</p>
+            <p class="citation-line">IEEE Access &middot; 2025</p>
           </article>
-          <article class="evidence-card" data-study-rank="3">
+          <article class="evidence-card green" data-study-rank="3">
             <div class="evidence-rank">Rank 03 &middot; Higher education</div>
             <h3>Neumann et al. (2024)</h3>
-            <p class="evidence-line"><strong>Method:</strong> GPT-4 RAG chatbot in Moodle using LangChain and Weaviate.</p>
-            <p class="evidence-line"><strong>Finding:</strong> 88% response accuracy with positive student acceptance.</p>
-            <p class="evidence-line"><strong>Limitation:</strong> Human tutors remained preferred; automated fact-checking was weak.</p>
-            <p class="evidence-line"><strong>Project relevance:</strong> Demonstrates RAG as complementary academic support.</p>
-            <p class="citation-line">IEEE Transactions on Education &middot; doi:10.1109/TE.2024.3467912</p>
+            <p class="evidence-line"><strong>Method:</strong> GPT-4 RAG chatbot in Moodle using LangChain and Weaviate vector DB.</p>
+            <p class="evidence-line"><strong>Finding:</strong> 88% response accuracy with positive student acceptance; reduces teacher workload.</p>
+            <p class="evidence-line"><strong>Limitation:</strong> Human tutors remained preferred; weak automated fact-checking (8% specificity); GDPR constraints.</p>
+            <p class="evidence-relevance"><strong>Project relevance:</strong> Demonstrates RAG as complementary academic support.</p>
+            <p class="citation-line">IEEE Trans. on Education &middot; 2024</p>
           </article>
         </div>
       </div>
     </section>
 
     <!-- 6 ─ Research Gap and Contribution -->
-    <section class="slide" aria-label="Slide 6 of 18: Research Gap and Project Contribution" aria-hidden="true">
+    <section class="slide" aria-label="Slide 6 of 20: Research Gap and Project Contribution" aria-hidden="true">
       <div class="slide-content">
         <h2>Research Gap and Project Contribution</h2>
         <div class="gap-grid">
           <article class="gap-card">
             <h3>Research gap</h3>
-            <p>Existing studies show useful RAG retrieval and generation, but practical lecture-note assistants still need transparent source traceability, hybrid retrieval, deployment choice, and integrated evaluation.</p>
+            <p>While existing studies explore RAG retrieval, practical lecture-note assistants still lack a unified workflow that combines: <strong>text-specific hybrid retrieval (BM25 + FAISS)</strong>, configurable local/cloud LLM deployment, transparent source tracing, and an integrated, automated evaluation pipeline.</p>
           </article>
           <article class="gap-card contribution">
             <h3>Project contribution</h3>
-            <p>This project combines PDF metadata, BM25 + FAISS retrieval, configurable cloud or local LLMs, cited answers, and RAGAS evaluation in one usable workflow.</p>
+            <p>This project bridges the gap by building an end-to-end, usable prototype: ingesting PDFs with metadata, executing <strong>hybrid retrieval with RRF</strong>, supporting local and cloud LLMs, and automating <strong>RAGAS scoring</strong> for robustness.</p>
           </article>
         </div>
-        <p class="eval-note">Contribution is framed as an implementation response—not a claim of universal research novelty.</p>
+        <p class="eval-note">Contribution is framed as an implementation response&mdash;not a claim of universal research novelty.</p>
       </div>
     </section>
 
     <!-- 7 ─ Methodology -->
-    <section class="slide" aria-label="Slide 7 of 18: Methodology" aria-hidden="true">
+    <section class="slide" aria-label="Slide 7 of 20: Methodology" aria-hidden="true">
       <div class="slide-content">
         <h2>Methodology</h2>
         <p class="slide-subtitle">Adapted CRISP-DM for iterative RAG system development</p>
@@ -1043,7 +1445,7 @@
     </section>
 
     <!-- 8 ─ System Architecture and Technology Stack -->
-    <section class="slide" aria-label="Slide 8 of 18: System Architecture and Technology Stack" aria-hidden="true">
+    <section class="slide" aria-label="Slide 8 of 20: System Architecture and Technology Stack" aria-hidden="true">
       <div class="slide-content">
         <h2>System Architecture and Technology Stack</h2>
         <div class="arch-stack">
@@ -1051,7 +1453,7 @@
             <span class="arch-label">Frontend</span>
             <span class="arch-tech">Vue 3 + Vite</span>
           </div>
-          <div class="arch-connector">REST API</div>
+          <div class="arch-connector"><span class="arch-pill">REST API</span></div>
           <div class="arch-block backend">
             <span class="arch-label">Backend</span>
             <span class="arch-tech">Django 5.2</span>
@@ -1061,158 +1463,256 @@
               <div class="arch-service">Generation Service<small>Prompt construction, LLM routing</small></div>
             </div>
           </div>
-          <div class="arch-connector">Provider API</div>
+          <div class="arch-connector"><span class="arch-pill">Provider API</span></div>
           <div class="arch-block llm">
             <span class="arch-label">LLM Providers</span>
             <span class="arch-tech">Gemini &middot; OpenRouter &middot; llama.cpp</span>
           </div>
+      </div>
+    </section>
+
+    <!-- 9 ─ RAG Full Pipeline -->
+    <section class="slide" aria-label="Slide 9 of 20: RAG Full Pipeline" aria-hidden="true">
+      <div class="slide-content">
+        <h2>RAG Full Pipeline</h2>
+        <p class="slide-subtitle">From PDF upload to question answering — showing data transformations at every stage</p>
+
+        <div class="rag-pipeline">
+          <div class="rag-stage" style="--stage-color: #94a3b8;">
+            <div class="rag-icon">📄</div>
+            <div class="rag-title">PDF Upload</div>
+            <div class="rag-subtitle">User uploads lecture PDF</div>
+            <div class="rag-detail">Text extraction via pypdf</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #fbbf24;">
+            <div class="rag-icon">✂️</div>
+            <div class="rag-title">Chunking</div>
+            <div class="rag-subtitle">Text segmentation</div>
+            <div class="rag-detail">SmartChunker: paragraph → sentence → chunk (500 chars, 100 overlap)</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #38bdf8;">
+            <div class="rag-icon">🧮</div>
+            <div class="rag-title">Embedding</div>
+            <div class="rag-subtitle">Vector encoding</div>
+            <div class="rag-detail">MiniLM-L6-v2: text → 384-d normalized vector</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #a78bfa;">
+            <div class="rag-icon">📦</div>
+            <div class="rag-title">FAISS Index</div>
+            <div class="rag-subtitle">Vector storage</div>
+            <div class="rag-detail">IndexFlatIP (inner product) + L2 norm = cosine sim</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #4ade80;">
+            <div class="rag-icon">🔍</div>
+            <div class="rag-title">Query Embed</div>
+            <div class="rag-subtitle">Query encoding</div>
+            <div class="rag-detail">Same model encodes query → 384-d vector</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #fb923c;">
+            <div class="rag-icon">🎯</div>
+            <div class="rag-title">FAISS Search</div>
+            <div class="rag-subtitle">Vector retrieval</div>
+            <div class="rag-detail">Inner product search → Top-K most similar chunks</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #f472b6;">
+            <div class="rag-icon">📝</div>
+            <div class="rag-title">Context Build</div>
+            <div class="rag-subtitle">Context assembly</div>
+            <div class="rag-detail">[S1] source=X page=Y\n{text}</div>
+          </div>
+          <div class="rag-arrow">→</div>
+          <div class="rag-stage" style="--stage-color: #4ade80;">
+            <div class="rag-icon">🤖</div>
+            <div class="rag-title">LLM Generate</div>
+            <div class="rag-subtitle">Answer generation</div>
+            <div class="rag-detail">llama.cpp (localhost:8080/v1) → answer + citations</div>
+          </div>
         </div>
-        <div class="config-row" style="margin-top: 20px;">
-          <div class="config-card"><div class="config-value" style="font-size: 14px;">Vue 3 + Vite</div></div>
-          <div class="config-card"><div class="config-value" style="font-size: 14px;">Django 5.2</div></div>
-          <div class="config-card"><div class="config-value" style="font-size: 14px;">Sentence Transformers</div></div>
-          <div class="config-card"><div class="config-value" style="font-size: 14px;">FAISS + rank-bm25</div></div>
-          <div class="config-card"><div class="config-value" style="font-size: 14px;">Gemini / OpenRouter / llama.cpp</div></div>
+
+        <div class="rag-data-flow">
+          <h3>Data Flow at Each Stage</h3>
+          <div class="rag-data-row">
+            <div class="rag-data-card">
+              <div class="rag-data-label">AFTER CHUNKING</div>
+              <div class="rag-data-value">~50</div>
+              <div class="rag-data-desc">text chunks</div>
+            </div>
+            <div class="rag-data-card">
+              <div class="rag-data-label">AFTER EMBEDDING</div>
+              <div class="rag-data-value">50×384</div>
+              <div class="rag-data-desc">float matrix</div>
+            </div>
+            <div class="rag-data-card">
+              <div class="rag-data-label">AFTER SEARCH</div>
+              <div class="rag-data-value">Top-5</div>
+              <div class="rag-data-desc">relevant chunks</div>
+            </div>
+            <div class="rag-data-card">
+              <div class="rag-data-label">AFTER LLM</div>
+              <div class="rag-data-value">Answer</div>
+              <div class="rag-data-desc">+ citations</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- 9 ─ PDF Ingestion and Indexing -->
-    <section class="slide" aria-label="Slide 9 of 18: PDF Ingestion and Indexing" aria-hidden="true">
+    <!-- 10 ─ Hybrid Retrieval Strategy -->
+    <section class="slide" aria-label="Slide 10 of 20: Hybrid Retrieval Strategy" aria-hidden="true">
       <div class="slide-content">
-        <h2>PDF Ingestion and Indexing</h2>
-        <div class="flow-section">
-          <div class="flow-row">
-            <div class="flow-box">Validate PDF</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Extract page text</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Create 500 / 100 chunks</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Generate 384-d embeddings</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box highlight">Persist FAISS index</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">Refresh hybrid index</div>
-          </div>
-        </div>
-        <p class="prompt-note" style="margin-top: 18px;"><strong>Note:</strong> Source filename and page metadata are retained for citations.</p>
-      </div>
-    </section>
+        <h2>Hybrid Retrieval Strategy</h2>
+        <p class="slide-subtitle">Combining lexical and semantic search for more complete evidence discovery</p>
 
-    <!-- 10 ─ Retrieval and Answer-Generation Flow -->
-    <section class="slide" aria-label="Slide 10 of 18: Retrieval and Answer-Generation Flow" aria-hidden="true">
-      <div class="slide-content">
-        <h2>Retrieval and Answer-Generation Flow</h2>
-        <div class="flow-section">
-          <div class="flow-row">
-            <div class="flow-box">User question</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">BM25 top 20 + FAISS top 20</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box highlight">RRF fusion (k = 60)</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">optional cross-encoder reranking</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">final top 5 contexts</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box">configured LLM</div>
-            <div class="flow-arrow">&rarr;</div>
-            <div class="flow-box highlight">answer + source snippets</div>
+        <div class="hybrid-flow">
+          <!-- Row 1: Two input cards + plus -->
+          <div class="hybrid-row">
+            <div class="hybrid-card" style="--stage-color: #b45309;">
+              <div class="hybrid-card-title">BM25 Lexical Retrieval</div>
+              <div class="hybrid-card-desc">Top 20 candidates</div>
+            </div>
+            <div class="hybrid-plus">+</div>
+            <div class="hybrid-card" style="--stage-color: #38bdf8;">
+              <div class="hybrid-card-title">FAISS Dense Retrieval</div>
+              <div class="hybrid-card-desc">Top 20 candidates</div>
+            </div>
+          </div>
+
+          <!-- Arrow down -->
+          <div class="hybrid-arrow">↓</div>
+
+          <!-- Row 2: RRF Fusion (centered, highlighted) -->
+          <div class="hybrid-row">
+            <div class="hybrid-card rrf">
+              <div class="hybrid-card-title">RRF Fusion (k=60)</div>
+              <div class="hybrid-card-desc">Reciprocal Rank Fusion</div>
+            </div>
+          </div>
+          <div class="hybrid-note">Merges and reranks BM25 and FAISS results by rank position — passages ranked highly by both methods rise to the top</div>
+
+          <!-- Arrow down -->
+          <div class="hybrid-arrow">↓</div>
+
+          <!-- Row 3: Output cards -->
+          <div class="hybrid-row">
+            <div class="hybrid-card" style="--stage-color: #6b8a7a;">
+              <div class="hybrid-card-title">Top 5 Contexts</div>
+              <div class="hybrid-card-desc">Best evidence passages</div>
+            </div>
+            <div class="hybrid-arrow">→</div>
+            <div class="hybrid-card output">
+              <div class="hybrid-card-title">Answer + Citations</div>
+              <div class="hybrid-card-desc">Grounded response with sources</div>
+            </div>
           </div>
         </div>
-        <p class="prompt-note" style="margin-top: 18px;"><strong>Note:</strong> Reranker is currently disabled in <code>rag_config.json</code>.</p>
       </div>
     </section>
 
     <!-- 11 ─ Core Technical Design -->
-    <section class="slide" aria-label="Slide 11 of 18: Core Technical Design" aria-hidden="true">
+    <section class="slide" aria-label="Slide 11 of 20: Core Technical Design" aria-hidden="true">
       <div class="slide-content">
         <h2>Core Technical Design</h2>
-        <div class="metrics-grid">
-          <article class="metric-card">
+        <div class="pipeline-flow">
+          <article class="pipeline-step">
+            <div class="pipeline-icon">📄</div>
             <div class="metric-name">Text preparation</div>
             <div class="metric-value">500 / 100</div>
-            <div class="metric-desc">Current PDF indexing path: chunk size / overlap</div>
+            <div class="metric-desc">chunk size / overlap</div>
           </article>
-          <article class="metric-card">
+          <div class="pipeline-arrow">→</div>
+          <article class="pipeline-step">
+            <div class="pipeline-icon">🧮</div>
             <div class="metric-name">Embedding</div>
             <div class="metric-value">384-d</div>
-            <div class="metric-desc">all-MiniLM-L6-v2 sentence vectors</div>
+            <div class="metric-desc">sentence vectors</div>
           </article>
-          <article class="metric-card">
+          <div class="pipeline-arrow">→</div>
+          <article class="pipeline-step">
+            <div class="pipeline-icon">🔍</div>
             <div class="metric-name">Candidate retrieval</div>
             <div class="metric-value">20 + 20</div>
-            <div class="metric-desc">BM25 and dense candidates before fusion</div>
+            <div class="metric-desc">BM25 + dense fusion</div>
           </article>
-          <article class="metric-card">
+          <div class="pipeline-arrow">→</div>
+          <article class="pipeline-step">
+            <div class="pipeline-icon">⚡</div>
             <div class="metric-name">Generation context</div>
             <div class="metric-value">Top 5</div>
-            <div class="metric-desc">Fused evidence supplied to the configured LLM</div>
+            <div class="metric-desc">evidence for LLM</div>
           </article>
         </div>
       </div>
     </section>
 
     <!-- 12 ─ Interface and User Workflow -->
-    <section class="slide" aria-label="Slide 12 of 18: Interface and User Workflow" aria-hidden="true">
+    <section class="slide" aria-label="Slide 12 of 20: Interface and User Workflow" aria-hidden="true">
       <div class="slide-content">
         <h2>Interface and User Workflow</h2>
-        <div class="slide-illustration screenshot">
-          <img src="screenshots/01-main-ui.png" alt="Actual application UI showing three-panel layout with sources, chat, and studio panels">
-        </div>
-        <div class="steps" style="margin-top: 16px;">
-          <div class="step"><div class="step-num">1</div><p>Upload lecture notes</p></div>
-          <div class="step"><div class="step-num">2</div><p>Select sources</p></div>
-          <div class="step"><div class="step-num">3</div><p>Ask a question</p></div>
-          <div class="step"><div class="step-num">4</div><p>Inspect citations and snippets</p></div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+          <img src="images/slide-12-main-ui.png" alt="Application UI showing workflow: Upload Sources, Select Sources, Ask Question, Question Suggestions, Future Feature" style="width:100%;max-height:70vh;object-fit:contain;">
         </div>
       </div>
     </section>
 
     <!-- 13 ─ Chat Demonstration -->
-    <section class="slide" aria-label="Slide 13 of 18: Chat Demonstration" aria-hidden="true">
+    <section class="slide" aria-label="Slide 13 of 20: Chat Demonstration" aria-hidden="true">
       <div class="slide-content">
         <h2>Chat Demonstration</h2>
         <p class="slide-subtitle">Illustrative interaction</p>
         <div class="slide-illustration screenshot">
-          <img src="screenshots/04-chat-typing.png" alt="Chat interface showing user typing a question about reasoning in AI">
-        </div>
-        <div class="chat-demo">
-          <div class="chat-msg user">
-            <strong>You:</strong> What is gradient descent and how does it update model weights?
-          </div>
-          <div class="chat-msg assistant">
-            <strong>Assistant:</strong> Gradient descent is an optimization algorithm that minimizes the cost function by iteratively adjusting parameters in the direction of steepest descent. The weight update rule is &theta; = &theta; &minus; &alpha;&nabla;J(&theta;), where &alpha; is the learning rate. <strong>[S1]</strong> The algorithm computes partial derivatives for each weight and applies updates after each batch or epoch. <strong>[S2]</strong>
-          </div>
-          <div class="sources-box">
-            <strong>Answer evidence:</strong> lecture3.pdf &mdash; p.12 and lecture5.pdf &mdash; p.8
-          </div>
+          <video src="2026-06-22%2015-55-37.mp4" controls autoplay muted playsinline style="width:100%;max-height:360px;object-fit:contain;display:block;"></video>
         </div>
       </div>
     </section>
 
     <!-- 14 ─ Evaluation Method — RAGAS -->
-    <section class="slide" aria-label="Slide 14 of 18: Evaluation Method — RAGAS" aria-hidden="true">
+    <section class="slide" aria-label="Slide 14 of 20: Evaluation Framework &amp; Model Setup" aria-hidden="true">
       <div class="slide-content">
-        <h2>Evaluation Method &mdash; RAGAS</h2>
-        <p class="slide-subtitle">Four complementary dimensions scored on the same 25 question/reference pairs</p>
-        <div class="metrics-grid">
+        <h2>Evaluation Framework &amp; Model Setup</h2>
+        <p class="slide-subtitle">Four complementary RAGAS dimensions scored on 25 Q&amp;A pairs</p>
+        <div class="model-grid">
+          <article class="model-card">
+            <div class="model-label">Test Data Generation</div>
+            <div class="model-name">Qwen 2.5 3B</div>
+            <div class="model-desc">Generates the 25 Q&amp;A pairs used as evaluation samples.</div>
+          </article>
+          <article class="model-card">
+            <div class="model-label">RAG Inference</div>
+            <div class="model-name">Llama 3.2 3B</div>
+            <div class="model-desc">Retrieves context and generates the final answers for test queries.</div>
+          </article>
+          <article class="model-card">
+            <div class="model-label">Evaluation Judge</div>
+            <div class="model-name">NVIDIA Nemotron 3 Ultra</div>
+            <div class="model-desc">Auto-scoring RAGAS metrics via NVIDIA API as a reference LLM judge.</div>
+          </article>
+        </div>
+        <div class="metrics-grid" style="margin-top:14px;">
           <div class="metric-card">
             <div class="metric-name">Faithfulness</div>
-            <div class="metric-desc">Are answer claims supported by retrieved context?</div>
+            <div class="metric-formula"><code>Faithfulness = N(supported claims) / N(total claims)</code></div>
+            <div class="metric-desc">Measures whether the answer is grounded in the retrieved context.</div>
           </div>
           <div class="metric-card">
             <div class="metric-name">Answer relevancy</div>
-            <div class="metric-desc">Does the response directly address the question?</div>
+            <div class="metric-formula"><code>Answer Relevancy = CosineSim(Embed(Q), Embed(A))</code></div>
+            <div class="metric-desc">Assesses how directly the response addresses the user's question.</div>
           </div>
           <div class="metric-card">
             <div class="metric-name">Context precision</div>
-            <div class="metric-desc">How much retrieved evidence is relevant?</div>
+            <div class="metric-formula"><code>Precision@k = |Retrieved ∩ Relevant| / |Retrieved|</code></div>
+            <div class="metric-desc">Evaluates the accuracy of the retrieved chunks containing relevant evidence.</div>
           </div>
           <div class="metric-card">
             <div class="metric-name">Context recall</div>
-            <div class="metric-desc">How much required evidence was retrieved?</div>
+            <div class="metric-formula"><code>Recall@k = |Retrieved ∩ Relevant| / |GroundTruth|</code></div>
+            <div class="metric-desc">Measures if all required evidence was successfully retrieved.</div>
           </div>
         </div>
         <p class="eval-note">Scores range from 0 to 1; higher is better. Values are summarized on the next slide.</p>
@@ -1220,18 +1720,18 @@
     </section>
 
     <!-- 15 ─ RAGAS Results -->
-    <section class="slide" aria-label="Slide 15 of 18: RAGAS Results" aria-hidden="true">
+    <section class="slide" aria-label="Slide 15 of 20: RAGAS Results" aria-hidden="true">
       <div class="slide-content">
         <h2>RAGAS Results</h2>
         <div class="chart-series-data" hidden>
           <span data-series="baseline" data-values="0.85,0.86,0.67,0.84"></span>
-          <span data-series="smart-chunking" data-values="0.59,0.60,0.29,0.24"></span>
-          <span data-series="enhanced-retrieval" data-values="0.65,0.80,0.53,0.58"></span>
+          <span data-series="enhanced-retrieval" data-values="0.61,0.84,0.54,0.56"></span>
+          <span data-series="smart-chunking" data-values="0.88,0.87,0.73,0.82"></span>
         </div>
         <div class="chart-legend">
-          <span class="legend-item"><span class="legend-swatch" style="background:#a8a29e;"></span>Original baseline</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:var(--accent);"></span>Smart chunking</span>
-          <span class="legend-item"><span class="legend-swatch" style="background:#6b8a7a;"></span>Enhanced retrieval</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#a8a29e;"></span>Baseline</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#6b8a7a;"></span>Enhanced Retrieval</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:var(--accent);"></span>Smart Chunker v2</span>
         </div>
         <div class="chart-layout">
           <div class="ragas-chart">
@@ -1241,23 +1741,23 @@
             <div class="chart-plot">
               <div class="chart-group">
                 <div class="chart-bar baseline" style="height:85%"><span>0.85</span></div>
-                <div class="chart-bar smart" style="height:59%"><span>0.59</span></div>
-                <div class="chart-bar enhanced" style="height:65%"><span>0.65</span></div>
+                <div class="chart-bar enhanced" style="height:61%"><span>0.61</span></div>
+                <div class="chart-bar smart" style="height:88%"><span>0.88</span></div>
               </div>
               <div class="chart-group">
                 <div class="chart-bar baseline" style="height:86%"><span>0.86</span></div>
-                <div class="chart-bar smart" style="height:60%"><span>0.60</span></div>
-                <div class="chart-bar enhanced" style="height:80%"><span>0.80</span></div>
+                <div class="chart-bar enhanced" style="height:84%"><span>0.84</span></div>
+                <div class="chart-bar smart" style="height:87%"><span>0.87</span></div>
               </div>
               <div class="chart-group">
                 <div class="chart-bar baseline" style="height:67%"><span>0.67</span></div>
-                <div class="chart-bar smart" style="height:29%"><span>0.29</span></div>
-                <div class="chart-bar enhanced" style="height:53%"><span>0.53</span></div>
+                <div class="chart-bar enhanced" style="height:54%"><span>0.54</span></div>
+                <div class="chart-bar smart" style="height:73%"><span>0.73</span></div>
               </div>
               <div class="chart-group">
                 <div class="chart-bar baseline" style="height:84%"><span>0.84</span></div>
-                <div class="chart-bar smart" style="height:24%"><span>0.24</span></div>
-                <div class="chart-bar enhanced" style="height:58%"><span>0.58</span></div>
+                <div class="chart-bar enhanced" style="height:56%"><span>0.56</span></div>
+                <div class="chart-bar smart" style="height:82%"><span>0.82</span></div>
               </div>
             </div>
             <div class="chart-labels">
@@ -1268,73 +1768,115 @@
             </div>
           </div>
           <div>
-            <div class="finding-callout"><strong>Recovered after retrieval changes:</strong> enhanced retrieval exceeded the smart-chunking run on all four metrics.</div>
-            <div class="finding-callout"><strong>Baseline still strongest:</strong> the original run remained highest overall, so later changes are not presented as a universal improvement.</div>
+            <div class="finding-callout"><strong>Smart Chunker v2 leads overall:</strong> best on 3/4 metrics — avg 0.83 vs baseline 0.80.</div>
+            <div class="finding-callout"><strong>Enhanced Retrieval regressed:</strong> retrieval failures on 4/25 questions returned empty contexts.</div>
             <p class="eval-note">Means recalculated from 25 identical question/reference pairs per run.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 16 ─ Findings and Discussion -->
-    <section class="slide" aria-label="Slide 16 of 18: Findings and Discussion" aria-hidden="true">
+    <!-- 16 ─ Test Dataset -->
+    <section class="slide" aria-label="Slide 16 of 20: Test Dataset" aria-hidden="true">
       <div class="slide-content">
-        <h2>Findings and Discussion</h2>
+        <h2>Test Dataset</h2>
+        <p class="slide-subtitle">25 question/reference pairs from lecture notes on Intelligent Agents &amp; Agentic AI</p>
+        <div class="dataset-table-wrap">
+          <table class="dataset-table">
+            <thead>
+              <tr><th>#</th><th>Question</th><th>Ground Truth</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>1</td><td>What is the primary goal of modern AI according to the lecture?</td><td>Modern AI = Goal-driven collaboration</td></tr>
+              <tr><td>2</td><td>What are the three key features of an agent according to the lecture?</td><td>An agent is a computer system that is capable of independent (autonomous) action on behalf of its user or owner</td></tr>
+              <tr><td>3</td><td>What was the main focus of the reactive agents in the 1990s era?</td><td>Reactive agents in the 1990s era were Subsumption robots, which respond to stimuli</td></tr>
+              <tr><td>4</td><td>What does the evolution towards agentic AI bring us, according to the lecture?</td><td>The ability of computer systems to act independently, the ability of computer systems to act in a way that represents our best interests while interacting with other humans or systems</td></tr>
+              <tr><td>5</td><td>What are some examples of generative AI models that modern agents may use, according to the lecture?</td><td>Modern agents may use generative AI models to reason, adapt to context, and create solutions without explicit re-programming</td></tr>
+              <tr><td>6</td><td>What is the main point about agents being autonomous?</td><td>The main point about agents is they are autonomous: capable of independent action.</td></tr>
+              <tr><td>7</td><td>What types of behaviour does an intelligent agent typically exhibit?</td><td>An intelligent agent is a computer system capable of flexible autonomous action in some environment. It exhibits 3 types of behaviour: reactive, pro-active, and social ability.</td></tr>
+              <tr><td>8</td><td>Why is a reactive system considered easy to build for fixed environments?</td><td>If a program&rsquo;s environment is guaranteed to be fixed, the program need never worry about its own success or failure. The real world is not like that: most environments are dynamic and information is incomplete.</td></tr>
+              <tr><td>9</td><td>What does proactiveness involve for agents?</td><td>Pro-activeness: generating and attempting to achieve goals; not driven solely by events; taking the initiative and recognising opportunities.</td></tr>
+              <tr><td>10</td><td>What is the difference between objects and agents, and how do agents differ from objects?</td><td>Agents are autonomous: agents embody stronger notion of autonomy than objects, and in particular, they decide for themselves whether or not to perform an action on request from another agent. Agents are smart: agents are capable of flexible (reactive, pro-active, social) behaviour &ndash; the standard object-oriented model has nothing to say about such types of behaviour. Agents are active: agents are not passive service providers; a multi-agent system is inherently multi-threaded, in that each agent is assumed to have at least one thread of active control. Objects do it because they have to! Objects do it for free! Agents do it because they want to! Agents do it for personal gain!</td></tr>
+              <tr><td>11</td><td>What was the classical approach to building agents known as?</td><td>The classical approach to building agents was known as symbolic AI.</td></tr>
+              <tr><td>12</td><td>According to the lecture, what is the underlying problem with knowledge representation and reasoning?</td><td>The underlying problem with knowledge representation / reasoning lies with the complexity of symbol manipulation algorithms.</td></tr>
+              <tr><td>13</td><td>What is the key idea of agent-oriented programming as introduced by Yoav Shoham?</td><td>The key idea of agent-oriented programming as introduced by Yoav Shoham is to directly program agents in terms of intentional notions like belief, desire, and intention, and to adopt the same abstraction as humans.</td></tr>
+              <tr><td>14</td><td>What is the key component of an agent in AGENT0 that determines how the agent acts?</td><td>The key component, which determines how the agent acts, is the commitment rule set.</td></tr>
+              <tr><td>15</td><td>In AGENT0, what is the difference between a private action and a communicative action?</td><td>Actions may be: Private: An externally executed computation; Communicative: Sending messages.</td></tr>
+              <tr><td>16</td><td>What is the primary purpose of practical reasoning according to the lecture?</td><td>Practical reasoning is reasoning directed towards actions &mdash; the process of figuring out what to do.</td></tr>
+              <tr><td>17</td><td>What does Bratman suggest about practical reasoning?</td><td>Bratman suggests that practical reasoning is a matter of weighing conflicting considerations for and against competing options, where the relevant considerations are provided by what the agent desires/values/cares about and what the agent believes.</td></tr>
+              <tr><td>18</td><td>Explain the distinction between practical reasoning and theoretical reasoning as discussed in the lecture.</td><td>Practical reasoning is reasoning directed towards actions &mdash; the process of figuring out what to do, while theoretical reasoning is directed towards belief.</td></tr>
+              <tr><td>20</td><td>What is the role of intentions in practical reasoning, as explained in the lecture?</td><td>Intention poses problems for agents, who need to determine ways of achieving them. Intention provides a &lsquo;filter&rsquo; for adopting other intentions which must not conflict.</td></tr>
+              <tr><td>20</td><td>What does the &lsquo;side effect or package deal problem&rsquo; refer to in the context of practical reasoning?</td><td>The side effect or package deal problem refers to the fact that I may believe that going to the dentist involves pain, and I may also intend to go to the dentist &mdash; but this does not imply that I intend to suffer pain!</td></tr>
+              <tr><td>21</td><td>What is the goal in the blocks world problem?</td><td>The aim is to generate a plan for the robot arm to build towers out of blocks.</td></tr>
+              <tr><td>22</td><td>What is the role of the Stanford Research Institute Problem Solver (STRIPS) in planning?</td><td>Use first-order logic and theorem proving to plan strategies from start to goal.</td></tr>
+              <tr><td>23</td><td>How does an agent select an intention to achieve after observing the world?</td><td>The agent selects an intention to achieve that would have been optimal at the time it observed the world.</td></tr>
+              <tr><td>24</td><td>What does the filter function in option generation and filtering do?</td><td>In order to select between competing options, an agent uses a filter() function.</td></tr>
+              <tr><td>25</td><td>What is the representation of the goal in the STRIPS planning system?</td><td>Represented by logic, the STRIPS planning system uses first-order logic and theorem proving to plan strategies from start to goal.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 17 ─ Future Directions & Key Decisions -->
+    <section class="slide" aria-label="Slide 17 of 20: Future Directions &amp; Key Decisions" aria-hidden="true">
+      <div class="slide-content">
+        <h2>Future Directions &amp; Key Decisions</h2>
         <div class="metrics-grid">
           <div class="metric-card">
-            <div class="metric-name">Grounding remains the priority</div>
-            <div class="metric-desc">Faithfulness recovered from 0.59 to 0.65, but remained below the 0.85 baseline.</div>
+            <div class="metric-name">Embedding Model Selection</div>
+            <div class="metric-desc"><span class="label-current">Current:</span> all-MiniLM-L6-v2. <span class="label-tradeoff">Trade-off:</span> Upgrading to bge-large boosts recall accuracy but increases memory usage and vector retrieval latency. Needs balance between precision and speed.</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">Retrieval changes involve trade-offs</div>
-            <div class="metric-desc">Context precision and recall improved over the smart-chunking run without surpassing the original evaluation.</div>
+            <div class="metric-name">Add a Reranker Stage</div>
+            <div class="metric-desc"><span class="label-current">Current:</span> RRF fusion output. <span class="label-tradeoff">Trade-off:</span> Introducing a dedicated reranker (e.g., Cohere) improves context precision significantly, but adds an extra inference step, impacting real-time response.</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">One change at a time</div>
-            <div class="metric-desc">Future experiments should isolate chunking, retrieval, reranking, and prompting so effects can be attributed.</div>
+            <div class="metric-name">LLM Prompt Optimization</div>
+            <div class="metric-desc"><span class="label-current">Current:</span> Standard system prompts. <span class="label-tradeoff">Trade-off:</span> Optimized prompts can effectively reduce hallucinations by enforcing strict grounding. However, overly rigid prompts may reduce the flexibility and naturalness of the responses.</div>
           </div>
           <div class="metric-card">
-            <div class="metric-name">Evaluation is iterative</div>
-            <div class="metric-desc">Retain the best configuration only after repeated runs and human review of retrieved evidence.</div>
+            <div class="metric-name">Upgrade the LLM Model</div>
+            <div class="metric-desc"><span class="label-current">Current:</span> Gemma / OpenRouter / Local. <span class="label-tradeoff">Trade-off:</span> Stronger models (e.g., GPT-4o) enhance multi-step reasoning capabilities, but drastically increase API costs and local inference latency.</div>
           </div>
         </div>
       </div>
     </section>
 
     <!-- 17 ─ Limitations and Future Work -->
-    <section class="slide" aria-label="Slide 17 of 18: Limitations and Future Work" aria-hidden="true">
+    <section class="slide" aria-label="Slide 18 of 20: Limitations and Future Work" aria-hidden="true">
       <div class="slide-content">
         <h2>Limitations and Future Work</h2>
-        <div class="two-col">
-          <div class="col">
-            <h3>Current limitations</h3>
+        <div class="two-col-card">
+          <div class="limit-card">
+            <div class="limit-card-header">Current Limitations</div>
             <ul class="feature-list">
-              <li>Text-readable PDFs only</li>
-              <li>Evaluation uses 25 question/reference pairs</li>
-              <li>Answer quality depends on retrieved evidence and the configured LLM</li>
-              <li>Local models require suitable hardware</li>
+              <li><span class="li-title">Text-readable PDFs only</span><span class="li-desc">Current system cannot process scanned documents or image-based lecture notes, limiting input scope to digitally generated texts.</span></li>
+              <li><span class="li-title">Evaluation uses 25 question/reference pairs</span><span class="li-desc">Sample size is statistically small; results may not fully generalize across broader course topics.</span></li>
+              <li><span class="li-title">Answer quality depends on retrieved evidence and LLM</span><span class="li-desc">If hybrid retrieval misses a crucial chunk, the LLM has no way to infer the correct answer.</span></li>
+              <li><span class="li-title">Local models require suitable hardware</span><span class="li-desc">Llama 3.2 3B and embedding models demand GPU resources, making pure local deployment difficult for student laptops.</span></li>
             </ul>
           </div>
-          <div class="col">
-            <h3>Future work</h3>
-            <ul class="feature-list future">
-              <li>OCR and layout-aware parsing</li>
-              <li>Broader multi-course evaluation with human review</li>
-              <li>Tuned reranking and retrieval ablations</li>
-              <li>Authentication and LMS integration</li>
+          <div class="future-card">
+            <div class="future-card-header">Future Work</div>
+            <ul class="feature-list">
+              <li><span class="li-title">OCR and layout-aware parsing</span><span class="li-desc">Integrating tools like PaddleOCR to support scanned PDFs, and parsing tables/diagrams as vectorizable text.</span></li>
+              <li><span class="li-title">Broader multi-course evaluation with human review</span><span class="li-desc">Expanding the test set to cover multiple subjects, and incorporating human judgment to validate RAGAS scoring.</span></li>
+              <li><span class="li-title">Tuned reranking and retrieval ablations</span><span class="li-desc">Conducting systematic ablation studies, introducing a lightweight reranker (e.g., BGE-Reranker) to push context precision further.</span></li>
+              <li><span class="li-title">Expand Studio Panel capabilities</span><span class="li-desc">Adding a summarize module, generate MCQ modules, and other AI-powered tools directly in the Studio Panel to enhance learning workflows.</span></li>
             </ul>
           </div>
+        </div>
+        <div class="roadmap-bar">
+          <strong>Roadmap for Production:</strong> Addressing these limitations will transition the system from a prototype research tool into a practical, scalable academic assistant for real university courses.
         </div>
       </div>
     </section>
 
     <!-- 18 ─ Conclusion -->
-    <section class="slide" aria-label="Slide 18 of 18: Conclusion" aria-hidden="true">
-      <div class="slide-content title-slide">
-        <div class="slide-illustration">
-          <img src="images/slide-18-conclusion.svg" alt="Professional closing image with achievement checkmarks">
-        </div>
-        <h2>Conclusion</h2>
+    <section class="slide" aria-label="Slide 19 of 20: Conclusion" aria-hidden="true">
+      <div class="slide-content">
+        <h2 style="font-size:clamp(28px,3.5vw,44px);margin-bottom:32px;">Conclusion</h2>
         <div class="conclusion-points">
           <div class="conclusion-item">
             <div class="conclusion-check">&#10003;</div>
@@ -1342,23 +1884,27 @@
           </div>
           <div class="conclusion-item">
             <div class="conclusion-check">&#10003;</div>
-            <p>Combined semantic and keyword retrieval with configurable cloud or local generation.</p>
+            <p>Integrated semantic and keyword hybrid retrieval with configurable cloud or local generation.</p>
           </div>
           <div class="conclusion-item">
             <div class="conclusion-check">&#10003;</div>
-            <p>Used RAGAS evidence to identify both strengths and the next retrieval improvements.</p>
+            <p>Evaluated using RAGAS metrics, successfully identifying strengths and clear directions for future retrieval improvements.</p>
           </div>
         </div>
-        <div class="thank-you">
-          <h3>Thank You</h3>
-          <p>Questions &amp; Discussion</p>
-        </div>
+      </div>
+    </section>
+
+    <!-- 19 ─ Thank You -->
+    <section class="slide" aria-label="Slide 20 of 20: Thank You" aria-hidden="true">
+      <div class="slide-content" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;">
+        <h2 style="font-family:var(--font-heading);font-size:clamp(100px,5vw,60px);color:var(--accent);margin-bottom:12px;">Thank You</h2>
+        <p style="font-size:clamp(14px,1.4vw,20px);color:var(--text-muted);">Questions &amp; Discussion</p>
       </div>
     </section>
 
   </div>
 
-  <div class="slide-counter"><span id="current">1</span> / <span id="total">18</span></div>
+  <div class="slide-counter"><span id="current">1</span> / <span id="total">20</span></div>
   <div class="nav-hint">&larr; &rarr; &middot; Click margins or swipe to navigate</div>
 
   <script>

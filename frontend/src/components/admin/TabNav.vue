@@ -27,8 +27,8 @@ const emit = defineEmits(['update:activeTab'])
   display: flex;
   gap: 4px;
   padding: 8px 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--surface-container-low);
+  border-bottom: 1px solid var(--outline-variant);
   overflow-x: auto;
 }
 
@@ -48,7 +48,7 @@ const emit = defineEmits(['update:activeTab'])
 }
 
 .tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(128, 128, 128, 0.15);
   color: var(--text-main);
 }
 

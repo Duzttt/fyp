@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { useChatState } from '../../composables/useChatState'
 import ChatHeader from './ChatHeader.vue'
 import ChatMessageList from './ChatMessageList.vue'
@@ -23,6 +24,8 @@ const {
   selectedDocuments,
   hasSelection,
   sendMessage,
+  stopGenerating,
+  clearConversation,
   handleChunkClick,
   handleChunkRightClick,
   closePdfViewer,
@@ -30,8 +33,12 @@ const {
   navigateToMessage,
 } = useChatState()
 
-const handleSuggestionSelect = (questionText) => {
-  sendMessage(questionText)
+const suggestionsRef = ref(null)
+
+const handleSuggestionSelect = async (questionText) => {
+  await sendMessage(questionText)
+  // After a suggestion-driven question completes, generate a fresh batch
+  suggestionsRef.value?.refresh()
 }
 </script>
 
@@ -41,6 +48,8 @@ const handleSuggestionSelect = (questionText) => {
       :has-selection="hasSelection"
       :selected-count="selectedCount"
       :selected-documents="selectedDocuments"
+      :has-messages="messages.length > 0"
+      @clear="clearConversation"
     />
 
     <ChatMessageList
@@ -56,6 +65,7 @@ const handleSuggestionSelect = (questionText) => {
 
     <div v-if="messages.length > 0" class="chat-suggestions-wrap">
       <QuestionSuggestions
+        ref="suggestionsRef"
         :selected-documents="selectedDocuments"
         :disabled="isLoading"
         @question-select="handleSuggestionSelect"
@@ -65,6 +75,7 @@ const handleSuggestionSelect = (questionText) => {
     <ChatInput
       :is-loading="isLoading"
       @send="sendMessage"
+      @stop="stopGenerating"
     />
 
     <div v-if="error" class="chat-error" role="alert">{{ error }}</div>

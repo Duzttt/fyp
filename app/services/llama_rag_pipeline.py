@@ -23,7 +23,7 @@ class LlamaRAGError(Exception):
 
 
 class LlamaRAGPipeline:
-    """LlamaIndex RAG管道.
+    """LlamaIndex RAG pipeline.
 
     Each instance configures the global LlamaIndex Settings.llm on construction.
     Create only one instance per provider to avoid global state conflicts.

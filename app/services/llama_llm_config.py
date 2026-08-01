@@ -2,6 +2,9 @@ from typing import Optional
 
 from llama_index.core import Settings
 
+from app.config import settings
+from app.services.runtime_llm import resolve_local_llm_urls
+
 __all__ = ["configure_llm", "LLMConfigError"]
 
 try:
@@ -35,7 +38,7 @@ def configure_llm(
     配置LlamaIndex LLM设置
 
     Args:
-        provider: LLM提供商 (gemini, openrouter, local)
+        provider: LLM提供商 (gemini, openrouter, local_llm)
         model: 模型名称
         api_key: API密钥
         base_url: API基础URL
@@ -59,14 +62,15 @@ def configure_llm(
             model=model or "anthropic/claude-3-haiku", api_key=api_key, **kwargs
         )
 
-    elif provider == "local":
+    elif provider == "local_llm":
         if OpenAILike is None:
             raise LLMConfigError(
                 "OpenAILike LLM not available. Install llama-index-llms-openai-like"
             )
+        _, api_base_url = resolve_local_llm_urls(base_url)
         Settings.llm = OpenAILike(
-            model=model or "qwen2.5:3b",
-            api_base=base_url or "http://localhost:8080/v1",
+            model=model or settings.LOCAL_LLM_MODEL,
+            api_base=api_base_url,
             api_key="not-needed",
             **kwargs,
         )

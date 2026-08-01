@@ -2,15 +2,14 @@
 
 import logging
 import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import requests
 
+from app.services.runtime_llm import resolve_local_llm_urls
 from django_app.models import QueryLog
 
 logger = logging.getLogger("llm")
-
-LOCAL_LLM_FAST_FALLBACK_MODEL = "qwen3.5:0.8b"
 
 # Models that support the 'think' parameter for reasoning/thinking output
 REASONING_MODELS = {
@@ -44,6 +43,11 @@ def _model_supports_thinking(model_name: str) -> bool:
         ):
             return True
     return False
+
+
+def _uses_enable_thinking(model_name: str) -> bool:
+    """MiniCPM-style templates control thinking via 'enable_thinking'."""
+    return "minicpm" in str(model_name).lower().strip()
 
 
 def _call_gemini(
@@ -128,6 +132,23 @@ def _call_openrouter(
     return choices[0]["message"]["content"]
 
 
+def _fetch_available_models(api_base_url: str) -> List[str]:
+    """Fetch available model IDs from llama.cpp /v1/models endpoint."""
+    try:
+        response = requests.get(f"{api_base_url}/models", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        models: List[str] = []
+        for item in data.get("data", []):
+            if isinstance(item, dict):
+                name = str(item.get("id") or "").strip()
+                if name and name not in models:
+                    models.append(name)
+        return models
+    except (requests.RequestException, ValueError, TypeError):
+        return []
+
+
 def _call_local_llm(
     messages: List[Dict[str, str]],
     model: str,
@@ -135,6 +156,8 @@ def _call_local_llm(
     timeout: int,
     **kwargs: Any,
 ) -> Union[str, Tuple[str, Optional[str]]]:
+    _, api_base_url = resolve_local_llm_urls(base_url)
+
     payload: Dict[str, Any] = {
         "model": model,
         "messages": messages,
@@ -147,29 +170,37 @@ def _call_local_llm(
 
     return_thinking = kwargs.get("return_thinking", False)
     use_thinking = return_thinking and _model_supports_thinking(model)
+    # MiniCPM templates think by default; force No-Think mode for fast, grounded answers
+    # (enable_thinking=False, temperature=0.7, top_p=0.95 per model card).
+    no_think = _uses_enable_thinking(model)
 
     def _call_model_once(
         target_model: str, with_thinking: bool = True
     ) -> Union[str, Tuple[str, Optional[str]]]:
         call_payload = dict(payload)
         call_payload["model"] = target_model
-        if with_thinking:
+        if no_think:
+            call_payload["enable_thinking"] = False
+            call_payload.setdefault("temperature", 0.7)
+            call_payload.setdefault("top_p", 0.95)
+        elif with_thinking:
             call_payload["think"] = True
 
         prompt_chars = sum(
             len(m.get("content", "")) for m in call_payload.get("messages", [])
         )
         logger.debug(
-            "LLM request | model=%s chars=%d max_tokens=%s think=%s",
+            "LLM request | model=%s chars=%d max_tokens=%s think=%s no_think=%s",
             target_model,
             prompt_chars,
             call_payload.get("max_tokens"),
             call_payload.get("think", False),
+            call_payload.get("enable_thinking", None),
         )
 
         try:
             response = requests.post(
-                f"{base_url.rstrip('/')}/v1/chat/completions",
+                f"{api_base_url}/chat/completions",
                 json=call_payload,
                 timeout=timeout,
             )
@@ -209,15 +240,22 @@ def _call_local_llm(
                 )
                 if with_thinking:
                     return _call_model_once(target_model, with_thinking=False)
+                if "not found" in response_body.lower():
+                    available = _fetch_available_models(api_base_url)
+                    if available:
+                        fallback = available[0]
+                        logger.info(
+                            "Model %s not found, retrying with %s",
+                            target_model,
+                            fallback,
+                        )
+                        return _call_model_once(fallback, with_thinking=False)
             raise
 
     try:
         return _call_model_once(model, with_thinking=use_thinking)
     except requests.Timeout:
-        fallback_model = kwargs.get(
-            "fallback_model",
-            LOCAL_LLM_FAST_FALLBACK_MODEL,
-        )
+        fallback_model = kwargs.get("fallback_model")
         if fallback_model and str(fallback_model).strip() != str(model).strip():
             fallback_model_str = str(fallback_model).strip()
             fallback_use_thinking = return_thinking and _model_supports_thinking(
@@ -229,7 +267,10 @@ def _call_local_llm(
         raise
 
 
-_PROVIDER_DISPATCH = {
+LLMDispatchResult = Union[str, Tuple[str, Optional[str]]]
+LLMDispatch = Callable[..., LLMDispatchResult]
+
+_PROVIDER_DISPATCH: Dict[str, LLMDispatch] = {
     "gemini": _call_gemini,
     "openrouter": _call_openrouter,
     "local_llm": _call_local_llm,

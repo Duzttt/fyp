@@ -16,8 +16,9 @@ from app.services.local_rag import (
     generate,
     retrieve_with_faiss,
 )
+from app.services.runtime_llm import resolve_local_llm_urls
 
-from django_app.admin_utils import log_query
+from django_app.admin_utils import classify_query_type, log_query
 from django_app.views.helpers import (
     VALID_PROVIDERS,
     _build_runtime_llm_settings,
@@ -51,7 +52,11 @@ def ask_question(request: HttpRequest) -> JsonResponse:
 
     try:
         retrieved_sources = retrieve_with_faiss(
-            query=query, top_k=3, source_filter=source_filter
+            query=query,
+            top_k=3,
+            source_filter=source_filter,
+            similarity_threshold=settings.SIMILARITY_THRESHOLD,
+            reranker_enabled=settings.RERANKER_ENABLED,
         )
         context = build_context_from_sources(retrieved_sources)
         answer = generate(query=query, context=context)
@@ -112,13 +117,47 @@ def ask(request: HttpRequest) -> JsonResponse:
     llm_model = rag_config.get("llm_model") or runtime_settings["model"]
     temperature = rag_config.get("temperature", 0.7)
     similarity_threshold = float(rag_config.get("similarity_threshold", 0.6))
+    reranker_enabled = bool(rag_config.get("reranker_enabled", False))
+
+    # A/B test: assign this request to a variant and apply its config overrides.
+    ab_test = None
+    ab_variant = None
+    session_id = str(request.headers.get("X-Session-Id", ""))
+    try:
+        from django_app.views.admin import (
+            get_active_ab_test,
+            select_ab_variant,
+        )
+
+        ab_test = get_active_ab_test()
+        if ab_test:
+            ab_variant = select_ab_variant(ab_test, session_id)
+    except Exception:  # noqa: BLE001
+        ab_test = None
+        ab_variant = None
+
+    if ab_variant:
+        variant_config = ab_variant.get("config") or {}
+        if "top_k" in variant_config:
+            top_k = int(variant_config["top_k"])
+        if "temperature" in variant_config:
+            temperature = float(variant_config["temperature"])
+        if "similarity_threshold" in variant_config:
+            similarity_threshold = float(variant_config["similarity_threshold"])
+        if "reranker_enabled" in variant_config:
+            reranker_enabled = bool(variant_config["reranker_enabled"])
+
     started_at = time.perf_counter()
     retrieved_sources: List[Dict[str, Any]] = []
     log_id = None
 
     try:
         retrieved_sources = retrieve_with_faiss(
-            query=query, top_k=top_k, source_filter=source_filter
+            query=query,
+            top_k=top_k,
+            source_filter=source_filter,
+            similarity_threshold=similarity_threshold,
+            reranker_enabled=reranker_enabled,
         )
         context = build_context_from_sources(retrieved_sources)
         if not context.strip():
@@ -174,7 +213,7 @@ def ask(request: HttpRequest) -> JsonResponse:
             query=query,
             latency_ms=latency_ms,
             results_count=len(retrieved_sources),
-            query_type="other",
+            query_type=classify_query_type(query),
             cache_hit=False,
             top_k=int(top_k),
             similarity_threshold=similarity_threshold,
@@ -188,6 +227,30 @@ def ask(request: HttpRequest) -> JsonResponse:
     except Exception:  # noqa: BLE001
         pass
 
+    ab_test_info = None
+    try:
+        if ab_test and ab_variant:
+            from django_app.views.admin import record_ab_sample
+
+            avg_score = (
+                sum(float(r.get("score", 0)) for r in retrieved_sources)
+                / len(retrieved_sources)
+                if retrieved_sources
+                else 0
+            )
+            record_ab_sample(
+                ab_test["id"],
+                ab_variant.get("name", ""),
+                {"score": avg_score, "latency_ms": latency_ms},
+            )
+            ab_test_info = {
+                "test_id": ab_test["id"],
+                "test_name": ab_test.get("name", ""),
+                "variant": ab_variant.get("name", ""),
+            }
+    except Exception:  # noqa: BLE001
+        pass
+
     return JsonResponse(
         {
             "answer": answer,
@@ -195,6 +258,7 @@ def ask(request: HttpRequest) -> JsonResponse:
             "sources": source_files,
             "source_snippets": _build_source_snippets(retrieved_sources),
             "retrieved_chunks": _build_retrieved_chunks(retrieved_sources),
+            "ab_test": ab_test_info,
         }
     )
 
@@ -270,6 +334,25 @@ def settings_handler(request: HttpRequest) -> JsonResponse:
     if not model:
         return _error_response("Model cannot be empty", status=400)
 
+    if provider == "local_llm":
+        api_key = None
+        try:
+            _, api_url = resolve_local_llm_urls(settings.LOCAL_LLM_BASE_URL)
+            resp = requests.get(f"{api_url}/models", timeout=5)
+            resp.raise_for_status()
+            llm_models = [
+                item["id"]
+                for item in resp.json().get("data", [])
+                if isinstance(item, dict) and item.get("id")
+            ]
+            if llm_models and model not in llm_models:
+                return _error_response(
+                    f"Model '{model}' not found. Available: {llm_models}",
+                    status=400,
+                )
+        except (requests.RequestException, ValueError, TypeError):
+            pass
+
     data_to_store: Dict[str, Any] = {
         "provider": provider,
         "model": model,
@@ -326,7 +409,8 @@ def _fetch_local_models(
 ) -> List[str]:
     models: List[str] = []
     try:
-        response = requests.get(f"{base_url.rstrip('/')}/v1/models", timeout=5)
+        _, api_base_url = resolve_local_llm_urls(base_url)
+        response = requests.get(f"{api_base_url}/models", timeout=5)
         response.raise_for_status()
         payload = response.json()
         for item in payload.get("data", []):
@@ -399,7 +483,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
     configured_model = (
         requested_model or runtime_settings["model"] or settings.LOCAL_LLM_MODEL
     )
-    base_url = settings.LOCAL_LLM_BASE_URL.rstrip("/")
+    server_root, api_base_url = resolve_local_llm_urls(settings.LOCAL_LLM_BASE_URL)
     model_for_probe = (
         configured_model if provider == "local_llm" else settings.LOCAL_LLM_MODEL
     )
@@ -408,7 +492,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
     started_at = time.perf_counter()
 
     try:
-        health_resp = requests.get(f"{base_url}/health", timeout=5)
+        health_resp = requests.get(f"{server_root}/health", timeout=5)
         health_resp.raise_for_status()
         checks["health_ms"] = int((time.perf_counter() - started_at) * 1000)
     except requests.RequestException as exc:
@@ -418,7 +502,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
                 "detail": "Cannot reach llama.cpp server.",
                 "provider": provider,
                 "model": model_for_probe,
-                "base_url": base_url,
+                "base_url": server_root,
                 "checks": checks,
                 "error": str(exc),
             }
@@ -426,7 +510,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
 
     try:
         models_started = time.perf_counter()
-        models_resp = requests.get(f"{base_url}/v1/models", timeout=5)
+        models_resp = requests.get(f"{api_base_url}/models", timeout=5)
         models_resp.raise_for_status()
         checks["models_ms"] = int((time.perf_counter() - models_started) * 1000)
     except requests.RequestException as exc:
@@ -436,7 +520,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
                 "detail": "llama.cpp models endpoint is unreachable.",
                 "provider": provider,
                 "model": model_for_probe,
-                "base_url": base_url,
+                "base_url": server_root,
                 "checks": checks,
                 "error": str(exc),
             }
@@ -452,7 +536,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
             "temperature": 0,
         }
         generate_resp = requests.post(
-            f"{base_url}/v1/chat/completions",
+            f"{api_base_url}/chat/completions",
             json=generate_payload,
             timeout=20,
         )
@@ -471,7 +555,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
                 "detail": "llama.cpp is reachable but generation timed out.",
                 "provider": provider,
                 "model": model_for_probe,
-                "base_url": base_url,
+                "base_url": server_root,
                 "checks": checks,
             }
         )
@@ -482,7 +566,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
                 "detail": "llama.cpp is reachable but generation failed.",
                 "provider": provider,
                 "model": model_for_probe,
-                "base_url": base_url,
+                "base_url": server_root,
                 "checks": checks,
                 "error": str(exc),
             }
@@ -494,7 +578,7 @@ def llm_health_handler(request: HttpRequest) -> JsonResponse:
             "detail": "llama.cpp connectivity and generation checks passed.",
             "provider": provider,
             "model": model_for_probe,
-            "base_url": base_url,
+            "base_url": server_root,
             "checks": checks,
         }
     )
@@ -519,6 +603,8 @@ def update_rag_config(request: HttpRequest) -> JsonResponse:
     llm_model = str(payload.get("llm_model", default_model)).strip()
     top_k = int(payload.get("top_k", 3))
     temperature = float(payload.get("temperature", 0.7))
+    similarity_threshold = float(payload.get("similarity_threshold", 0.6))
+    reranker_enabled = bool(payload.get("reranker_enabled", False))
 
     if top_k < 1:
         top_k = 1
@@ -530,10 +616,17 @@ def update_rag_config(request: HttpRequest) -> JsonResponse:
     elif temperature > 2.0:
         temperature = 2.0
 
+    if similarity_threshold < 0.0:
+        similarity_threshold = 0.0
+    elif similarity_threshold > 1.0:
+        similarity_threshold = 1.0
+
     config = {
         "llm_model": llm_model,
         "top_k": top_k,
         "temperature": temperature,
+        "similarity_threshold": similarity_threshold,
+        "reranker_enabled": reranker_enabled,
     }
     _save_rag_config(config)
     return JsonResponse({"status": "success", "config": config})
@@ -592,6 +685,8 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             query=query,
             top_k=top_k,
             source_filter=None,
+            similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
+            reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
         )
         context = build_context_from_sources(retrieved_sources)
 
@@ -679,8 +774,13 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
         source_filter = [source_filter]
 
     try:
+        rag_config = _load_rag_config()
         results = retrieve_with_faiss(
-            query=query, top_k=top_k, source_filter=source_filter
+            query=query,
+            top_k=top_k,
+            source_filter=source_filter,
+            similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
+            reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
         )
     except LocalRAGError as exc:
         return _error_response(str(exc), status=503)
@@ -756,6 +856,8 @@ def compare_documents(request: HttpRequest) -> JsonResponse:
                 query=query,
                 top_k=top_k,
                 source_filter=[source],
+                similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
+                reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
             )
             context = build_context_from_sources(retrieved)
 

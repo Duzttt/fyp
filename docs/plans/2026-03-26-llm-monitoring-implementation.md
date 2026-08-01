@@ -79,7 +79,7 @@ Expected: FAIL with field errors (fields don't exist yet)
         max_length=20,
         blank=True,
         default="",
-        help_text="LLM provider: gemini / openrouter / local_qwen",
+        help_text="LLM provider: gemini / openrouter / local_llm",
     )
 
     llm_status = models.CharField(
@@ -310,7 +310,7 @@ def _call_openrouter(
     return choices[0]["message"]["content"]
 
 
-def _call_local_qwen(
+def _call_local_llm(
     messages: List[Dict[str, str]],
     model: str,
     base_url: str,
@@ -322,7 +322,6 @@ def _call_local_qwen(
         "model": model,
         "messages": messages,
         "stream": False,
-        "keep_alive": kwargs.get("keep_alive", "30m"),
     }
     if "temperature" in kwargs:
         payload["options"] = {"temperature": kwargs["temperature"]}
@@ -337,7 +336,7 @@ def _call_local_qwen(
     data = response.json()
     message = data.get("message", {}).get("content")
     if not message:
-        raise ValueError("Invalid response from local Qwen model")
+        raise ValueError("Invalid response from local model")
 
     return str(message).strip()
 
@@ -345,7 +344,7 @@ def _call_local_qwen(
 _PROVIDER_DISPATCH = {
     "gemini": _call_gemini,
     "openrouter": _call_openrouter,
-    "local_qwen": _call_local_qwen,
+    "local_llm": _call_local_llm,
 }
 
 
@@ -362,7 +361,7 @@ def call_llm(
     Centralized LLM call with timing and database logging.
 
     Args:
-        provider: "gemini" / "openrouter" / "local_qwen"
+        provider: "gemini" / "openrouter" / "local_llm"
         model: Model name
         call_type: "qa" / "summary" / "suggestion" / "citation"
         messages: Standard message format [{"role": "system", "content": ...}, ...]
@@ -444,12 +443,12 @@ git commit -m "feat: add centralized call_llm() wrapper with logging"
 
 Review `app/services/local_rag.py` lines 88-210 to understand current patterns.
 
-**Step 2: Replace `generate_with_local_qwen()`**
+**Step 2: Replace `generate_with_local_llm()`**
 
-将 `generate_with_local_qwen()` 函数改为调用 `call_llm()`：
+将 `generate_with_local_llm()` 函数改为调用 `call_llm()`：
 
 ```python
-def generate_with_local_qwen(
+def generate_with_local_llm(
     query: str,
     context: str,
     model: Optional[str] = None,
@@ -459,21 +458,20 @@ def generate_with_local_qwen(
     if not context.strip():
         return "No usable reference material was retrieved, so I cannot answer based on evidence."
 
-    resolved_model = model or settings.LOCAL_QWEN_MODEL
-    resolved_base_url = base_url or settings.LOCAL_QWEN_BASE_URL
-    resolved_timeout = timeout_seconds or settings.LOCAL_QWEN_TIMEOUT_SECONDS
+    resolved_model = model or settings.LOCAL_LLM_MODEL
+    resolved_base_url = base_url or settings.LOCAL_LLM_BASE_URL
+    resolved_timeout = timeout_seconds or settings.LOCAL_LLM_TIMEOUT_SECONDS
 
     from app.services.llm_client import call_llm
 
     return call_llm(
-        provider="local_qwen",
+        provider="local_llm",
         model=resolved_model,
         call_type="qa",
         messages=build_rag_messages(query, context),
         timeout=resolved_timeout,
         query_text=query,
         base_url=resolved_base_url,
-        keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
     )
 ```
 
@@ -593,15 +591,15 @@ git commit -m "refactor: use call_llm() in rag_pipeline.py"
 **Files:**
 - Modify: `app/services/citation_rag.py:148-280`
 
-**Step 1: Replace `_generate_with_qwen()`**
+**Step 1: Replace `_generate_with_local_llm()`**
 
 ```python
-def _generate_with_qwen(self, prompt: str, model: str) -> str:
+def _generate_with_local_llm(self, prompt: str, model: str) -> str:
     from app.services.llm_client import call_llm
 
     return call_llm(
-        provider="local_qwen",
-        model=model or settings.LOCAL_QWEN_MODEL,
+        provider="local_llm",
+        model=model or settings.LOCAL_LLM_MODEL,
         call_type="citation",
         messages=[{"role": "user", "content": prompt}],
         query_text=prompt,
@@ -642,10 +640,10 @@ git commit -m "refactor: use call_llm() in citation_rag.py"
 **Files:**
 - Modify: `app/services/summarizer.py:143-290`
 
-**Step 1: Replace `_call_local_qwen()`**
+**Step 1: Replace `_call_local_llm()`**
 
 ```python
-def _call_local_qwen(self, prompt: str, response_format: str = None) -> str:
+def _call_local_llm(self, prompt: str, response_format: str = None) -> str:
     from app.services.llm_client import call_llm
 
     system_prompt = "You are a professional document summarization assistant. Generate clear, accurate summaries."
@@ -658,14 +656,13 @@ def _call_local_qwen(self, prompt: str, response_format: str = None) -> str:
     ]
 
     return call_llm(
-        provider="local_qwen",
+        provider="local_llm",
         model=self.model,
         call_type="summary",
         messages=messages,
         query_text=prompt,
         base_url=self.base_url,
         timeout=self.timeout,
-        keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
     )
 ```
 
@@ -732,14 +729,14 @@ git commit -m "refactor: use call_llm() in summarizer.py"
 **Files:**
 - Modify: `app/services/question_suggestions.py:390-520`
 
-**Step 1: Replace `_call_local_qwen()`**
+**Step 1: Replace `_call_local_llm()`**
 
 ```python
-def _call_local_qwen(self, prompt: str) -> str:
+def _call_local_llm(self, prompt: str) -> str:
     from app.services.llm_client import call_llm
 
     return call_llm(
-        provider="local_qwen",
+        provider="local_llm",
         model=self.model,
         call_type="suggestion",
         messages=[
@@ -749,7 +746,6 @@ def _call_local_qwen(self, prompt: str) -> str:
         query_text=prompt[:200],
         base_url=self.base_url,
         timeout=self.timeout,
-        keep_alive=settings.LOCAL_QWEN_KEEP_ALIVE,
     )
 ```
 
@@ -1075,7 +1071,7 @@ git commit -m "feat: add LLM logs API endpoints (/api/llm-logs/, /api/llm-logs/s
                 <option value="">全部 Provider</option>
                 <option value="gemini">Gemini</option>
                 <option value="openrouter">OpenRouter</option>
-                <option value="local_qwen">Local Qwen</option>
+                <option value="local_llm">Local LLM</option>
             </select>
             <select id="callTypeFilter">
                 <option value="">全部类型</option>

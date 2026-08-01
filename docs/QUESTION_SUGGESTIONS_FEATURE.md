@@ -70,7 +70,7 @@ The Smart Question Suggestions feature automatically generates intelligent, cont
 **Query Parameters:**
 - `doc_ids` (required): Comma-separated list of document filenames
 - `num_suggestions` (optional): Number of suggestions to generate (default: 3, max: 5)
-- `llm_provider` (optional): LLM provider to use (default: "local_qwen")
+- `llm_provider` (optional): LLM provider to use (default: "local_llm")
 
 **Response:**
 ```json
@@ -204,8 +204,8 @@ The system generates diverse question types:
 The system supports multiple LLM providers for question optimization:
 
 ```python
-# Use local Qwen (default)
-service = QuestionSuggestionService(llm_provider="local_qwen")
+# Use local model (default)
+service = QuestionSuggestionService(llm_provider="local_llm")
 
 # Use Gemini
 service = QuestionSuggestionService(llm_provider="gemini")
@@ -279,7 +279,7 @@ Track these metrics for quality assessment:
 - The system automatically falls back to template-based generation
 - Consider increasing timeout in settings:
   ```python
-  LOCAL_QWEN_TIMEOUT_SECONDS = 60  # Increase from default 30
+  LOCAL_LLM_TIMEOUT_SECONDS = 60  # Increase from default 30
   ```
 
 ### Poor quality suggestions

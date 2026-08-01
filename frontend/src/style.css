@@ -61,6 +61,14 @@
   /* Fonts */
   --font-headline: 'Manrope', sans-serif;
   --font-body: 'Inter', sans-serif;
+
+  /* Chat bubbles & surfaces */
+  --bubble-user-bg: rgba(99, 102, 241, 0.18);
+  --bubble-user-border: rgba(99, 102, 241, 0.35);
+  --bubble-assistant-bg: var(--surface-container-low);
+  --bubble-assistant-border: var(--outline-variant);
+  --card-bg: var(--surface-container);
+  --card-border: var(--outline-variant);
 }
 
 [data-theme="light"] {
@@ -100,6 +108,14 @@
   /* Accents */
   --outline: #74777f;
   --outline-variant: #c4c6cf;
+
+  /* Chat bubbles (light theme overrides) */
+  --bubble-user-bg: rgba(99, 102, 241, 0.1);
+  --bubble-user-border: rgba(99, 102, 241, 0.3);
+  --bubble-assistant-bg: var(--surface-container-low);
+  --bubble-assistant-border: var(--outline-variant);
+  --card-bg: var(--surface-container);
+  --card-border: var(--outline-variant);
 }
 
 [data-theme] * {

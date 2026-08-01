@@ -32,7 +32,7 @@ This project addresses the critical need for an intelligent, domain-specific que
 
 1. **Develop an End-to-End RAG Pipeline**: Design and implement a complete retrieval-augmented generation system capable of processing PDF lecture notes and answering questions with grounded, citation-backed responses.
 
-2. **Enable Multi-Provider LLM Integration**: Support flexible integration with multiple large language model providers (Gemini, OpenRouter, and local Qwen models via llama.cpp) to accommodate varying computational resources and privacy requirements.
+2. **Enable Multi-Provider LLM Integration**: Support flexible integration with multiple large language model providers (Gemini, OpenRouter, and local models via llama.cpp) to accommodate varying computational resources and privacy requirements.
 
 3. **Implement Efficient Vector Search**: Utilize FAISS (Facebook AI Similarity Search) for high-speed similarity search over embedded document chunks, enabling real-time question answering.
 
@@ -213,8 +213,8 @@ The system supports three LLM providers:
 - Model: `anthropic/claude-3-haiku` (configurable)
 - Advantages: Provider flexibility, competitive pricing
 
-**3. Local Qwen (llama.cpp)**
-- Models: `qwen2.5:0.5b` to `qwen2.5:14b`
+**3. Local LLM (llama.cpp)**
+- Models: Any compatible GGUF instruction model, including Qwen, Llama, and Mistral families
 - API: llama.cpp local server (`http://localhost:8080`)
 - Advantages: Privacy, offline operation, no API costs
 
@@ -361,7 +361,7 @@ To handle large uploads without blocking, the system implements background index
 | Phase | Duration | Deliverables |
 |-------|----------|--------------|
 | **Phase 1: Core RAG Pipeline** | Weeks 1-3 | PDF loading, chunking, embedding, FAISS indexing |
-| **Phase 2: LLM Integration** | Weeks 4-5 | Gemini, OpenRouter, Qwen integration |
+| **Phase 2: LLM Integration** | Weeks 4-5 | Gemini, OpenRouter, and llama.cpp integration |
 | **Phase 3: API Development** | Weeks 6-7 | RESTful endpoints, async indexing, error handling |
 | **Phase 4: Frontend UI** | Weeks 8-10 | Vue 3 interface, real-time chat, settings panel |
 | **Phase 5: Advanced Features** | Weeks 11-12 | Citation-aware RAG, document management, WebSocket updates |

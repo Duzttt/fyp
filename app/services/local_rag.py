@@ -36,69 +36,99 @@ Structure your answer with:
 3. A **Sources** line listing only the labels you actually cited, e.g. `Sources: [S1], [S3]`
 
 ## Language
-- Match the language of the user's question. If the question is in Chinese, answer in Chinese. If in English, answer in English."""
+- ALWAYS respond in English. No matter what language the question is written in, your answer MUST be in English."""
 
 
 class LocalRAGError(Exception):
     pass
 
 
+def _source_matches(source: str, filter_str: str) -> bool:
+    return source == filter_str or source.startswith(filter_str) or filter_str in source
+
+
 def retrieve_with_faiss(
-    query: str, top_k: int = 5, source_filter: Optional[List[str]] = None
+    query: str,
+    top_k: int = 5,
+    source_filter: Optional[List[str]] = None,
+    similarity_threshold: Optional[float] = None,
+    reranker_enabled: Optional[bool] = None,
 ) -> List[Dict[str, Any]]:
     if not query.strip():
         raise LocalRAGError("Query cannot be empty")
 
+    threshold = (
+        similarity_threshold
+        if similarity_threshold is not None
+        else settings.SIMILARITY_THRESHOLD
+    )
+    rerank = (
+        reranker_enabled
+        if reranker_enabled is not None
+        else settings.RERANKER_ENABLED
+    )
+
+    # Over-fetch when threshold or reranker is active
+    fetch_k = max(top_k * 3, 20) if (threshold > 0 or rerank) else top_k
+
+    # --- Retrieve candidates ---
+    candidates: List[Dict[str, Any]] = []
     hybrid_service = HybridRetrieverService.get_instance()
     if hybrid_service is not None:
         try:
-            search_k = top_k * 10 if source_filter else top_k
-            results = hybrid_service.search(query=query, top_k=search_k)
-
-            if source_filter:
-                normalized_filters = [str(s).lower().strip() for s in source_filter]
-                filtered = []
-                for r in results:
-                    source = str(r.get("source", "")).lower().strip()
-                    for f in normalized_filters:
-                        if source == f or source.startswith(f) or f in source:
-                            filtered.append(r)
-                            break
-                return filtered[:top_k]
-
-            return results[:top_k]
+            candidates = hybrid_service.search(
+                query=query, top_k=fetch_k, candidate_top_k=fetch_k
+            )
         except Exception as exc:
             logger.warning("Hybrid retrieval failed, falling back to dense: %s", exc)
 
-    rt = load_runtime_embedding_settings()
-    embedding_service = EmbeddingService(model_name=rt["model_id"])
+    if not candidates:
+        rt = load_runtime_embedding_settings()
+        embedding_service = EmbeddingService(model_name=rt["model_id"])
+        vector_store = VectorStore.get_cached(
+            index_path=settings.FAISS_INDEX_PATH,
+            embedding_dim=rt["embedding_dim"],
+        )
+        try:
+            query_embedding = embedding_service.embed_query(query)
+            candidates = vector_store.search_with_metadata(
+                query_embedding, top_k=fetch_k
+            )
+        except EmbeddingError as exc:
+            raise LocalRAGError(str(exc)) from exc
+        except VectorStoreError as exc:
+            raise LocalRAGError(str(exc)) from exc
 
-    vector_store = VectorStore.get_cached(
-        index_path=settings.FAISS_INDEX_PATH,
-        embedding_dim=rt["embedding_dim"],
-    )
+    # --- Source filter ---
+    if source_filter:
+        normalized_filters = [str(s).lower().strip() for s in source_filter]
+        candidates = [
+            r
+            for r in candidates
+            if any(
+                _source_matches(
+                    str(r.get("source", "")).lower().strip(), f
+                )
+                for f in normalized_filters
+            )
+        ]
 
-    try:
-        query_embedding = embedding_service.embed_query(query)
-        search_k = top_k * 10 if source_filter else top_k
-        results = vector_store.search_with_metadata(query_embedding, top_k=search_k)
+    # --- Threshold filter on cosine similarity ---
+    if threshold > 0:
+        candidates = [
+            r
+            for r in candidates
+            if r.get("cosine_similarity", r.get("distance", 0.0)) >= threshold
+        ]
 
-        if source_filter:
-            normalized_filters = [str(s).lower().strip() for s in source_filter]
-            filtered = []
-            for r in results:
-                source = str(r.get("source", "")).lower().strip()
-                for f in normalized_filters:
-                    if source == f or source.startswith(f) or f in source:
-                        filtered.append(r)
-                        break
-            return filtered[:top_k]
+    # --- Rerank ---
+    if rerank and candidates:
+        from app.services.cross_encoder_reranker import CrossEncoderReranker
 
-        return results
-    except EmbeddingError as exc:
-        raise LocalRAGError(str(exc)) from exc
-    except VectorStoreError as exc:
-        raise LocalRAGError(str(exc)) from exc
+        reranker = CrossEncoderReranker.get_instance(settings.CROSS_ENCODER_MODEL)
+        candidates = reranker.rerank(query, candidates)
+
+    return candidates[:top_k]
 
 
 def build_context_from_sources(sources: List[Dict[str, Any]]) -> str:

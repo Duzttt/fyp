@@ -1,5 +1,11 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, shallowRef, onUnmounted, watch } from 'vue'
+import * as pdfjsLib from 'pdfjs-dist'
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.js?url'
+
+// Use a locally bundled worker instead of a CDN so the viewer
+// works offline and never hangs waiting for an external script.
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
 const props = defineProps({
   show: {
@@ -24,26 +30,25 @@ const emit = defineEmits(['close', 'page-change'])
 
 const currentPage = ref(1)
 const totalPages = ref(0)
-const pdfDoc = ref(null)
-const canvas = ref(null)
+// shallowRef: pdf.js document/canvas are class instances (private fields) or DOM
+// nodes — deep reactive proxying breaks them ("Cannot read from private field").
+const pdfDoc = shallowRef(null)
+const canvas = shallowRef(null)
 const isLoading = ref(false)
 const error = ref('')
 const scale = ref(1.5)
 
-let pdfjsLib = null
 let currentLoadingTask = null
-
-onMounted(async () => {
-  // Load PDF.js dynamically
-  if (window.pdfjsLib) {
-    pdfjsLib = window.pdfjsLib
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
-  } else {
-    console.warn('PDF.js library not loaded from CDN')
-  }
-})
+let loadTimeoutId = null
+let renderToken = 0
+let activeLoadId = 0
 
 onUnmounted(() => {
+  clearTimeout(loadTimeoutId)
+  if (currentLoadingTask) {
+    currentLoadingTask.destroy()
+    currentLoadingTask = null
+  }
   if (pdfDoc.value) {
     pdfDoc.value.destroy()
     pdfDoc.value = null
@@ -53,35 +58,51 @@ onUnmounted(() => {
 const loadPdf = async () => {
   if (!props.pdfUrl) return
 
-  if (!pdfjsLib) {
-    error.value = 'PDF viewer library failed to load. Please refresh the page or check your network connection.'
-    return
-  }
+  const loadId = ++activeLoadId
 
   if (currentLoadingTask) {
-    currentLoadingTask.destroy()
+    const stale = currentLoadingTask
     currentLoadingTask = null
+    stale.destroy()
   }
 
+  clearTimeout(loadTimeoutId)
   isLoading.value = true
   error.value = ''
 
+  const loadingTask = pdfjsLib.getDocument({
+    url: props.pdfUrl,
+    useWorkerFetch: false,
+  })
+  currentLoadingTask = loadingTask
+
+  // Timeout guard: never leave the panel stuck on "Loading…"
+  loadTimeoutId = setTimeout(() => {
+    if (loadId !== activeLoadId) return
+    loadingTask.destroy()
+    if (currentLoadingTask === loadingTask) {
+      currentLoadingTask = null
+    }
+    isLoading.value = false
+    error.value = 'PDF load timed out. The file may be unavailable.'
+  }, 30000)
+
   try {
-    const loadingTask = pdfjsLib.getDocument({
-      url: props.pdfUrl,
-      useWorkerFetch: false,
-    })
-    currentLoadingTask = loadingTask
     pdfDoc.value = await loadingTask.promise
+    if (loadId !== activeLoadId) return
     totalPages.value = pdfDoc.value.numPages
     currentPage.value = props.targetPage || 1
     await renderPage(currentPage.value)
   } catch (err) {
-    if (err?.name !== 'AbortException') {
+    // A superseded load (stale task destroyed) is expected — stay silent.
+    if (loadId !== activeLoadId) return
+    if (err?.name !== 'AbortException' && !String(err?.message || '').includes('timed out')) {
       console.error('Failed to load PDF:', err)
       error.value = 'Failed to load PDF: ' + err.message
     }
   } finally {
+    if (loadId !== activeLoadId) return
+    clearTimeout(loadTimeoutId)
     if (currentLoadingTask === loadingTask) {
       currentLoadingTask = null
     }
@@ -92,8 +113,10 @@ const loadPdf = async () => {
 const renderPage = async (pageNum) => {
   if (!pdfDoc.value || !canvas.value) return
 
+  const token = ++renderToken
   try {
     const page = await pdfDoc.value.getPage(pageNum)
+    if (token !== renderToken) return
     const viewport = page.getViewport({ scale: scale.value })
 
     const ctx = canvas.value.getContext('2d')
@@ -104,6 +127,7 @@ const renderPage = async (pageNum) => {
       canvasContext: ctx,
       viewport: viewport,
     }).promise
+    if (token !== renderToken) return
 
     // Highlight text if provided
     if (props.highlightText) {
@@ -123,21 +147,21 @@ const highlightTextOnPage = async (page, text) => {
   const viewport = page.getViewport({ scale: scale.value })
 
   // Simple text search - find matching text items
-  const textItems = textContent.items.filter(item => item.str)
+  const textItems = textContent.items.filter((item) => item.str)
+  const query = text.toLowerCase()
+  const ctx = canvas.value.getContext('2d')
 
   for (const item of textItems) {
-    if (item.str.toLowerCase().includes(text.toLowerCase())) {
-      // Get position and draw highlight
+    if (item.str.toLowerCase().includes(query)) {
+      // Get position and draw highlight (viewport is already scaled)
       const transform = item.transform
-      const x = transform[4]
-      const y = viewport.height - transform[5]
+      const x = transform[4] * scale.value
+      const y = viewport.height - transform[5] * scale.value
       const width = item.width * scale.value
       const height = item.height * scale.value
 
-      // Draw highlight overlay
-      const ctx = canvas.value.getContext('2d')
       ctx.fillStyle = 'rgba(255, 255, 0, 0.4)'
-      ctx.fillRect(x * scale.value, y - height * scale.value, width, height)
+      ctx.fillRect(x, y - height, width, height)
     }
   }
 }
@@ -166,18 +190,18 @@ const zoomOut = () => {
   renderPage(currentPage.value)
 }
 
-// Watch for PDF URL changes
-watch(() => props.pdfUrl, (newUrl) => {
-  if (newUrl) {
-    loadPdf()
+// Load when the panel becomes visible with a URL, or when the URL changes
+// while visible. A single watcher prevents double loads (URL + show).
+watch(
+  () => [props.show, props.pdfUrl],
+  ([show, url], [prevShow, prevUrl]) => {
+    const urlChanged = url !== prevUrl
+    const becameVisible = show && !prevShow
+    if (show && url && (urlChanged || becameVisible)) {
+      loadPdf()
+    }
   }
-})
-
-watch(() => props.show, (newShow) => {
-  if (newShow && props.pdfUrl) {
-    loadPdf()
-  }
-})
+)
 </script>
 
 <template>
@@ -203,6 +227,10 @@ watch(() => props.show, (newShow) => {
     </div>
 
     <div class="pdf-viewer-body" id="pdfViewerBody">
+      <div class="pdf-canvas-container" v-show="!isLoading && !error">
+        <canvas ref="canvas" id="pdfCanvas"></canvas>
+      </div>
+
       <div v-if="isLoading" class="pdf-loading">
         <div class="pdf-loading-spinner"></div>
         <span>Loading PDF…</span>
@@ -211,10 +239,6 @@ watch(() => props.show, (newShow) => {
       <div v-else-if="error" class="pdf-error">
         <span>⚠️</span>
         <span>{{ error }}</span>
-      </div>
-
-      <div v-else class="pdf-canvas-container">
-        <canvas ref="canvas" id="pdfCanvas"></canvas>
       </div>
     </div>
   </div>
@@ -351,7 +375,7 @@ watch(() => props.show, (newShow) => {
 .pdf-viewer-body {
   flex: 1;
   overflow: auto;
-  background: #1a1a1a;
+  background: var(--surface);
   display: flex;
   flex-direction: column;
   align-items: center;

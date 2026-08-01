@@ -5,48 +5,13 @@ from typing import Any, Dict, List
 
 import numpy as np
 from django.http import HttpRequest, JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from app.config import settings
 
 from django_app.views.helpers import _error_response, _get_json_body
 
-ALERTS_FILE = Path(__file__).resolve().parents[2] / "data" / "alerts.json"
-SELFHEALING_FILE = Path(__file__).resolve().parents[2] / "data" / "selfhealing.json"
 REPORTS_FILE = Path(__file__).resolve().parents[2] / "data" / "reports.json"
-
-
-def _load_alerts() -> Dict[str, Any]:
-    if not ALERTS_FILE.exists():
-        return {"active": [], "history": [], "rules": []}
-    try:
-        with ALERTS_FILE.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {"active": [], "history": [], "rules": []}
-
-
-def _save_alerts(data: Dict[str, Any]) -> None:
-    ALERTS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with ALERTS_FILE.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-
-
-def _load_selfhealing() -> Dict[str, Any]:
-    if not SELFHEALING_FILE.exists():
-        return {"events": [], "policies": []}
-    try:
-        with SELFHEALING_FILE.open("r", encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {"events": [], "policies": []}
-
-
-def _save_selfhealing(data: Dict[str, Any]) -> None:
-    SELFHEALING_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with SELFHEALING_FILE.open("w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
 
 
 def _load_reports() -> List[Dict[str, Any]]:
@@ -66,318 +31,6 @@ def _save_reports(data: List[Dict[str, Any]]) -> None:
         json.dump(data, f, indent=2)
 
 
-@require_http_methods(["GET"])
-def admin_alerts_current(request: HttpRequest) -> JsonResponse:
-    alerts_data = _load_alerts()
-
-    from django_app.models import QueryLog, SystemMetric
-
-    now = datetime.now(timezone.utc)
-    recent = now - timedelta(hours=1)
-
-    active_alerts = []
-
-    try:
-        latency_avg = (
-            QueryLog.objects.filter(created_at__gte=recent).aggregate(
-                avg=SystemMetric.objects.filter(
-                    timestamp__gte=recent, name="avg_latency"
-                ).values_list("value", flat=True)
-            )["avg"]
-            or 0
-        )
-
-        if latency_avg > 500:
-            active_alerts.append(
-                {
-                    "id": "latency_high",
-                    "type": "latency_anomaly",
-                    "severity": "warning",
-                    "message": f"High retrieval latency: {latency_avg:.0f}ms",
-                    "current_value": latency_avg,
-                    "baseline": {"avg": 200, "std": 50},
-                    "start_time": (now - timedelta(minutes=30)).strftime("%H:%M"),
-                    "possible_causes": ["traffic_spike", "model_loading"],
-                }
-            )
-    except Exception:
-        pass
-
-    index_path = Path(settings.FAISS_INDEX_PATH)
-    index_file = index_path / "index.faiss"
-    if not index_file.exists() or index_file.stat().st_size == 0:
-        active_alerts.append(
-            {
-                "id": "faiss_empty",
-                "type": "index_empty",
-                "severity": "critical",
-                "message": "FAISS index is empty",
-                "current_value": 0,
-                "baseline": {"min": 1000},
-                "start_time": now.strftime("%H:%M"),
-                "possible_causes": ["no_documents", "index_failed"],
-                "auto_remediation": "rebuild_index",
-            }
-        )
-
-    alerts_data["active"] = active_alerts
-    _save_alerts(alerts_data)
-
-    history = alerts_data.get("history", [])[-20:]
-
-    return JsonResponse(
-        {
-            "active_alerts": active_alerts,
-            "history": history,
-        }
-    )
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def admin_alerts_acknowledge(request: HttpRequest) -> JsonResponse:
-    try:
-        payload = _get_json_body(request)
-    except ValueError as exc:
-        return _error_response(str(exc), status=400)
-
-    alert_id = payload.get("alert_id")
-    action = payload.get("action", "acknowledge")
-
-    alerts_data = _load_alerts()
-
-    if action == "ignore":
-        for alert in alerts_data.get("active", []):
-            if alert.get("id") == alert_id:
-                alert["status"] = "ignored"
-                alerts_data["history"].append(alert)
-                alerts_data["active"] = [
-                    a for a in alerts_data["active"] if a.get("id") != alert_id
-                ]
-                break
-
-    _save_alerts(alerts_data)
-
-    return JsonResponse({"success": True})
-
-
-@require_http_methods(["GET"])
-def admin_capacity_forecast(request: HttpRequest) -> JsonResponse:
-    months = int(request.GET.get("months", 3))
-
-    from django_app.models import QueryLog
-
-    now = datetime.now(timezone.utc)
-
-    historical_docs = []
-    historical_queries = []
-
-    for i in range(6, 0, -1):
-        month_start = now - timedelta(days=i * 30)
-        doc_count = (
-            QueryLog.objects.filter(created_at__gte=month_start)
-            .values("query")
-            .distinct()
-            .count()
-        )
-        query_count = QueryLog.objects.filter(created_at__gte=month_start).count()
-        historical_docs.append(doc_count)
-        historical_queries.append(query_count)
-
-    avg_doc_growth = 1.1
-    avg_query_growth = 1.15
-
-    current_docs = historical_docs[-1] if historical_docs else 100
-    current_queries = historical_queries[-1] if historical_queries else 100
-
-    forecast_docs = int(current_docs * (avg_doc_growth**months))
-    forecast_queries = int(current_queries * (avg_query_growth**months))
-
-    index_path = Path(settings.FAISS_INDEX_PATH)
-    index_file = index_path / "index.faiss"
-    current_index_size = (
-        index_file.stat().st_size / (1024 * 1024) if index_file.exists() else 0
-    )
-
-    recommendations = []
-    if forecast_docs > current_docs * 1.5:
-        recommendations.append(
-            {
-                "date": (now + timedelta(days=14)).strftime("%Y-%m-%d"),
-                "action": "Increase storage",
-                "details": f"Expected to need additional {int(current_index_size * 0.5)}MB",
-            }
-        )
-    if current_queries > 1000:
-        recommendations.append(
-            {
-                "date": (now + timedelta(days=30)).strftime("%Y-%m-%d"),
-                "action": "Consider rate limiting",
-                "details": "Daily queries exceed 1000, consider configuring rate limiting",
-            }
-        )
-
-    return JsonResponse(
-        {
-            "historical": {
-                "documents": historical_docs,
-                "queries_per_day": historical_queries,
-                "dates": [
-                    (now - timedelta(days=i * 30)).strftime("%Y-%m")
-                    for i in range(5, -1, -1)
-                ],
-            },
-            "forecast": {
-                "documents": {
-                    "value": forecast_docs,
-                    "lower": int(forecast_docs * 0.8),
-                    "upper": int(forecast_docs * 1.2),
-                },
-                "queries_per_day": {
-                    "value": forecast_queries,
-                    "lower": int(forecast_queries * 0.8),
-                    "upper": int(forecast_queries * 1.2),
-                },
-                "index_size_mb": {
-                    "value": int(current_index_size * (avg_doc_growth**months)),
-                    "lower": int(current_index_size * 0.7),
-                    "upper": int(current_index_size * 1.3),
-                },
-            },
-            "recommendations": recommendations,
-        }
-    )
-
-
-@require_http_methods(["GET"])
-def admin_selfhealing_events(request: HttpRequest) -> JsonResponse:
-    healing_data = _load_selfhealing()
-    events = healing_data.get("events", [])[-20:]
-    policies = healing_data.get(
-        "policies",
-        [
-            {
-                "condition": "cache_hit_rate < 0.2",
-                "action": "restart_redis",
-                "enabled": True,
-            },
-            {
-                "condition": "faiss_load_failed",
-                "action": "rebuild_index",
-                "enabled": True,
-            },
-        ],
-    )
-
-    return JsonResponse(
-        {
-            "events": events,
-            "policies": policies,
-        }
-    )
-
-
-@csrf_exempt
-@require_http_methods(["PUT"])
-def admin_selfhealing_config(request: HttpRequest) -> JsonResponse:
-    try:
-        payload = _get_json_body(request)
-    except ValueError as exc:
-        return _error_response(str(exc), status=400)
-
-    policies = payload.get("policies", [])
-
-    healing_data = _load_selfhealing()
-    healing_data["policies"] = policies
-    _save_selfhealing(healing_data)
-
-    return JsonResponse({"success": True, "policies": policies})
-
-
-@require_http_methods(["GET"])
-def admin_cost_analysis(request: HttpRequest) -> JsonResponse:
-    from django.db.models import Count
-    from django_app.models import QueryLog
-
-    total_queries = QueryLog.objects.count()
-
-    llm_cost = total_queries * 0.003
-    embedding_cost = total_queries * 0.001
-    storage_cost = 3.50
-    compute_cost = 2.19
-
-    total = llm_cost + embedding_cost + storage_cost + compute_cost
-
-    type_counts = QueryLog.objects.values("query_type").annotate(count=Count("id"))
-    type_costs = []
-    for item in type_counts:
-        qtype = item["query_type"] or "other"
-        count = item["count"]
-        cost = count * 0.003
-        type_costs.append(
-            {
-                "type": qtype,
-                "cost_per_query": round(0.003, 4),
-                "traffic": (
-                    round(count / total_queries * 100, 1) if total_queries > 0 else 0
-                ),
-                "total_cost": round(cost, 2),
-            }
-        )
-
-    recommendations = []
-    if type_costs:
-        concept_queries = next((t for t in type_costs if t["type"] == "concept"), None)
-        if concept_queries and concept_queries["traffic"] > 30:
-            recommendations.append(
-                "Cache high-frequency concept queries, expected savings $5/month"
-            )
-
-    projected = total * 1.2
-
-    return JsonResponse(
-        {
-            "total": round(total, 2),
-            "projected": round(projected, 2),
-            "breakdown": [
-                {
-                    "category": "llm_api",
-                    "name": "LLM API (Qwen)",
-                    "cost": round(llm_cost, 2),
-                    "percentage": round(llm_cost / total * 100, 1) if total > 0 else 0,
-                },
-                {
-                    "category": "embedding",
-                    "name": "Embedding API",
-                    "cost": round(embedding_cost, 2),
-                    "percentage": (
-                        round(embedding_cost / total * 100, 1) if total > 0 else 0
-                    ),
-                },
-                {
-                    "category": "storage",
-                    "name": "Vector storage (FAISS)",
-                    "cost": round(storage_cost, 2),
-                    "percentage": (
-                        round(storage_cost / total * 100, 1) if total > 0 else 0
-                    ),
-                },
-                {
-                    "category": "compute",
-                    "name": "Server resources",
-                    "cost": round(compute_cost, 2),
-                    "percentage": (
-                        round(compute_cost / total * 100, 1) if total > 0 else 0
-                    ),
-                },
-            ],
-            "per_query_type": type_costs,
-            "recommendations": recommendations,
-        }
-    )
-
-
-@require_http_methods(["GET"])
 def admin_user_behavior(request: HttpRequest) -> JsonResponse:
     from django.db.models import Avg, Count
     from django_app.models import QueryLog
@@ -552,10 +205,11 @@ def admin_health_score(request: HttpRequest) -> JsonResponse:
 
     index_path = Path(settings.FAISS_INDEX_PATH)
     chunks_file = index_path / "chunks.npy"
+    doc_path = Path(settings.DOCUMENTS_PATH)
 
-    coverage_score = 75
-    freshness_score = 70
-
+    # --- Coverage: share of indexed documents with chunks in the FAISS index ---
+    total_documents = len(list(doc_path.glob("*.pdf"))) if doc_path.exists() else 0
+    indexed_sources = set()
     total_chunks = 0
     quality_scores = []
 
@@ -566,6 +220,9 @@ def admin_health_score(request: HttpRequest) -> JsonResponse:
                 total_chunks = len(all_chunks)
                 for chunk in all_chunks:
                     if isinstance(chunk, dict):
+                        source = str(chunk.get("source") or "")
+                        if source:
+                            indexed_sources.add(source)
                         text = chunk.get("text", "")
                         score = 0.5
                         if len(text) > 100:
@@ -578,6 +235,29 @@ def admin_health_score(request: HttpRequest) -> JsonResponse:
         except Exception:
             pass
 
+    coverage_score = (
+        round(len(indexed_sources) / total_documents * 100)
+        if total_documents > 0
+        else 0
+    )
+
+    # --- Freshness: how recently the document corpus was updated ---
+    if total_documents > 0:
+        try:
+            now = datetime.now(timezone.utc).timestamp()
+            mtimes = [
+                f.stat().st_mtime for f in doc_path.glob("*.pdf") if f.is_file()
+            ]
+            avg_age_days = (
+                (now - sum(mtimes) / len(mtimes)) / 86400 if mtimes else 365
+            )
+            # Half-life decay: 90 days halves the score (180d -> 25, 365d -> ~6)
+            freshness_score = max(0, min(100, round(100 * (0.5 ** (avg_age_days / 90)))))
+        except (OSError, ZeroDivisionError, ValueError):
+            freshness_score = 0
+    else:
+        freshness_score = 0
+
     avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0
     quality_score = int(avg_quality * 100)
 
@@ -586,11 +266,14 @@ def admin_health_score(request: HttpRequest) -> JsonResponse:
     )
     total_q = recent_queries.count()
     success_q = recent_queries.filter(results_count__gt=0).count()
-    retrieval_score = int((success_q / total_q * 100) if total_q > 0 else 0)
-
-    overall_score = int(
-        (coverage_score + quality_score + freshness_score + retrieval_score) / 4
+    retrieval_score = (
+        int((success_q / total_q * 100) if total_q > 0 else 0)
+        if total_q > 0
+        else None
     )
+
+    scored = [s for s in (coverage_score, quality_score, freshness_score, retrieval_score) if s is not None]
+    overall_score = int(sum(scored) / len(scored)) if scored else 0
 
     issues = []
     if quality_score < 80:
@@ -601,12 +284,19 @@ def admin_health_score(request: HttpRequest) -> JsonResponse:
                 "message": f"Optimize {low_quality} low-quality Chunks",
             }
         )
-    if coverage_score < 80:
+    if coverage_score < 80 and total_documents > 0:
         issues.append(
-            {"priority": "medium", "message": "Fill in missing topic content"}
+            {
+                "priority": "medium",
+                "message": f"Index {total_documents - len(indexed_sources)} of {total_documents} documents missing from FAISS",
+            }
         )
-    if freshness_score < 80:
+    if freshness_score < 80 and total_documents > 0:
         issues.append({"priority": "low", "message": "Update outdated documents"})
+    if retrieval_score == 0 and total_q > 0:
+        issues.append(
+            {"priority": "medium", "message": "All recent queries returned no results"}
+        )
 
     return JsonResponse(
         {

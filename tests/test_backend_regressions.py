@@ -150,11 +150,12 @@ def test_ask_updates_existing_query_log(
             "top_k": 3,
             "temperature": 0.7,
             "similarity_threshold": 0.6,
+            "reranker_enabled": False,
         },
     )
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {"text": "chunk text", "source": "lecture.pdf", "page": 1, "distance": 0.1}
         ],
     )
@@ -205,11 +206,12 @@ def test_ask_updates_existing_query_log_with_reasoning_and_log_id(
             "top_k": 3,
             "temperature": 0.7,
             "similarity_threshold": 0.6,
+            "reranker_enabled": False,
         },
     )
     monkeypatch.setattr(
         "django_app.views.rag.retrieve_with_faiss",
-        lambda query, top_k=3, source_filter=None: [
+        lambda query, top_k=3, source_filter=None, similarity_threshold=0.6, reranker_enabled=False: [
             {"text": "chunk text", "source": "lecture.pdf", "page": 1, "distance": 0.1}
         ],
     )
@@ -302,6 +304,41 @@ def test_providers_handler_uses_local_base_url_when_current_provider_not_local(
     monkeypatch.setattr(
         "django_app.views.rag.settings.LOCAL_LLM_BASE_URL", "http://localhost:8080"
     )
+
+    response = client.get("/api/settings/providers")
+
+    assert response.status_code == 200
+    assert called["url"] == "http://localhost:8080/v1/models"
+
+
+def test_providers_handler_accepts_local_base_url_with_v1_suffix(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(
+        "django_app.views.rag._build_runtime_llm_settings",
+        lambda: {
+            "provider": "local_llm",
+            "model": "local-model",
+            "api_key": None,
+            "base_url": "http://localhost:8080/v1",
+        },
+    )
+    monkeypatch.setattr("django_app.views.rag._load_persisted_settings", lambda: {})
+    monkeypatch.setattr(
+        "django_app.views.rag.settings.LOCAL_LLM_BASE_URL",
+        "http://localhost:8080/v1/",
+    )
+
+    called = {"url": ""}
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {"data": [{"id": "local-model"}]}
+
+    def fake_get(url, timeout=5):
+        called["url"] = url
+        return mock_response
+
+    monkeypatch.setattr("django_app.views.rag.requests.get", fake_get)
 
     response = client.get("/api/settings/providers")
 
@@ -417,9 +454,7 @@ def test_llm_health_handler_uses_requested_local_model(
     post_payload = {}
     post_response = Mock()
     post_response.raise_for_status.return_value = None
-    post_response.json.return_value = {
-        "choices": [{"message": {"content": "OK"}}]
-    }
+    post_response.json.return_value = {"choices": [{"message": {"content": "OK"}}]}
 
     def fake_post(url, json=None, timeout=20):
         post_payload.update(json or {})
@@ -492,9 +527,7 @@ def test_llm_health_handler_reports_healthy(
 
     post_response = Mock()
     post_response.raise_for_status.return_value = None
-    post_response.json.return_value = {
-        "choices": [{"message": {"content": "OK"}}]
-    }
+    post_response.json.return_value = {"choices": [{"message": {"content": "OK"}}]}
 
     monkeypatch.setattr(
         "django_app.views.rag.requests.get", lambda *args, **kwargs: get_response
@@ -508,3 +541,54 @@ def test_llm_health_handler_reports_healthy(
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "healthy"
+
+
+def test_llm_health_handler_accepts_local_base_url_with_v1_suffix(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+):
+    monkeypatch.setattr(
+        "django_app.views.rag._build_runtime_llm_settings",
+        lambda: {
+            "provider": "local_llm",
+            "model": "local-model",
+            "api_key": None,
+            "base_url": "http://localhost:8080/v1",
+        },
+    )
+    monkeypatch.setattr(
+        "django_app.views.rag.settings.LOCAL_LLM_BASE_URL",
+        "http://localhost:8080/v1/",
+    )
+
+    requested_urls = []
+    get_response = Mock()
+    get_response.raise_for_status.return_value = None
+    get_response.json.side_effect = [
+        {"status": "ok"},
+        {"data": [{"id": "local-model"}]},
+    ]
+
+    def fake_get(url, timeout=5):
+        requested_urls.append(url)
+        return get_response
+
+    post_response = Mock()
+    post_response.raise_for_status.return_value = None
+    post_response.json.return_value = {"choices": [{"message": {"content": "OK"}}]}
+
+    def fake_post(url, json=None, timeout=20):
+        requested_urls.append(url)
+        return post_response
+
+    monkeypatch.setattr("django_app.views.rag.requests.get", fake_get)
+    monkeypatch.setattr("django_app.views.rag.requests.post", fake_post)
+
+    response = client.get("/api/health/llm?provider=local_llm&model=local-model")
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+    assert requested_urls == [
+        "http://localhost:8080/health",
+        "http://localhost:8080/v1/models",
+        "http://localhost:8080/v1/chat/completions",
+    ]

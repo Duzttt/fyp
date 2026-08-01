@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from app.config import settings
 
@@ -44,6 +44,15 @@ def get_base_url_for_provider(provider: str) -> str:
     if provider == "openrouter":
         return settings.OPENROUTER_BASE_URL
     return settings.LOCAL_LLM_BASE_URL
+
+
+def resolve_local_llm_urls(base_url: Optional[str] = None) -> Tuple[str, str]:
+    """Return the llama.cpp server root and OpenAI-compatible API base URL."""
+    configured_url = str(base_url or settings.LOCAL_LLM_BASE_URL).strip().rstrip("/")
+    if configured_url.endswith("/v1"):
+        server_root = configured_url[: -len("/v1")].rstrip("/")
+        return server_root, configured_url
+    return configured_url, f"{configured_url}/v1"
 
 
 def load_runtime_llm_settings() -> Dict[str, Optional[str]]:
@@ -92,5 +101,6 @@ __all__ = [
     "get_default_api_key_for_provider",
     "get_default_model_for_provider",
     "load_runtime_llm_settings",
+    "resolve_local_llm_urls",
     "resolve_gemini_api_model",
 ]

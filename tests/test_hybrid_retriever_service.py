@@ -95,7 +95,7 @@ class TestHybridRetrieverService:
 
         def _make_retriever(documents, model_name, fusion_method):
             return Mock(
-                retrieve=lambda query, top_k: [
+                retrieve=lambda query, top_k, **kwargs: [
                     {"text": "doc1 text", "source": "a.pdf", "score": 0.9}
                 ],
                 get_document_count=lambda: len(fake_chunks),

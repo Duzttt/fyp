@@ -8,12 +8,11 @@ from pathlib import Path
 from typing import Optional
 
 import requests
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QTimer, QUrl
-from PyQt6.QtGui import QColor, QDesktopServices, QFont, QIcon, QPalette, QTextCharFormat
+from PyQt6.QtCore import Qt, QThread, QUrl, pyqtSignal
+from PyQt6.QtGui import QColor, QDesktopServices, QPalette, QTextCharFormat
 from PyQt6.QtWidgets import (
     QApplication,
     QComboBox,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -27,6 +26,9 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+from app.config import settings
+from app.services.runtime_llm import resolve_local_llm_urls
 
 BASE_DIR = Path(__file__).resolve().parent
 FRONTEND_DIR = BASE_DIR / "frontend"
@@ -67,13 +69,9 @@ PROVIDER_META = {
     "local_llm": {
         "label": "Local (llama.cpp)",
         "icon": "\U0001f3e0",
-        "default_model": "qwen2.5-3b",
+        "default_model": settings.LOCAL_LLM_MODEL,
         "requires_key": False,
-        "models": [
-            "qwen2.5-3b",
-            "qwen3.5-4b",
-            "qwen2.5-14b",
-        ],
+        "models": [settings.LOCAL_LLM_MODEL],
     },
 }
 
@@ -81,7 +79,8 @@ PROVIDER_META = {
 def _fetch_local_models() -> list[str]:
     """Fetch available models from llama.cpp server; fall back silently on error."""
     try:
-        response = requests.get("http://localhost:8080/v1/models", timeout=5)
+        _, api_base_url = resolve_local_llm_urls(settings.LOCAL_LLM_BASE_URL)
+        response = requests.get(f"{api_base_url}/models", timeout=5)
         response.raise_for_status()
         payload = response.json()
         models: list[str] = []
@@ -247,6 +246,7 @@ QFrame[frameShape="4"] {{
 
 # ── Helpers ────────────────────────────────────────────────────────────
 
+
 def _read_env_var(key: str, default: str = "") -> str:
     if not ENV_FILE.exists():
         return default
@@ -313,6 +313,7 @@ def _sync_rag_model(model: str) -> None:
 
 # ── Background process reader ─────────────────────────────────────────
 
+
 class ProcessReader(QThread):
     """Read stdout from a subprocess line-by-line and emit signals."""
 
@@ -340,6 +341,7 @@ class ProcessReader(QThread):
 
 # ── Status dot widget ─────────────────────────────────────────────────
 
+
 class StatusDot(QLabel):
     def __init__(self, initial_color: str = C_RED, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -362,6 +364,7 @@ class StatusDot(QLabel):
 
 
 # ── Main Window ───────────────────────────────────────────────────────
+
 
 class ServerGUI(QMainWindow):
     def __init__(self) -> None:
@@ -955,7 +958,11 @@ class ServerGUI(QMainWindow):
         meta = PROVIDER_META.get(provider, {})
         icon = meta.get("icon", "")
         label = meta.get("label", provider)
-        key_status = "key set" if has_key else ("local" if not meta.get("requires_key") else "no key")
+        key_status = (
+            "key set"
+            if has_key
+            else ("local" if not meta.get("requires_key") else "no key")
+        )
         self.lbl_active_config.setText(
             f"Active: {icon} {label}  \u2022  {model}  \u2022  {key_status}"
         )
@@ -971,6 +978,7 @@ class ServerGUI(QMainWindow):
 
 
 # ── Entry point ────────────────────────────────────────────────────────
+
 
 def main() -> None:
     app = QApplication(sys.argv)
