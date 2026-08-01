@@ -134,11 +134,23 @@ def _source_matches(source: Any, source_filter: Optional[List[str]]) -> bool:
 
 
 def _score_from_distance(distance: Any, max_distance: float) -> float:
+    """
+    Normalize a FAISS similarity value to a [0, 1] relevance score.
+
+    FAISS IndexFlatIP returns inner products which, for L2-normalized
+    vectors, equal cosine similarity: HIGHER means MORE relevant. The score is
+    therefore `distance / max_distance`, so the most relevant result scores 1
+    and the least relevant scores near 0. Values are clamped to [0, 1].
+    """
     try:
         numeric_distance = float(distance)
     except (TypeError, ValueError):
         numeric_distance = max_distance
-    return round(max(0.0, 1.0 - (numeric_distance / max_distance)), 3)
+
+    if max_distance <= 0:
+        return 0.0
+
+    return round(min(1.0, max(0.0, numeric_distance / max_distance)), 3)
 
 
 def _format_retrieved_chunks(sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

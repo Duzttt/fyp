@@ -314,3 +314,52 @@ def test_build_rag_demo_trace_rerank_skipped_when_disabled(
     assert rerank_stage["status"] == "skipped"
     assert rerank_stage["technical"]["enabled"] is False
     assert rerank_stage["results"] == []
+
+
+class TestScoreFromDistance:
+    """FAISS IndexFlatIP 'distance' is cosine similarity: higher = more relevant."""
+
+    def test_score_increases_with_similarity(self):
+        from app.services.rag_demo_trace import _score_from_distance
+
+        assert _score_from_distance(0.9, 0.9) == 1.0  # most relevant
+        assert _score_from_distance(0.45, 0.9) == 0.5
+        assert _score_from_distance(0.0, 0.9) == 0.0
+
+    def test_scores_are_monotonic_in_similarity(self):
+        from app.services.rag_demo_trace import _score_from_distance
+
+        distances = [0.6639, 0.7301, 0.9181]  # real FAISS cosine similarities
+        max_distance = max(distances)
+        scores = [_score_from_distance(d, max_distance) for d in distances]
+        assert scores == sorted(scores)  # higher similarity -> higher score
+
+    def test_negative_similarity_clamped_to_zero(self):
+        from app.services.rag_demo_trace import _score_from_distance
+
+        assert _score_from_distance(-0.5, 0.9) == 0.0
+
+    def test_invalid_distance_falls_back_to_max(self):
+        from app.services.rag_demo_trace import _score_from_distance
+
+        assert _score_from_distance("n/a", 0.9) == 1.0
+
+
+def test_dense_stage_scores_follow_similarity(monkeypatch: pytest.MonkeyPatch):
+    """Dense stage rank #1 must no longer show score 0 for the top hit."""
+    from app.services import rag_demo_trace as trace_service
+
+    _install_happy_path_mocks(monkeypatch, trace_service)
+
+    trace = trace_service.build_rag_demo_trace(
+        query="What is RAG?", include_answer=False
+    )
+
+    dense_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "dense_retrieval"
+    )
+    scores = [result["score"] for result in dense_stage["results"]]
+    # FakeVectorStore distances: rank1=0.2 (lower similarity), rank2=0.8 (higher).
+    assert scores[0] == 0.25
+    assert scores[1] == 1.0
+    assert scores[0] < scores[1]
