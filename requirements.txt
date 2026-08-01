@@ -43,3 +43,5 @@ llama-index-embeddings-huggingface==0.5.3
 # RAGAS evaluation
 ragas>=0.1.0,<1.0.0
 datasets>=2.14.0,<3.0.0
+# pyarrow 24+ segfaults on Windows when CUDA torch is loaded first
+pyarrow>=8.0.0,<17
