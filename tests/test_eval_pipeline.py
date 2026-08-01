@@ -350,14 +350,14 @@ def test_evaluate_dataset_reads_jsonl_and_writes_csv(tmp_path, monkeypatch):
         class Pandas:
             def to_dict(self, orient="records"):
                 return [
-                    {"question": r["question"], "faithfulness": 0.9}
+                    {"user_input": r["user_input"], "faithfulness": 0.9}
                     for r in dataset.to_list()
                 ]
 
             def to_csv(self, path, index=False, encoding="utf-8"):
                 Path(path).write_text(
-                    "question,faithfulness\n"
-                    + "\n".join(f"{r['question']},0.9" for r in dataset.to_list()),
+                    "user_input,faithfulness\n"
+                    + "\n".join(f"{r['user_input']},0.9" for r in dataset.to_list()),
                     encoding=encoding,
                 )
 
@@ -378,7 +378,7 @@ def test_evaluate_dataset_reads_jsonl_and_writes_csv(tmp_path, monkeypatch):
     assert summary["num_questions"] == 2
     assert out_path.exists()
     csv_text = out_path.read_text(encoding="utf-8")
-    assert "question" in csv_text
+    assert "user_input" in csv_text
     assert "Q1" in csv_text
 
 
@@ -412,7 +412,8 @@ def test_evaluate_dataset_continues_on_single_question_failure(tmp_path, monkeyp
 
             def to_csv(self, path, index=False, encoding="utf-8"):
                 Path(path).write_text(
-                    "question\n" + "\n".join(r["question"] for r in dataset.to_list()),
+                    "user_input\n"
+                    + "\n".join(r["user_input"] for r in dataset.to_list()),
                     encoding=encoding,
                 )
 

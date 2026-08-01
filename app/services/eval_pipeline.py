@@ -274,7 +274,12 @@ class QAJsonParseError(EvalPipelineError):
 
 
 def _run_ragas_metrics(dataset, llm, embeddings, timeout: int, max_workers: int):
-    """Thin wrapper around RAGAS so tests can mock at this boundary."""
+    """Thin wrapper around RAGAS so tests can mock at this boundary.
+
+    Uses the official RAGAS API: ``ragas.evaluate(dataset, metrics, llm,
+    embeddings)`` with the ragas LLM/embeddings wrappers, matching the
+    upstream quickstart instead of wiring each metric by hand.
+    """
     try:
         from ragas import evaluate as ragas_evaluate
         from ragas.metrics import (
@@ -290,13 +295,10 @@ def _run_ragas_metrics(dataset, llm, embeddings, timeout: int, max_workers: int)
         ) from exc
 
     metrics = [faithfulness, answer_relevancy, context_precision, context_recall]
-    for metric in metrics:
-        if hasattr(metric, "llm"):
-            metric.llm = llm
-
     return ragas_evaluate(
         dataset=dataset,
         metrics=metrics,
+        llm=llm,
         embeddings=embeddings,
         run_config=RunConfig(timeout=timeout, max_workers=max_workers),
     )
@@ -395,19 +397,18 @@ def evaluate_dataset(
         raise EvalPipelineError("No valid RAG results to evaluate")
 
     try:
-        from datasets import Dataset as HFDataset
+        from langchain_core.embeddings import Embeddings
+        from langchain_openai import ChatOpenAI
+        from ragas.dataset_schema import EvaluationDataset, SingleTurnSample
+        from ragas.embeddings import LangchainEmbeddingsWrapper
+        from ragas.llms import LangchainLLMWrapper
     except ImportError as exc:
         raise EvalPipelineError(
-            "datasets not installed. Run: pip install datasets"
+            "RAGAS not installed. Run: pip install ragas datasets"
         ) from exc
-
-    dataset = HFDataset.from_dict(data)
 
     from app.services.embedding import EmbeddingService
     from app.services.runtime_embedding import load_runtime_embedding_settings
-    from langchain_core.embeddings import Embeddings
-    from langchain_openai import ChatOpenAI
-    from ragas.llms import LangchainLLMWrapper
 
     rt = load_runtime_embedding_settings()
     embedding_service = EmbeddingService(model_name=rt["model_id"])
@@ -432,12 +433,28 @@ def evaluate_dataset(
         temperature=0,
         max_tokens=4096,
     )
-    ragas_llm = LangchainLLMWrapper(langchain_llm)
+    # Official RAGAS wrappers around the judge LLM and local embeddings.
+    evaluator_llm = LangchainLLMWrapper(langchain_llm)
+    evaluator_embeddings = LangchainEmbeddingsWrapper(_LocalEmbeddings())
+
+    # Official RAGAS dataset schema (single-turn samples).
+    samples = [
+        SingleTurnSample(
+            user_input=q,
+            response=a,
+            retrieved_contexts=ctxs,
+            reference=gt,
+        )
+        for q, a, ctxs, gt in zip(
+            data["question"], data["answer"], data["contexts"], data["ground_truth"]
+        )
+    ]
+    dataset = EvaluationDataset(samples=samples)
 
     result = _run_ragas_metrics(
         dataset=dataset,
-        llm=ragas_llm,
-        embeddings=_LocalEmbeddings(),
+        llm=evaluator_llm,
+        embeddings=evaluator_embeddings,
         timeout=timeout,
         max_workers=max_workers,
     )

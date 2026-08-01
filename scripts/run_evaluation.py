@@ -24,6 +24,14 @@ import django  # noqa: E402
 
 django.setup()
 
+# Windows DLL workaround: ragas/datasets pull in pyarrow, and loading torch
+# AFTER pyarrow makes torch's c10.dll fail to initialize (WinError 1114).
+# Import torch first so the DLL load order is torch -> pyarrow.
+try:
+    import torch  # noqa: F401
+except Exception:  # noqa: BLE001 - evaluation still works without torch
+    pass
+
 from app.config import settings  # noqa: E402
 from app.services.eval_pipeline import (  # noqa: E402
     DatasetFormatError,
