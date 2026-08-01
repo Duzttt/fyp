@@ -360,6 +360,34 @@ def test_dense_stage_scores_follow_similarity(monkeypatch: pytest.MonkeyPatch):
     )
     scores = [result["score"] for result in dense_stage["results"]]
     # FakeVectorStore distances: rank1=0.2 (lower similarity), rank2=0.8 (higher).
-    assert scores[0] == 0.25
-    assert scores[1] == 1.0
-    assert scores[0] < scores[1]
+    # After per-stage min-max normalization the best hit scores 1.0.
+    assert scores == [0.0, 1.0]
+
+
+class TestNormalizeScores:
+    """Per-stage min-max normalization keeps trace scores in [0, 1]."""
+
+    def test_min_max_normalization(self):
+        from app.services.rag_demo_trace import _normalize_scores
+
+        results = [{"score": 0.3061}, {"score": 0.3055}, {"score": 0.2889}]
+        _normalize_scores(results)
+
+        assert results[0]["score"] == 1.0
+        assert results[2]["score"] == 0.0
+        assert results[1]["score"] == pytest.approx(0.965, abs=0.001)
+
+    def test_single_result_unchanged(self):
+        from app.services.rag_demo_trace import _normalize_scores
+
+        results = [{"score": 0.95}]
+        _normalize_scores(results)
+        assert results[0]["score"] == 0.95
+
+    def test_missing_scores_unchanged(self):
+        from app.services.rag_demo_trace import _normalize_scores
+
+        results = [{"score": 1.0}, {"preview": "no score"}]
+        _normalize_scores(results)
+        assert results[0]["score"] == 1.0
+        assert "score" not in results[1]

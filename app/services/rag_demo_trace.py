@@ -153,6 +153,30 @@ def _score_from_distance(distance: Any, max_distance: float) -> float:
     return round(min(1.0, max(0.0, numeric_distance / max_distance)), 3)
 
 
+def _normalize_scores(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Min-max normalize each result's `score` within its stage to [0, 1].
+
+    The trace mixes scores from different retrieval stages with different
+    scales (raw BM25 scores, RRF fusion scores, cosine similarity, and
+    cross-encoder logits). The frontend draws score bars and colours with a
+    uniform 0-1 threshold, so each stage's scores must be comparable in [0, 1]
+    with the top result at 1.0.
+    """
+    scores = [float(r["score"]) for r in results if r.get("score") is not None]
+    if not scores:
+        return results
+
+    low, high = min(scores), max(scores)
+    if high <= low:
+        return results
+
+    for r in results:
+        if r.get("score") is not None:
+            r["score"] = round((float(r["score"]) - low) / (high - low), 3)
+    return results
+
+
 def _format_retrieved_chunks(sources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     distances = [float(item.get("distance", 0) or 0) for item in sources]
     max_distance = max(distances) if distances else 1.0
@@ -162,7 +186,11 @@ def _format_retrieved_chunks(sources: List[Dict[str, Any]]) -> List[Dict[str, An
     for item in sources:
         text = str(item.get("text") or "")
         distance = item.get("distance", 0)
-        score = item.get("score")
+        # Prefer the final rerank score (matches the actual ordering); fall
+        # back to the fusion score, then to the FAISS similarity.
+        score = item.get("rerank_score")
+        if score is None:
+            score = item.get("score")
         if score is None:
             score = _score_from_distance(distance, max_distance)
         chunks.append(
@@ -229,6 +257,7 @@ def _build_bm25_stage(
                     "preview": _clip_text(chunk.get("text"), 160),
                 }
             )
+        results = _normalize_scores(results)
 
         return _new_stage(
             "bm25_retrieval",
@@ -382,6 +411,19 @@ def build_rag_demo_trace(
         ][:bounded_top_k]
     distances = [float(item.get("distance", 0) or 0) for item in dense_results]
     max_distance = max(max(distances) if distances else 1.0, 0.001)
+    dense_stage_results = _normalize_scores(
+        [
+            {
+                "rank": rank,
+                "source": str(item.get("source") or "unknown"),
+                "page": item.get("page"),
+                "score": _score_from_distance(item.get("distance"), max_distance),
+                "distance": round(float(item.get("distance", 0) or 0), 4),
+                "preview": _clip_text(item.get("text"), 160),
+            }
+            for rank, item in enumerate(dense_results[:bounded_top_k], start=1)
+        ]
+    )
     stages.append(
         _new_stage(
             "dense_retrieval",
@@ -390,17 +432,7 @@ def build_rag_demo_trace(
             _duration_ms(dense_started_at),
             "Vector retrieval finds chunks that are semantically close to the question.",
             technical={"top_k": bounded_top_k, "searched_k": search_k},
-            results=[
-                {
-                    "rank": rank,
-                    "source": str(item.get("source") or "unknown"),
-                    "page": item.get("page"),
-                    "score": _score_from_distance(item.get("distance"), max_distance),
-                    "distance": round(float(item.get("distance", 0) or 0), 4),
-                    "preview": _clip_text(item.get("text"), 160),
-                }
-                for rank, item in enumerate(dense_results[:bounded_top_k], start=1)
-            ],
+            results=dense_stage_results,
         )
     )
 
@@ -415,7 +447,9 @@ def build_rag_demo_trace(
             stage_timings=retrieval_stage_timings,
             rerank_details=rerank_details,
         )
-        retrieved_chunks = _format_retrieved_chunks(retrieved_sources)
+        retrieved_chunks = _normalize_scores(
+            _format_retrieved_chunks(retrieved_sources)
+        )
         stages.append(
             _new_stage(
                 "hybrid_ranking",
@@ -476,6 +510,19 @@ def build_rag_demo_trace(
             if before_rank.get(c.get("chunk_index")) is not None
             and before_rank[c.get("chunk_index")] > after.index(c) + 1
         )
+        rerank_stage_results = _normalize_scores(
+            [
+                {
+                    "rank": rank,
+                    "source": c["source"],
+                    "page": c["page"],
+                    "score": round(float(c.get("rerank_score") or 0), 4),
+                    "before_rank": before_rank.get(c.get("chunk_index")),
+                    "preview": _clip_text(c.get("text", ""), 160),
+                }
+                for rank, c in enumerate(after[:bounded_top_k], start=1)
+            ]
+        )
         stages.append(
             _new_stage(
                 "cross_encoder_rerank",
@@ -490,17 +537,7 @@ def build_rag_demo_trace(
                     "top_k": bounded_top_k,
                     "moved_into_top_k": moved_up,
                 },
-                results=[
-                    {
-                        "rank": rank,
-                        "source": c["source"],
-                        "page": c["page"],
-                        "score": round(float(c.get("rerank_score") or 0), 4),
-                        "before_rank": before_rank.get(c.get("chunk_index")),
-                        "preview": _clip_text(c.get("text", ""), 160),
-                    }
-                    for rank, c in enumerate(after[:bounded_top_k], start=1)
-                ],
+                results=rerank_stage_results,
             )
         )
     else:
