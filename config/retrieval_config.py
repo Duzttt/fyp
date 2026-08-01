@@ -8,7 +8,6 @@ including chunking settings, fusion parameters, and performance thresholds.
 import json
 import os
 from dataclasses import dataclass, field, asdict
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 
@@ -35,8 +34,24 @@ class RetrievalConfig:
 
     # Retrieval settings
     top_k: int = 10  # Default number of results to return
-    bm25_top_k: int = 20  # BM25 candidate count
-    dense_top_k: int = 20  # Dense retrieval candidate count
+    bm25_top_k: int = 50  # BM25 candidate count
+    dense_top_k: int = 50  # Dense retrieval candidate count
+    rerank_candidate_top_k: int = 30  # Candidates fed to the cross-encoder
+
+    # Reranking settings
+    reranker_enabled: bool = True  # Enable cross-encoder reranking by default
+    reranker_score_threshold: Optional[float] = (
+        None  # Final-score cutoff (None = no filtering)
+    )
+
+    # Diversity / deduplication settings
+    diversity_lambda: float = (
+        0.7  # MMR diversity weight (0 = pure relevance, 1 = pure diversity)
+    )
+    max_chunks_per_source: int = (
+        2  # Max chunks from the same source in the final context
+    )
+    final_top_k: int = 5  # Number of results returned after rerank/diversity selection
 
     # Embedding settings
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"

@@ -257,7 +257,6 @@ def summarize_doc(request: HttpRequest) -> JsonResponse:
         retrieved_sources = retrieve_with_faiss(
             query=query,
             top_k=6,
-            similarity_threshold=settings.SIMILARITY_THRESHOLD,
             reranker_enabled=settings.RERANKER_ENABLED,
         )
         target = str(filename).lower()

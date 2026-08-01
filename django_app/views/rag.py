@@ -55,7 +55,6 @@ def ask_question(request: HttpRequest) -> JsonResponse:
             query=query,
             top_k=3,
             source_filter=source_filter,
-            similarity_threshold=settings.SIMILARITY_THRESHOLD,
             reranker_enabled=settings.RERANKER_ENABLED,
         )
         context = build_context_from_sources(retrieved_sources)
@@ -156,7 +155,6 @@ def ask(request: HttpRequest) -> JsonResponse:
             query=query,
             top_k=top_k,
             source_filter=source_filter,
-            similarity_threshold=similarity_threshold,
             reranker_enabled=reranker_enabled,
         )
         context = build_context_from_sources(retrieved_sources)
@@ -685,7 +683,6 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             query=query,
             top_k=top_k,
             source_filter=None,
-            similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
             reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
         )
         context = build_context_from_sources(retrieved_sources)
@@ -779,7 +776,6 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
             query=query,
             top_k=top_k,
             source_filter=source_filter,
-            similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
             reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
         )
     except LocalRAGError as exc:
@@ -856,7 +852,6 @@ def compare_documents(request: HttpRequest) -> JsonResponse:
                 query=query,
                 top_k=top_k,
                 source_filter=[source],
-                similarity_threshold=float(rag_config.get("similarity_threshold", 0.6)),
                 reranker_enabled=bool(rag_config.get("reranker_enabled", False)),
             )
             context = build_context_from_sources(retrieved)

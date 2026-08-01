@@ -53,23 +53,24 @@ def retrieve_with_faiss(
     source_filter: Optional[List[str]] = None,
     similarity_threshold: Optional[float] = None,
     reranker_enabled: Optional[bool] = None,
+    minimum_relevance_score: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
     if not query.strip():
         raise LocalRAGError("Query cannot be empty")
 
-    threshold = (
-        similarity_threshold
-        if similarity_threshold is not None
-        else settings.SIMILARITY_THRESHOLD
-    )
+    # The default Dense cosine threshold (settings.SIMILARITY_THRESHOLD) is no
+    # longer applied to hybrid results: a BM25-only exact match with a low
+    # cosine score must not be dropped by the Dense threshold. The threshold
+    # only applies to the pure-dense fallback path, and only when explicitly
+    # provided by the caller.
     rerank = (
-        reranker_enabled
-        if reranker_enabled is not None
-        else settings.RERANKER_ENABLED
+        reranker_enabled if reranker_enabled is not None else settings.RERANKER_ENABLED
     )
 
-    # Over-fetch when threshold or reranker is active
-    fetch_k = max(top_k * 3, 20) if (threshold > 0 or rerank) else top_k
+    # Over-fetch when reranker or an explicit final-score threshold is active
+    fetch_k = (
+        max(top_k * 3, 20) if (rerank or minimum_relevance_score is not None) else top_k
+    )
 
     # --- Retrieve candidates ---
     candidates: List[Dict[str, Any]] = []
@@ -82,6 +83,7 @@ def retrieve_with_faiss(
         except Exception as exc:
             logger.warning("Hybrid retrieval failed, falling back to dense: %s", exc)
 
+    used_dense_fallback = False
     if not candidates:
         rt = load_runtime_embedding_settings()
         embedding_service = EmbeddingService(model_name=rt["model_id"])
@@ -94,6 +96,7 @@ def retrieve_with_faiss(
             candidates = vector_store.search_with_metadata(
                 query_embedding, top_k=fetch_k
             )
+            used_dense_fallback = True
         except EmbeddingError as exc:
             raise LocalRAGError(str(exc)) from exc
         except VectorStoreError as exc:
@@ -106,19 +109,22 @@ def retrieve_with_faiss(
             r
             for r in candidates
             if any(
-                _source_matches(
-                    str(r.get("source", "")).lower().strip(), f
-                )
+                _source_matches(str(r.get("source", "")).lower().strip(), f)
                 for f in normalized_filters
             )
         ]
 
-    # --- Threshold filter on cosine similarity ---
-    if threshold > 0:
+    # --- Dense fallback cosine threshold (explicitly provided only) ---
+    if (
+        used_dense_fallback
+        and similarity_threshold is not None
+        and similarity_threshold > 0
+    ):
         candidates = [
             r
             for r in candidates
-            if r.get("cosine_similarity", r.get("distance", 0.0)) >= threshold
+            if r.get("cosine_similarity", r.get("distance", 0.0))
+            >= similarity_threshold
         ]
 
     # --- Rerank ---
@@ -127,6 +133,14 @@ def retrieve_with_faiss(
 
         reranker = CrossEncoderReranker.get_instance(settings.CROSS_ENCODER_MODEL)
         candidates = reranker.rerank(query, candidates)
+
+    # --- Explicit final-score threshold (applies to the reranker score) ---
+    if minimum_relevance_score is not None:
+        candidates = [
+            r
+            for r in candidates
+            if r.get("rerank_score", r.get("score", 0.0)) >= minimum_relevance_score
+        ]
 
     return candidates[:top_k]
 
