@@ -8,10 +8,8 @@ This module provides a hybrid search approach that leverages both:
 The combination improves recall by capturing both exact term matches and semantic relationships.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from enum import Enum
-
-import numpy as np
 
 from .bm25_index import BM25Index
 from .dense_retriever import DenseRetriever
@@ -29,6 +27,12 @@ class FusionMethod(str, Enum):
 
     RRF = "rrf"  # Reciprocal Rank Fusion
     WEIGHTED = "weighted"  # Weighted score fusion
+
+
+# A dense-search provider: given a query and a candidate count, return
+# (doc_id, score) pairs. Used to plug a persisted FAISS index into the
+# HybridRetriever instead of the in-memory DenseRetriever.
+DenseSearchProvider = Callable[[str, int], List[Tuple[str, float]]]
 
 
 class HybridRetrieverError(Exception):
@@ -59,6 +63,12 @@ class HybridRetriever:
         embedder: SentenceTransformer = None,
         model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
         fusion_method: FusionMethod = FusionMethod.RRF,
+        bm25_variant: str = "okapi",
+        bm25_k1: float = 1.5,
+        bm25_b: float = 0.75,
+        bm25_delta: float = 0.5,
+        bm25_use_stopwords: bool = True,
+        dense_search_provider: Optional[DenseSearchProvider] = None,
     ):
         """
         Initialize both retrievers.
@@ -69,6 +79,16 @@ class HybridRetriever:
             embedder: SentenceTransformer model instance (optional)
             model_name: Model name (only used when embedder is None)
             fusion_method: Fusion method ('rrf' or 'weighted')
+            bm25_variant: BM25 scoring variant - "okapi", "plus", or "lucene"
+            bm25_k1: BM25 term frequency saturation parameter
+            bm25_b: BM25 document length normalization parameter
+            bm25_delta: BM25Plus delta parameter (only for "plus" variant)
+            bm25_use_stopwords: Filter English stopwords in BM25
+            dense_search_provider: Optional callable(query, top_k) -> List[(doc_id, score)].
+                When provided, it replaces the in-memory DenseRetriever (no
+                second embedding pass / FAISS index is built). When omitted,
+                the current in-memory DenseRetriever behaviour is kept for
+                standalone tests and management tooling.
         """
         if not documents:
             raise HybridRetrieverError("Documents list cannot be empty")
@@ -84,21 +104,32 @@ class HybridRetriever:
 
         # Initialize BM25 index
         try:
-            self.bm25_index = BM25Index(documents)
+            self.bm25_index = BM25Index(
+                documents,
+                variant=bm25_variant,
+                k1=bm25_k1,
+                b=bm25_b,
+                delta=bm25_delta,
+                use_stopwords=bm25_use_stopwords,
+            )
         except Exception as e:
             raise HybridRetrieverError(f"Failed to initialize BM25: {str(e)}") from e
 
-        # Initialize Dense retriever
-        try:
-            self.dense_retriever = DenseRetriever(
-                documents=documents,
-                embedder=embedder,
-                model_name=model_name,
-            )
-        except Exception as e:
-            raise HybridRetrieverError(
-                f"Failed to initialize Dense Retriever: {str(e)}"
-            ) from e
+        # Initialize Dense retriever, or use the injected search provider.
+        self.dense_search_provider = dense_search_provider
+        if dense_search_provider is not None:
+            self.dense_retriever = None
+        else:
+            try:
+                self.dense_retriever = DenseRetriever(
+                    documents=documents,
+                    embedder=embedder,
+                    model_name=model_name,
+                )
+            except Exception as e:
+                raise HybridRetrieverError(
+                    f"Failed to initialize Dense Retriever: {str(e)}"
+                ) from e
 
     def retrieve(
         self,
@@ -126,6 +157,8 @@ class HybridRetriever:
 
         Returns:
             List[Dict] - Each result contains id, text, score, cosine_similarity, source, metadata
+            At most `top_k` results are returned; `candidate_top_k` only
+            controls the number of internally fused candidates.
         """
         if not query or not query.strip():
             return []
@@ -139,11 +172,18 @@ class HybridRetriever:
         # 1. BM25 retrieval
         bm25_results = self.bm25_index.search(query, top_k=max(bm25_top_k, fetch_k))
 
-        # 2. Dense retrieval
-        dense_results = self.dense_retriever.search(query, top_k=max(dense_top_k, fetch_k))
+        # 2. Dense retrieval (injected provider or in-memory DenseRetriever)
+        if self.dense_search_provider is not None:
+            dense_results = self.dense_search_provider(query, max(dense_top_k, fetch_k))
+        else:
+            dense_results = self.dense_retriever.search(
+                query, top_k=max(dense_top_k, fetch_k)
+            )
 
         # Build dense score lookup for cosine_similarity
-        dense_score_map: Dict[str, float] = {doc_id: score for doc_id, score in dense_results}
+        dense_score_map: Dict[str, float] = {
+            doc_id: score for doc_id, score in dense_results
+        }
 
         # 3. Fuse results
         if method == FusionMethod.RRF:
@@ -172,7 +212,8 @@ class HybridRetriever:
                     }
                 )
 
-        return final_results
+        # The public top_k is a strict cap; candidate_top_k may exceed it.
+        return final_results[:top_k]
 
     def fusion_rrf(
         self,
@@ -235,10 +276,6 @@ class HybridRetriever:
         Returns:
             Dict[doc_id, fused_score]
         """
-        # Collect all scores for normalization
-        all_bm25_scores = [score for _, score in bm25_results]
-        all_dense_scores = [score for _, score in dense_results]
-
         # Normalize scores to [0, 1]
         bm25_normalized = self._normalize_scores(bm25_results)
         dense_normalized = self._normalize_scores(dense_results)
@@ -318,7 +355,10 @@ class HybridRetriever:
 
         # Get individual retrieval results
         bm25_results = self.bm25_index.search(query, top_k=20)
-        dense_results = self.dense_retriever.search(query, top_k=20)
+        if self.dense_search_provider is not None:
+            dense_results = self.dense_search_provider(query, 20)
+        else:
+            dense_results = self.dense_retriever.search(query, top_k=20)
 
         # Convert to dicts for easier access
         bm25_scores = {doc_id: score for doc_id, score in bm25_results}
@@ -380,4 +420,5 @@ class HybridRetriever:
             self.doc_store[doc_id] = doc
 
         self.bm25_index.refresh(documents)
-        self.dense_retriever.refresh(documents)
+        if self.dense_retriever is not None:
+            self.dense_retriever.refresh(documents)

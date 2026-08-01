@@ -410,6 +410,67 @@ class TestHybridRetriever:
             results = retriever.retrieve("machine learning", top_k=k)
             assert len(results) <= k
 
+    def test_retrieve_uses_dense_search_provider(self):
+        """A provided dense_search_provider must replace the in-memory retriever."""
+        from retrieval.hybrid_retriever import HybridRetriever
+
+        provider_docs = [
+            {"id": "chunk_0", "text": "Machine learning uses algorithms."},
+            {"id": "chunk_1", "text": "Deep learning uses neural networks."},
+        ]
+        retriever = HybridRetriever(
+            provider_docs,
+            dense_search_provider=lambda query, top_k: [
+                ("chunk_1", 0.9),
+                ("chunk_0", 0.8),
+            ],
+        )
+
+        assert retriever.dense_retriever is None
+        results = retriever.retrieve("machine learning", top_k=5)
+        assert len(results) > 0
+        assert {r["id"] for r in results} == {"chunk_0", "chunk_1"}
+
+    def test_bm25_only_hit_survives_fusion(self):
+        """A document found only by BM25 must still appear in fused results."""
+        from retrieval.hybrid_retriever import HybridRetriever
+
+        docs = [
+            {"id": "chunk_0", "text": "OAuth2 tokens expire after one hour."},
+            {"id": "chunk_1", "text": "Neural networks generalize well."},
+            {"id": "chunk_2", "text": "Gradient descent optimizes model weights."},
+        ]
+        retriever = HybridRetriever(
+            docs,
+            dense_search_provider=lambda query, top_k: [
+                ("chunk_1", 0.95),
+                ("chunk_2", 0.80),
+            ],
+        )
+
+        results = retriever.retrieve("OAuth2", top_k=5)
+        assert any(r["id"] == "chunk_0" for r in results)
+
+    def test_retrieve_top_k_caps_candidate_overfetch(self):
+        """retrieve(top_k=N) must never return more than N results, even when
+        candidate_top_k requests a larger internal candidate pool."""
+        from retrieval.hybrid_retriever import HybridRetriever
+
+        docs = [
+            {"id": f"chunk_{i}", "text": f"Machine learning document number {i}."}
+            for i in range(10)
+        ]
+        retriever = HybridRetriever(
+            docs,
+            dense_search_provider=lambda query, top_k: [
+                (f"chunk_{i}", 0.9 - i * 0.05) for i in range(top_k)
+            ],
+        )
+
+        for k in [1, 3, 5]:
+            results = retriever.retrieve("machine learning", top_k=k, candidate_top_k=8)
+            assert len(results) <= k
+
 
 class TestFusionMethods:
     """Tests specifically for fusion methods."""
@@ -493,9 +554,7 @@ class TestBM25TechnicalTokenization:
         from retrieval.bm25_index import BM25Index
 
         index = BM25Index(self.TECH_DOCUMENTS)
-        tokens = index.tokenize(
-            "C++, A*, OAuth2, foo_bar, deep-learning, Python 3.10"
-        )
+        tokens = index.tokenize("C++, A*, OAuth2, foo_bar, deep-learning, Python 3.10")
 
         assert "c++" in tokens
         assert "a*" in tokens

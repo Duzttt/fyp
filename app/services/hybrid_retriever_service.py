@@ -1,8 +1,9 @@
 import logging
 import threading
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.config import settings
+from app.services.embedding import EmbeddingService
 from app.services.runtime_embedding import load_runtime_embedding_settings
 from app.services.vector_store import VectorStore
 
@@ -58,10 +59,19 @@ class HybridRetrieverService:
                     cls._initialized = True
                     return None
 
+                # The dense side of the hybrid retriever is backed by the
+                # persisted FAISS index via a search provider: no second
+                # embedding pass over all chunks and no duplicate FAISS index.
+                embedding_service = EmbeddingService(model_name=rt["model_id"])
+                dense_provider = _make_dense_search_provider(
+                    embedding_service, vector_store
+                )
+
                 retriever = HybridRetriever(
                     documents=documents,
                     model_name=rt["model_id"],
                     fusion_method=FusionMethod.RRF,
+                    dense_search_provider=dense_provider,
                 )
 
                 cls._instance = cls(retriever, rt["model_id"])
@@ -112,6 +122,29 @@ class HybridRetrieverService:
 
     def get_document_count(self) -> int:
         return self._retriever.get_document_count()
+
+
+def _make_dense_search_provider(
+    embedding_service: EmbeddingService,
+    vector_store: VectorStore,
+) -> Callable[[str, int], List[Tuple[str, float]]]:
+    """
+    Build a dense-search provider backed by the persisted FAISS index.
+
+    The provider encodes the query with the shared EmbeddingService, searches
+    the persisted VectorStore, and maps FAISS chunk indices to `chunk_<index>`
+    IDs so they can be fused with BM25 candidates by document ID.
+    """
+
+    def provider(query: str, top_k: int) -> List[Tuple[str, float]]:
+        query_embedding = embedding_service.embed_query(query)
+        results = vector_store.search_with_metadata(query_embedding, top_k=top_k)
+        return [
+            (f"chunk_{result['index']}", float(result["distance"]))
+            for result in results
+        ]
+
+    return provider
 
 
 def _build_document_list(chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
