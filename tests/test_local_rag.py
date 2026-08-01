@@ -473,7 +473,7 @@ class TestRerankAndDiversity:
 
         class FakeReranker:
             @staticmethod
-            def get_instance(model_name):
+            def get_instance(model_name, device=None):
                 return FakeReranker()
 
             def rerank(self, query, candidates):
@@ -569,3 +569,63 @@ class TestRerankAndDiversity:
         assert "bm25_dense_fusion" in stages
         assert "mmr_diversity" in stages
         assert all(isinstance(t["duration_ms"], int) for t in timings)
+
+    def test_rerank_details_captured(self, monkeypatch):
+        """rerank_details must expose before/after candidate ordering."""
+        fake_results = [
+            {
+                "text": "a",
+                "source": "x.pdf",
+                "page": 1,
+                "score": 0.9,
+                "fusion_score": 0.9,
+                "bm25_score": 5.0,
+                "dense_score": 0.9,
+                "chunk_index": 0,
+            },
+            {
+                "text": "b",
+                "source": "y.pdf",
+                "page": 1,
+                "score": 0.7,
+                "fusion_score": 0.7,
+                "bm25_score": 4.0,
+                "dense_score": 0.7,
+                "chunk_index": 1,
+            },
+        ]
+        self._patch_hybrid(monkeypatch, fake_results)
+
+        class FakeReranker:
+            @staticmethod
+            def get_instance(model_name, device=None):
+                return FakeReranker()
+
+            @property
+            def device(self):
+                return "cuda"
+
+            def rerank(self, query, candidates):
+                candidates[0]["rerank_score"] = 0.3  # "a" low
+                candidates[1]["rerank_score"] = 0.9  # "b" high
+                candidates.sort(key=lambda c: c["rerank_score"], reverse=True)
+                return candidates
+
+        monkeypatch.setattr(
+            "app.services.cross_encoder_reranker.CrossEncoderReranker", FakeReranker
+        )
+
+        details: dict = {}
+        results = retrieve_with_faiss("test query", top_k=5, rerank_details=details)
+
+        assert details["enabled"] is True
+        assert details["device"] == "cuda"
+        assert len(details["candidates_before"]) == 2
+        assert len(details["candidates_after"]) == 2
+        # before 保留原始融合顺序:"a" 在前
+        assert details["candidates_before"][0]["chunk_index"] == 0
+        assert details["candidates_before"][0]["bm25_score"] == 5.0
+        # after 已按 rerank_score 重排:"b" 在前
+        assert details["candidates_after"][0]["chunk_index"] == 1
+        assert details["candidates_after"][0]["rerank_score"] == 0.9
+        assert results[0]["text"] == "b"

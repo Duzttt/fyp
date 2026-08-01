@@ -1,1 +1,1 @@
-{"llm_model": "MiniCPM5-1B-Q8_0", "top_k": 5, "temperature": 0.7, "similarity_threshold": 0.3, "reranker_enabled": false}
+{"llm_model": "MiniCPM5-1B-Q8_0", "top_k": 5, "temperature": 0.7, "similarity_threshold": 0.3, "reranker_enabled": true}

@@ -75,11 +75,35 @@ def _install_happy_path_mocks(monkeypatch: pytest.MonkeyPatch, trace_service):
     )
 
     def fake_retrieve_with_faiss(
-        query, top_k=5, source_filter=None, stage_timings=None
+        query, top_k=5, source_filter=None, stage_timings=None, rerank_details=None
     ):
         captured["source_filter"] = source_filter
         if stage_timings is not None:
             stage_timings.append({"stage": "bm25_dense_fusion", "duration_ms": 1})
+            stage_timings.append({"stage": "rerank", "duration_ms": 3})
+        if rerank_details is not None:
+            rerank_details["enabled"] = True
+            rerank_details["model"] = "cross-encoder/test"
+            rerank_details["device"] = "cpu"
+            rerank_details["candidates_before"] = [
+                {
+                    "chunk_index": 0,
+                    "source": "lecture-a.pdf",
+                    "page": 1,
+                    "text": "Retrieval augmented generation uses retrieved context.",
+                    "fusion_score": 0.9,
+                }
+            ]
+            rerank_details["candidates_after"] = [
+                {
+                    "chunk_index": 0,
+                    "source": "lecture-a.pdf",
+                    "page": 1,
+                    "text": "Retrieval augmented generation uses retrieved context.",
+                    "rerank_score": 0.95,
+                    "fusion_score": 0.9,
+                }
+            ]
         return [
             {
                 "text": "Retrieval augmented generation uses retrieved context.",
@@ -135,6 +159,7 @@ def test_build_rag_demo_trace_returns_ordered_english_stages(
         "bm25_retrieval",
         "dense_retrieval",
         "hybrid_ranking",
+        "cross_encoder_rerank",
         "context_building",
         "llm_generation",
         "final_answer",
@@ -220,3 +245,72 @@ def test_build_rag_demo_trace_preserves_retrieval_when_llm_times_out(
     assert final_stage["status"] == "skipped"
     assert trace["retrieved_chunks"]
     assert trace["answer"] == ""
+
+
+def test_build_rag_demo_trace_includes_rerank_stage(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from app.services import rag_demo_trace as trace_service
+
+    _install_happy_path_mocks(monkeypatch, trace_service)
+
+    trace = trace_service.build_rag_demo_trace(
+        query="Explain RAG",
+        source_filter=None,
+        top_k=3,
+        include_answer=False,
+    )
+
+    stage_ids = [stage["id"] for stage in trace["stages"]]
+    assert "cross_encoder_rerank" in stage_ids
+
+    rerank_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "cross_encoder_rerank"
+    )
+    assert rerank_stage["status"] == "completed"
+    assert rerank_stage["duration_ms"] == 3
+    assert rerank_stage["technical"]["model"] == "cross-encoder/test"
+    assert rerank_stage["technical"]["device"] == "cpu"
+    assert rerank_stage["technical"]["candidates_considered"] == 1
+    assert len(rerank_stage["results"]) == 1
+    assert rerank_stage["results"][0]["score"] == 0.95
+    assert rerank_stage["results"][0]["source"] == "lecture-a.pdf"
+
+
+def test_build_rag_demo_trace_rerank_skipped_when_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from app.services import rag_demo_trace as trace_service
+
+    _install_happy_path_mocks(monkeypatch, trace_service)
+
+    def fake_retrieve_without_rerank(
+        query, top_k=5, source_filter=None, stage_timings=None, rerank_details=None
+    ):
+        return [
+            {
+                "text": "Retrieval augmented generation uses retrieved context.",
+                "source": "lecture-a.pdf",
+                "page": 1,
+                "distance": 0.2,
+                "score": 0.9,
+            }
+        ]
+
+    monkeypatch.setattr(
+        trace_service, "retrieve_with_faiss", fake_retrieve_without_rerank
+    )
+
+    trace = trace_service.build_rag_demo_trace(
+        query="Explain RAG",
+        source_filter=None,
+        top_k=3,
+        include_answer=False,
+    )
+
+    rerank_stage = next(
+        stage for stage in trace["stages"] if stage["id"] == "cross_encoder_rerank"
+    )
+    assert rerank_stage["status"] == "skipped"
+    assert rerank_stage["technical"]["enabled"] is False
+    assert rerank_stage["results"] == []

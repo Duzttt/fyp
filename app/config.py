@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.6
     RERANKER_ENABLED: bool = True
     CROSS_ENCODER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L6-v2"
+    CROSS_ENCODER_DEVICE: str = "auto"  # "auto" | "cuda" | "cpu" | "mps"
 
     FAISS_INDEX_PATH: str = "data/faiss_index"
     DOCUMENTS_PATH: str = "media/data_source"

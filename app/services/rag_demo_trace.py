@@ -22,6 +22,7 @@ def retrieve_with_faiss(
     top_k: int = 5,
     source_filter: Optional[List[str]] = None,
     stage_timings: Optional[List[Dict[str, Any]]] = None,
+    rerank_details: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     from app.services.local_rag import LocalRAGError as RuntimeLocalRAGError
     from app.services.local_rag import retrieve_with_faiss as runtime_retrieve
@@ -33,6 +34,7 @@ def retrieve_with_faiss(
             source_filter=source_filter,
             similarity_threshold=0.0,
             stage_timings=stage_timings,
+            rerank_details=rerank_details,
         )
     except RuntimeLocalRAGError as exc:
         raise LocalRAGError(str(exc)) from exc
@@ -392,12 +394,14 @@ def build_rag_demo_trace(
 
     hybrid_started_at = time.perf_counter()
     retrieval_stage_timings: List[Dict[str, Any]] = []
+    rerank_details: Dict[str, Any] = {}
     try:
         retrieved_sources = retrieve_with_faiss(
             query=normalized_query,
             top_k=bounded_top_k,
             source_filter=normalized_sources,
             stage_timings=retrieval_stage_timings,
+            rerank_details=rerank_details,
         )
         retrieved_chunks = _format_retrieved_chunks(retrieved_sources)
         stages.append(
@@ -445,6 +449,60 @@ def build_rag_demo_trace(
             "answer": "",
             "total_duration_ms": _duration_ms(total_started_at),
         }
+
+    # --- Cross-Encoder Reranking stage ---
+    rerank_timing = next(
+        (t for t in retrieval_stage_timings if t["stage"] == "rerank"), None
+    )
+    if rerank_details.get("enabled"):
+        before = rerank_details.get("candidates_before", [])
+        after = rerank_details.get("candidates_after", [])
+        before_rank = {c.get("chunk_index"): i + 1 for i, c in enumerate(before)}
+        moved_up = sum(
+            1
+            for c in after[:bounded_top_k]
+            if before_rank.get(c.get("chunk_index")) is not None
+            and before_rank[c.get("chunk_index")] > after.index(c) + 1
+        )
+        stages.append(
+            _new_stage(
+                "cross_encoder_rerank",
+                "Cross-Encoder Reranking",
+                "completed",
+                rerank_timing["duration_ms"] if rerank_timing else 0,
+                "A cross-encoder scores the fused candidates and re-orders them by true relevance to the question.",
+                technical={
+                    "model": rerank_details.get("model"),
+                    "device": rerank_details.get("device"),
+                    "candidates_considered": len(after),
+                    "top_k": bounded_top_k,
+                    "moved_into_top_k": moved_up,
+                },
+                results=[
+                    {
+                        "rank": rank,
+                        "source": c["source"],
+                        "page": c["page"],
+                        "score": round(float(c.get("rerank_score") or 0), 4),
+                        "before_rank": before_rank.get(c.get("chunk_index")),
+                        "preview": _clip_text(c.get("text", ""), 160),
+                    }
+                    for rank, c in enumerate(after[:bounded_top_k], start=1)
+                ],
+            )
+        )
+    else:
+        stages.append(
+            _new_stage(
+                "cross_encoder_rerank",
+                "Cross-Encoder Reranking",
+                "skipped",
+                0,
+                "Reranking is disabled, so the fused candidates keep their RRF order.",
+                technical={"enabled": False},
+                results=[],
+            )
+        )
 
     context_started_at = time.perf_counter()
     context = build_context_from_sources(retrieved_sources)

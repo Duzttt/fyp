@@ -174,6 +174,7 @@ def retrieve_with_faiss(
     reranker_enabled: Optional[bool] = None,
     minimum_relevance_score: Optional[float] = None,
     stage_timings: Optional[List[Dict[str, Any]]] = None,
+    rerank_details: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     if not query.strip():
         raise LocalRAGError("Query cannot be empty")
@@ -261,8 +262,38 @@ def retrieve_with_faiss(
         started = time.perf_counter()
         from app.services.cross_encoder_reranker import CrossEncoderReranker
 
-        reranker = CrossEncoderReranker.get_instance(settings.CROSS_ENCODER_MODEL)
+        reranker = CrossEncoderReranker.get_instance(
+            settings.CROSS_ENCODER_MODEL, settings.CROSS_ENCODER_DEVICE
+        )
+        if rerank_details is not None:
+            rerank_details["enabled"] = True
+            rerank_details["model"] = settings.CROSS_ENCODER_MODEL
+            rerank_details["device"] = reranker.device
+            rerank_details["candidates_before"] = [
+                {
+                    "chunk_index": r.get("chunk_index"),
+                    "source": r.get("source", "unknown"),
+                    "page": r.get("page"),
+                    "text": r.get("text", ""),
+                    "fusion_score": r.get("fusion_score", r.get("score", 0.0)),
+                    "bm25_score": r.get("bm25_score", 0.0),
+                    "dense_score": r.get("dense_score", 0.0),
+                }
+                for r in candidates
+            ]
         candidates = reranker.rerank(query, candidates)
+        if rerank_details is not None:
+            rerank_details["candidates_after"] = [
+                {
+                    "chunk_index": r.get("chunk_index"),
+                    "source": r.get("source", "unknown"),
+                    "page": r.get("page"),
+                    "text": r.get("text", ""),
+                    "rerank_score": r.get("rerank_score", 0.0),
+                    "fusion_score": r.get("fusion_score", r.get("score", 0.0)),
+                }
+                for r in candidates
+            ]
         _record_stage(stage_timings, "rerank", started, candidates)
 
     # --- Explicit final-score threshold (applies to the reranker score) ---
