@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920">
+    <title>Lecture Note Question Answering System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* ===========================================
+           CSS CUSTOM PROPERTIES (THEME)
+           =========================================== */
+        :root {
+            --bg-primary: #faf9f7;
+            --bg-secondary: #f0eeeb;
+            --text-primary: #1a1a1a;
+            --text-secondary: #555;
+            --accent-teal: #2d6a6a;
+            --accent-orange: #e8a87c;
+            --accent-light: #d4e4e4;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-body: 'Source Sans Pro', sans-serif;
+            --title-size: 64px;
+            --subtitle-size: 24px;
+            --body-size: 20px;
+            --slide-padding: 100px;
+            --content-gap: 32px;
+            --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+            --duration-normal: 0.6s;
+        }
+
+        /* ===========================================
+           BASE STYLES
+           =========================================== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===========================================
+           VIEWPORT BASE CSS (MANDATORY)
+           =========================================== */
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: var(--bg-primary);
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: var(--bg-primary);
+        }
+
+        .slide.active,
+        .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        img,
+        video,
+        canvas,
+        svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        .deck-controls {
+            position: fixed;
+            left: 50%;
+            bottom: 22px;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+
+        @media print {
+            html,
+            body {
+                width: 1920px;
+                height: auto;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-viewport {
+                position: static;
+                overflow: visible;
+                background: #fff;
+            }
+
+            .deck-stage {
+                position: static;
+                width: auto;
+                height: auto;
+                transform: none !important;
+                background: none;
+            }
+
+            .slide {
+                position: relative;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                width: 1920px;
+                height: 1080px;
+                break-after: page;
+                page-break-after: always;
+            }
+
+            .slide:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .deck-controls {
+                display: none !important;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.2s !important;
+            }
+        }
+
+        /* ===========================================
+           ANIMATIONS
+           =========================================== */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity var(--duration-normal) var(--ease-out-expo),
+                        transform var(--duration-normal) var(--ease-out-expo);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .reveal:nth-child(1) { transition-delay: 0.1s; }
+        .reveal:nth-child(2) { transition-delay: 0.2s; }
+        .reveal:nth-child(3) { transition-delay: 0.3s; }
+        .reveal:nth-child(4) { transition-delay: 0.4s; }
+        .reveal:nth-child(5) { transition-delay: 0.5s; }
+
+        /* ===========================================
+           SLIDE-SPECIFIC STYLES
+           =========================================== */
+        .slide-content {
+            padding: var(--slide-padding);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .title-slide {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .title-slide .geometric-pattern {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 600px;
+            height: 600px;
+            background: 
+                radial-gradient(circle at 30% 70%, var(--accent-light) 0%, transparent 50%),
+                radial-gradient(circle at 70% 30%, var(--accent-orange) 0%, transparent 50%);
+            opacity: 0.15;
+            transform: rotate(15deg);
+        }
+
+        .title-slide .title {
+            font-family: var(--font-display);
+            font-size: var(--title-size);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.1;
+            margin-bottom: 30px;
+            letter-spacing: -1px;
+            max-width: 1200px;
+        }
+
+        .title-slide .subtitle {
+            font-family: var(--font-body);
+            font-size: var(--subtitle-size);
+            font-weight: 300;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 50px;
+            max-width: 800px;
+        }
+
+        .title-slide .presenter {
+            font-family: var(--font-display);
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--accent-teal);
+            margin-top: 40px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .title-slide .presenter::before {
+            content: '';
+            width: 40px;
+            height: 2px;
+            background: var(--accent-teal);
+        }
+
+        .title-slide .context {
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-top: 10px;
+            margin-left: 52px;
+        }
+
+        .title-slide .accent-line {
+            position: absolute;
+            bottom: 100px;
+            left: 100px;
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-teal), var(--accent-orange));
+        }
+
+        .title-slide .slide-number {
+            position: absolute;
+            bottom: 60px;
+            right: 100px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .section-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: var(--slide-padding);
+            position: relative;
+        }
+
+        .section-slide .section-number {
+            font-family: var(--font-display);
+            font-size: 120px;
+            font-weight: 700;
+            color: var(--accent-teal);
+            opacity: 0.1;
+            position: absolute;
+            top: 80px;
+            right: 120px;
+            line-height: 1;
+        }
+
+        .section-slide .section-title {
+            font-family: var(--font-display);
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 40px;
+            max-width: 800px;
+        }
+
+        .section-slide .section-content {
+            font-family: var(--font-body);
+            font-size: var(--body-size);
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            max-width: 900px;
+        }
+
+        .section-slide .accent-bar {
+            position: absolute;
+            left: 100px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 200px;
+            background: linear-gradient(180deg, var(--accent-teal), var(--accent-orange));
+        }
+
+        .content-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: var(--slide-padding);
+            position: relative;
+        }
+
+        .content-slide .slide-title {
+            font-family: var(--font-display);
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 40px;
+            max-width: 1000px;
+        }
+
+        .content-slide .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            max-width: 1400px;
+        }
+
+        .content-slide .content-item {
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-teal);
+        }
+
+        .content-slide .content-item h3 {
+            font-family: var(--font-display);
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .content-slide .content-item p {
+            font-family: var(--font-body);
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .content-slide .slide-number {
+            position: absolute;
+            bottom: 60px;
+            right: 100px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .list-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: var(--slide-padding);
+            position: relative;
+        }
+
+        .list-slide .slide-title {
+            font-family: var(--font-display);
+            font-size: 40px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 40px;
+            max-width: 1000px;
+        }
+
+        .list-slide .bullet-list {
+            list-style: none;
+            max-width: 1000px;
+        }
+
+        .list-slide .bullet-list li {
+            font-family: var(--font-body);
+            font-size: 20px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+            padding-left: 30px;
+            position: relative;
+        }
+
+        .list-slide .bullet-list li::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-teal);
+            border-radius: 50%;
+        }
+
+        .list-slide .slide-number {
+            position: absolute;
+            bottom: 60px;
+            right: 100px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .closing-slide {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .closing-slide .title {
+            font-family: var(--font-display);
+            font-size: 56px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 30px;
+            max-width: 1000px;
+        }
+
+        .closing-slide .subtitle {
+            font-family: var(--font-body);
+            font-size: 24px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            margin-bottom: 50px;
+            max-width: 800px;
+        }
+
+        .closing-slide .accent-line {
+            position: absolute;
+            bottom: 100px;
+            left: 100px;
+            width: 200px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-teal), var(--accent-orange));
+        }
+
+        .closing-slide .slide-number {
+            position: absolute;
+            bottom: 60px;
+            right: 100px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        /* ===========================================
+           INLINE EDITING
+           =========================================== */
+        .edit-hotzone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 80px;
+            height: 80px;
+            z-index: 10000;
+            cursor: pointer;
+        }
+
+        .edit-toggle {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 10001;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: var(--accent-teal);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .edit-toggle.show,
+        .edit-toggle.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .edit-mode .slide {
+            cursor: text;
+        }
+
+        .edit-mode [contenteditable] {
+            outline: 2px dashed var(--accent-teal);
+            outline-offset: 4px;
+        }
+
+        /* ===========================================
+           PROGRESS INDICATOR
+           =========================================== */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent-teal), var(--accent-orange));
+            z-index: 1000;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+            <!-- Slide 1: Title -->
+            <section class="slide title-slide active">
+                <div class="geometric-pattern"></div>
+                <div class="title reveal">Lecture Note Question Answering System</div>
+                <div class="subtitle reveal">Hybrid Retrieval-Augmented Generation for Source-Grounded Answers from Personal Lecture Collections</div>
+                <div class="presenter reveal">Presented by: [Your Name]</div>
+                <div class="context reveal">Final Year Project Presentation</div>
+                <div class="accent-line"></div>
+                <div class="slide-number">01 / 10</div>
+            </section>
+
+            <!-- Slide 2: Problem Statement -->
+            <section class="slide section-slide">
+                <div class="accent-bar"></div>
+                <div class="section-number reveal">02</div>
+                <div class="section-title reveal">Problem Statement</div>
+                <div class="section-content reveal">
+                    Students face three core problems with lecture materials:<br><br>
+                    <strong>1. Time-consuming access</strong> — Finding specific explanations across multiple PDF files interrupts revision.<br><br>
+                    <strong>2. Limited retrieval</strong> — Basic keyword search fails when questions use different wording than notes.<br><br>
+                    <strong>3. Unverifiable AI answers</strong> — Generic AI responses may not follow lecturer material and lack source citations.
+                </div>
+                <div class="slide-number">02 / 10</div>
+            </section>
+
+            <!-- Slide 3: Project Objectives -->
+            <section class="slide list-slide">
+                <div class="slide-title reveal">Project Objectives</div>
+                <ul class="bullet-list">
+                    <li class="reveal">Develop a web-based lecture note question answering system with accessible interface</li>
+                    <li class="reveal">Implement hybrid RAG pipeline with source citations using BM25 + dense retrieval</li>
+                    <li class="reveal">Provide supporting functions: summarisation, question suggestions, cross-document comparison</li>
+                    <li class="reveal">Evaluate pipeline quality using RAGAS metrics (faithfulness, relevancy, precision, recall)</li>
+                </ul>
+                <div class="slide-number">03 / 10</div>
+            </section>
+
+            <!-- Slide 4: Project Scope -->
+            <section class="slide content-slide">
+                <div class="slide-title reveal">Project Scope & Boundaries</div>
+                <div class="content-grid">
+                    <div class="content-item reveal">
+                        <h3>In Scope</h3>
+                        <p>• Text-based PDF upload and extraction<br>• Sentence-aware chunking with metadata<br>• MiniLM embeddings + FAISS indexing<br>• BM25 + dense hybrid retrieval<br>• Gemini, OpenRouter, local LLM generation<br>• Grounded chat with citations<br>• RAGAS evaluation framework</p>
+                    </div>
+                    <div class="content-item reveal">
+                        <h3>Out of Scope</h3>
+                        <p>• Non-PDF sources (video, audio, web)<br>• OCR for scanned PDFs<br>• Automatic marking/grading<br>• Course-authoring tools<br>• Institution-wide LMS integration<br>• Claims of universal expertise<br>• Replacement of lecturers</p>
+                    </div>
+                </div>
+                <div class="slide-number">04 / 10</div>
+            </section>
+
+            <!-- Slide 5: System Architecture -->
+            <section class="slide content-slide">
+                <div class="slide-title reveal">System Architecture Overview</div>
+                <div class="content-grid">
+                    <div class="content-item reveal">
+                        <h3>Offline Ingestion</h3>
+                        <p>• PDF text extraction with PyMuPDF<br>• Sentence-aware chunking with metadata<br>• MiniLM embeddings (384-dim vectors)<br>• FAISS persistent indexing<br>• BM25 lexical index construction</p>
+                    </div>
+                    <div class="content-item reveal">
+                        <h3>Online Querying</h3>
+                        <p>• Natural-language question processing<br>• Parallel dense + BM25 retrieval<br>• Reciprocal Rank Fusion (RRF)<br>• LLM generation with grounded context<br>• Citation extraction and presentation</p>
+                    </div>
+                </div>
+                <div class="slide-number">05 / 10</div>
+            </section>
+
+            <!-- Slide 6: Key Technical Components -->
+            <section class="slide content-slide">
+                <div class="slide-title reveal">Key Technical Components</div>
+                <div class="content-grid">
+                    <div class="content-item reveal">
+                        <h3>Document Processing</h3>
+                        <p>• PyMuPDF for fast PDF text extraction<br>• Sentence-aware chunking preserving boundaries<br>• Source document + page metadata retention<br>• Configurable chunk size and overlap</p>
+                    </div>
+                    <div class="content-item reveal">
+                        <h3>Embedding & Storage</h3>
+                        <p>• all-MiniLM-L6-v2 sentence embeddings<br>• 384-dimensional vector representation<br>• FAISS for fast similarity search<br>• Persistent index saved to disk</p>
+                    </div>
+                </div>
+                <div class="slide-number">06 / 10</div>
+            </section>
+
+            <!-- Slide 7: Answer Generation -->
+            <section class="slide list-slide">
+                <div class="slide-title reveal">Answer Generation & LLM Integration</div>
+                <ul class="bullet-list">
+                    <li class="reveal">Structured prompt template with system instruction and retrieved context</li>
+                    <li class="reveal">Three LLM backends: Gemini, OpenRouter-compatible APIs, local llama.cpp</li>
+                    <li class="reveal">Post-processing to attach citations with document and page metadata</li>
+                    <li class="reveal">User-selectable providers and models from web interface</li>
+                </ul>
+                <div class="slide-number">07 / 10</div>
+            </section>
+
+            <!-- Slide 8: Web Application Features -->
+            <section class="slide content-slide">
+                <div class="slide-title reveal">Web Application Features</div>
+                <div class="content-grid">
+                    <div class="content-item reveal">
+                        <h3>Document Management</h3>
+                        <p>• Upload new lecture PDFs<br>• View indexed documents with status<br>• Select documents for search scope<br>• Delete outdated materials</p>
+                    </div>
+                    <div class="content-item reveal">
+                        <h3>Chat Interface</h3>
+                        <p>• Conversational Q&A design<br>• Conversation history management<br>• Source snippets with citations<br>• Document highlighting on click</p>
+                    </div>
+                </div>
+                <div class="slide-number">08 / 10</div>
+            </section>
+
+            <!-- Slide 9: Evaluation -->
+            <section class="slide content-slide">
+                <div class="slide-title reveal">Evaluation Methodology - RAGAS</div>
+                <div class="content-grid">
+                    <div class="content-item reveal">
+                        <h3>Two-Phase Workflow</h3>
+                        <p>• Dataset preparation: generate Q&A pairs<br>• Evaluation: run through RAG pipeline<br>• Compare against ground truth<br>• Display and store results</p>
+                    </div>
+                    <div class="content-item reveal">
+                        <h3>Key Metrics</h3>
+                        <p>• Faithfulness: factual consistency<br>• Answer Relevancy: question addressing<br>• Context Precision: retrieval ranking<br>• Context Recall: coverage of relevant chunks</p>
+                    </div>
+                </div>
+                <div class="slide-number">09 / 10</div>
+            </section>
+
+            <!-- Slide 10: Conclusion -->
+            <section class="slide closing-slide">
+                <div class="title reveal">Conclusion & Future Work</div>
+                <div class="subtitle reveal">
+                    Successfully demonstrated time-efficient access, hybrid retrieval, and verifiable AI answers.<br><br>
+                    Future work: OCR integration, late-interaction rerankers, teacher dashboard, on-device deployment, user feedback loops.
+                </div>
+                <div class="accent-line"></div>
+                <div class="slide-number">10 / 10</div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit Controls -->
+    <div class="edit-hotzone"></div>
+    <button class="edit-toggle" id="editToggle" title="Edit mode (E)">Edit</button>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <script>
+        /* ===========================================
+           SLIDE PRESENTATION CONTROLLER
+           =========================================== */
+        class SlidePresentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.stage = document.getElementById('deckStage');
+                this.progressBar = document.getElementById('progressBar');
+                this.editToggle = document.getElementById('editToggle');
+                this.hotzone = document.querySelector('.edit-hotzone');
+                this.isActive = false;
+                
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupTouchNav();
+                this.setupInlineEditing();
+                this.showSlide(0);
+            }
+
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            setupKeyboardNav() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.target.getAttribute('contenteditable')) return;
+                    
+                    switch(e.key) {
+                        case 'ArrowRight':
+                        case 'ArrowDown':
+                        case ' ':
+                        case 'PageDown':
+                            e.preventDefault();
+                            this.nextSlide();
+                            break;
+                        case 'ArrowLeft':
+                        case 'ArrowUp':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prevSlide();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.showSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.showSlide(this.slides.length - 1);
+                            break;
+                        case 'e':
+                        case 'E':
+                            this.toggleEditMode();
+                            break;
+                    }
+                });
+            }
+
+            setupTouchNav() {
+                let touchStartX = 0;
+                let touchStartY = 0;
+                
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.touches[0].clientX;
+                    touchStartY = e.touches[0].clientY;
+                });
+                
+                document.addEventListener('touchend', (e) => {
+                    const touchEndX = e.changedTouches[0].clientX;
+                    const touchEndY = e.changedTouches[0].clientY;
+                    const deltaX = touchEndX - touchStartX;
+                    const deltaY = touchEndY - touchStartY;
+                    
+                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                        if (deltaX > 0) {
+                            this.prevSlide();
+                        } else {
+                            this.nextSlide();
+                        }
+                    }
+                });
+            }
+
+            setupInlineEditing() {
+                // Hotzone hover with 400ms grace period
+                let hideTimeout = null;
+                
+                this.hotzone.addEventListener('mouseenter', () => {
+                    clearTimeout(hideTimeout);
+                    this.editToggle.classList.add('show');
+                });
+                
+                this.hotzone.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.editToggle.classList.remove('show');
+                    }, 400);
+                });
+                
+                this.editToggle.addEventListener('mouseenter', () => {
+                    clearTimeout(hideTimeout);
+                });
+                
+                this.editToggle.addEventListener('mouseleave', () => {
+                    hideTimeout = setTimeout(() => {
+                        if (!this.isActive) this.editToggle.classList.remove('show');
+                    }, 400);
+                });
+                
+                this.editToggle.addEventListener('click', () => {
+                    this.toggleEditMode();
+                });
+                
+                this.hotzone.addEventListener('click', () => {
+                    this.toggleEditMode();
+                });
+                
+                // Enable contenteditable on text elements
+                this.slides.forEach(slide => {
+                    const textElements = slide.querySelectorAll('h1, h2, h3, p, li, .title, .subtitle, .presenter, .context, .section-title, .section-content, .slide-title');
+                    textElements.forEach(el => {
+                        el.addEventListener('focus', () => {
+                            if (this.isActive) {
+                                el.setAttribute('contenteditable', 'true');
+                            }
+                        });
+                        el.addEventListener('blur', () => {
+                            el.removeAttribute('contenteditable');
+                            this.saveToLocalStorage();
+                        });
+                    });
+                });
+            }
+
+            toggleEditMode() {
+                this.isActive = !this.isActive;
+                document.body.classList.toggle('edit-mode', this.isActive);
+                this.editToggle.classList.toggle('active', this.isActive);
+                this.editToggle.textContent = this.isActive ? 'Save' : 'Edit';
+                
+                if (!this.isActive) {
+                    this.saveToLocalStorage();
+                }
+            }
+
+            saveToLocalStorage() {
+                const slideContents = [];
+                this.slides.forEach((slide, index) => {
+                    const textElements = slide.querySelectorAll('h1, h2, h3, p, li, .title, .subtitle, .presenter, .context, .section-title, .section-content, .slide-title');
+                    const contents = [];
+                    textElements.forEach(el => {
+                        contents.push(el.textContent);
+                    });
+                    slideContents.push(contents);
+                });
+                localStorage.setItem('slideContents', JSON.stringify(slideContents));
+            }
+
+            loadFromLocalStorage() {
+                const saved = localStorage.getItem('slideContents');
+                if (saved) {
+                    const slideContents = JSON.parse(saved);
+                    this.slides.forEach((slide, index) => {
+                        if (slideContents[index]) {
+                            const textElements = slide.querySelectorAll('h1, h2, h3, p, li, .title, .subtitle, .presenter, .context, .section-title, .section-content, .slide-title');
+                            textElements.forEach((el, elIndex) => {
+                                if (slideContents[index][elIndex]) {
+                                    el.textContent = slideContents[index][elIndex];
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+
+            nextSlide() {
+                this.showSlide(this.currentSlide + 1);
+            }
+
+            prevSlide() {
+                this.showSlide(this.currentSlide - 1);
+            }
+
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+                this.slides.forEach((slide, i) => {
+                    slide.classList.toggle('active', i === this.currentSlide);
+                    slide.classList.toggle('visible', i === this.currentSlide);
+                });
+                
+                // Update progress bar
+                const progress = ((this.currentSlide + 1) / this.slides.length) * 100;
+                this.progressBar.style.width = `${progress}%`;
+            }
+        }
+
+        // Initialize presentation
+        const presentation = new SlidePresentation();
+        presentation.loadFromLocalStorage();
+    </script>
+</body>
+</html>

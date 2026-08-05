@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400">
+  <defs>
+    <linearGradient id="bg13" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#faf8f4"/>
+      <stop offset="100%" style="stop-color:#f0ece4"/>
+    </linearGradient>
+    <filter id="shadow13">
+      <feDropShadow dx="0" dy="3" stdDeviation="8" flood-color="#1c1917" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="400" fill="url(#bg13)"/>
+
+  <!-- Chat container -->
+  <g transform="translate(140, 30)" filter="url(#shadow13)">
+    <rect width="680" height="340" rx="16" fill="#ffffff" stroke="#e7e5e0" stroke-width="1"/>
+
+    <!-- Header -->
+    <rect width="680" height="44" rx="16" fill="#faf8f4"/>
+    <rect y="30" width="680" height="14" fill="#faf8f4"/>
+    <circle cx="28" cy="22" r="10" fill="#b45309" opacity="0.15"/>
+    <text x="28" y="26" font-family="system-ui, sans-serif" font-size="10" fill="#b45309" text-anchor="middle">AI</text>
+    <text x="46" y="26" font-family="system-ui, sans-serif" font-size="12" fill="#1c1917" font-weight="600">LectureQA Assistant</text>
+    <circle cx="650" cy="22" r="4" fill="#22c55e"/>
+
+    <!-- User message -->
+    <g transform="translate(20, 60)">
+      <rect x="280" y="0" width="380" height="52" rx="12" fill="#fef3c7" stroke="#fde68a" stroke-width="0.5"/>
+      <text x="300" y="20" font-family="system-ui, sans-serif" font-size="9" fill="#b45309" font-weight="600">You</text>
+      <text x="300" y="36" font-family="system-ui, sans-serif" font-size="12" fill="#92400e">What is gradient descent and how does it update model weights?</text>
+    </g>
+
+    <!-- Assistant message -->
+    <g transform="translate(20, 124)">
+      <rect x="0" y="0" width="500" height="120" rx="12" fill="#f0ece4"/>
+      <text x="16" y="20" font-family="system-ui, sans-serif" font-size="9" fill="#a8a29e" font-weight="600">Assistant</text>
+      <text x="16" y="40" font-family="system-ui, sans-serif" font-size="12" fill="#57534e">Gradient descent is an optimization algorithm that minimizes</text>
+      <text x="16" y="56" font-family="system-ui, sans-serif" font-size="12" fill="#57534e">the cost function by iteratively adjusting parameters in the</text>
+      <text x="16" y="72" font-family="system-ui, sans-serif" font-size="12" fill="#57534e">direction of steepest descent. The weight update rule is</text>
+      <text x="16" y="88" font-family="system-ui, sans-serif" font-size="12" fill="#57534e">&theta; = &theta; - &alpha;&nabla;J(&theta;), where &alpha; is the learning rate.</text>
+      <text x="16" y="110" font-family="system-ui, sans-serif" font-size="12" fill="#b45309" font-weight="600">[S1]</text>
+    </g>
+
+    <!-- Second user message -->
+    <g transform="translate(20, 254)">
+      <rect x="320" y="0" width="340" height="38" rx="12" fill="#fef3c7" stroke="#fde68a" stroke-width="0.5"/>
+      <text x="340" y="24" font-family="system-ui, sans-serif" font-size="12" fill="#92400e">What are the different variants of gradient descent?</text>
+    </g>
+
+    <!-- Source citation bar -->
+    <g transform="translate(20, 300)">
+      <rect width="640" height="28" rx="8" fill="#fef3c7" opacity="0.6"/>
+      <text x="16" y="19" font-family="monospace" font-size="10" fill="#b45309">Sources: lecture3.pdf — p.12 · lecture5.pdf — p.8</text>
+    </g>
+  </g>
+
+  <!-- Decorative dots -->
+  <circle cx="80" cy="60" r="3" fill="#b45309" opacity="0.1"/>
+  <circle cx="900" cy="340" r="4" fill="#b45309" opacity="0.08"/>
+  <circle cx="100" cy="350" r="2" fill="#f59e0b" opacity="0.15"/>
+</svg>

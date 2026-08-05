@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Embedding & Vector Search 可视化</title>
+<style>
+  :root {
+    --bg: #0f172a; --surface: #1e293b; --surface2: #334155;
+    --text: #e2e8f0; --muted: #94a3b8; --accent: #38bdf8;
+    --green: #4ade80; --orange: #fb923c; --red: #f87171;
+    --purple: #a78bfa; --yellow: #fbbf24; --pink: #f472b6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .header { background: linear-gradient(135deg, #1e3a5f, #0f172a); padding: 24px 32px; border-bottom: 1px solid var(--surface2); }
+  .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .header p { color: var(--muted); font-size: 13px; }
+  .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface); border-radius: 8px; padding: 4px; }
+  .tab { padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); transition: all 0.2s; border: none; background: none; }
+  .tab.active { background: var(--accent); color: #0f172a; }
+  .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: var(--surface); border: 1px solid var(--surface2); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+  .model-card { background: var(--surface2); border-radius: 8px; padding: 14px; border: 1px solid transparent; cursor: pointer; transition: all 0.2s; }
+  .model-card:hover { border-color: var(--accent); }
+  .model-card.selected { border-color: var(--green); background: rgba(74, 222, 128, 0.08); }
+  .model-card .name { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--accent); }
+  .model-card .props { display: flex; gap: 8px; flex-wrap: wrap; }
+  .model-card .prop { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: rgba(148, 163, 184, 0.15); color: var(--muted); }
+  .model-card .prop.dim { background: rgba(56, 189, 248, 0.15); color: var(--accent); }
+  .input-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .input-row textarea { flex: 1; min-width: 200px; background: var(--surface2); border: 1px solid var(--surface2); color: var(--text); padding: 10px; border-radius: 8px; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.5; resize: vertical; min-height: 80px; }
+  .input-row textarea::placeholder { color: var(--muted); }
+  .btn { background: var(--accent); color: #0f172a; border: none; padding: 8px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .btn:hover { filter: brightness(1.1); }
+  .btn.secondary { background: var(--surface2); color: var(--text); }
+  .vector-display { font-family: 'Consolas', monospace; font-size: 11px; line-height: 1.6; background: var(--surface2); border-radius: 8px; padding: 12px; max-height: 200px; overflow-y: auto; word-break: break-all; }
+  .vector-display .dim-label { color: var(--muted); font-size: 10px; }
+  .similarity-bar { display: flex; align-items: center; gap: 10px; margin: 6px 0; }
+  .similarity-bar .label { font-size: 12px; width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .similarity-bar .bar-bg { flex: 1; height: 20px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
+  .similarity-bar .bar-fill { height: 100%; border-radius: 4px; transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; font-size: 10px; font-weight: 600; }
+  .similarity-bar .score { font-size: 12px; font-weight: 600; width: 50px; text-align: right; }
+  .heatmap { display: grid; gap: 2px; margin: 12px 0; }
+  .heatmap-cell { aspect-ratio: 1; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600; cursor: pointer; transition: transform 0.1s; }
+  .heatmap-cell:hover { transform: scale(1.1); z-index: 1; }
+  .pipeline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+  .pipeline-step { background: var(--surface2); border-radius: 8px; padding: 10px 14px; text-align: center; min-width: 120px; }
+  .pipeline-step .step-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .pipeline-step .step-value { font-size: 14px; font-weight: 600; margin-top: 4px; }
+  .pipeline-arrow { color: var(--accent); font-size: 18px; }
+  .search-result { background: var(--surface2); border-radius: 8px; padding: 12px; margin: 8px 0; border-left: 3px solid var(--accent); }
+  .search-result .rank { font-size: 11px; color: var(--muted); }
+  .search-result .text { font-size: 13px; margin: 4px 0; line-height: 1.5; }
+  .search-result .meta { font-size: 11px; color: var(--muted); display: flex; gap: 12px; }
+  .tooltip { position: fixed; background: #0f172a; border: 1px solid var(--surface2); border-radius: 6px; padding: 8px 12px; font-size: 12px; pointer-events: none; z-index: 100; max-width: 300px; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+  .comparison-table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  .comparison-table th, .comparison-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--surface2); font-size: 13px; }
+  .comparison-table th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .comparison-table tr:hover td { background: rgba(56, 189, 248, 0.05); }
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; }
+  .tag.good { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+  .tag.warn { background: rgba(251, 191, 36, 0.15); color: var(--yellow); }
+  .tag.bad { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+  .sample-btn { background: var(--surface2); color: var(--muted); border: 1px solid var(--surface2); padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+  .sample-btn:hover { color: var(--text); border-color: var(--accent); }
+  .dim-vis { display: flex; gap: 1px; flex-wrap: wrap; margin: 8px 0; }
+  .dim-vis .dim { width: 4px; height: 20px; border-radius: 1px; transition: all 0.3s; }
+  .flex-center { display: flex; align-items: center; justify-content: center; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Embedding & Vector Search 可视化</h1>
+  <p>理解文本如何变成向量、向量如何搜索 — 交互式演示 embedding 模型、余弦相似度和 FAISS 检索</p>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(0)">模型对比</button>
+    <button class="tab" onclick="switchTab(1)">Embedding 过程</button>
+    <button class="tab" onclick="switchTab(2)">相似度计算</button>
+    <button class="tab" onclick="switchTab(3)">向量搜索演示</button>
+    <button class="tab" onclick="switchTab(4)">完整流水线</button>
+  </div>
+
+  <!-- Tab 0: Model Comparison -->
+  <div class="panel active" id="tab0">
+    <div class="card">
+      <h3>Available Embedding Models</h3>
+      <div class="model-grid" id="modelGrid"></div>
+    </div>
+    <div class="card" id="modelDetail" style="display:none">
+      <h3 id="modelDetailTitle">Model Details</h3>
+      <div class="grid-2">
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Embedding Dimension Visualization (前64维)</div>
+          <div class="dim-vis" id="dimVis"></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:8px">
+            每个色条代表一个维度的值 (蓝色=正, 红色=负, 亮度=幅度)
+          </div>
+        </div>
+        <div id="modelStats"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Model Comparison</h3>
+      <table class="comparison-table">
+        <thead>
+          <tr><th>Model</th><th>Dimension</th><th>Speed</th><th>Memory</th><th>MTEB Score</th><th>Best For</th></tr>
+        </thead>
+        <tbody id="modelTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Tab 1: Embedding Process -->
+  <div class="panel" id="tab1">
+    <div class="card">
+      <h3>Text → Vector 转换过程</h3>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--muted)">示例:</span>
+        <button class="sample-btn" onclick="setEmbedInput('The cat sits on the mat')">English</button>
+        <button class="sample-btn" onclick="setEmbedInput('机器学习是人工智能的子领域')">中文</button>
+        <button class="sample-btn" onclick="setEmbedInput('RAG combines retrieval with generation')">RAG</button>
+        <button class="sample-btn" onclick="setEmbedInput('The dog plays in the park')">相似句</button>
+      </div>
+      <div class="input-row">
+        <textarea id="embedInput" placeholder="输入要 embedding 的文本...">The cat sits on the mat</textarea>
+      </div>
+      <button class="btn" onclick="runEmbedding()">生成 Embedding</button>
+      <div id="embedResult" style="margin-top:16px"></div>
+    </div>
+    <div class="card">
+      <h3>Embedding 内部流程</h3>
+      <div class="pipeline">
+        <div class="pipeline-step"><div class="step-label">Input</div><div class="step-value" id="pipeInput">Text</div></div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step"><div class="step-label">Tokenizer</div><div class="step-value" id="pipeTokens">Tokens</div></div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step"><div class="step-label">Transformer</div><div class="step-value">Encoder</div></div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step"><div class="step-label">Pooling</div><div class="step-value">Mean</div></div>
+        <div class="pipeline-arrow">→</div>
+        <div class="pipeline-step"><div class="step-label">Output</div><div class="step-value" id="pipeOutput">384-d vector</div></div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">
+        Sentence Transformers 使用 WordPiece tokenizer 将文本分割为 tokens，经过多层 Transformer 编码后，
+        对所有 token 的输出取平均值 (mean pooling)，得到一个固定维度的向量表示。
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: Similarity -->
+  <div class="panel" id="tab2">
+    <div class="card">
+      <h3>Cosine Similarity 计算</h3>
+      <div class="input-row">
+        <textarea id="simTextA" placeholder="句子 A">The cat sits on the mat</textarea>
+        <textarea id="simTextB" placeholder="句子 B">A cat is sitting on a mat</textarea>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="sample-btn" onclick="setSimTexts('The cat sits on the mat','A cat is sitting on a mat')">同义句</button>
+        <button class="sample-btn" onclick="setSimTexts('The cat sits on the mat','Dogs are playing outside')">不相关</button>
+        <button class="sample-btn" onclick="setSimTexts('机器学习是AI的子领域','Machine learning is a subset of AI')">跨语言</button>
+        <button class="sample-btn" onclick="setSimTexts('How does photosynthesis work?','What is the process of photosynthesis?')">问句相似</button>
+      </div>
+      <button class="btn" onclick="runSimilarity()">计算相似度</button>
+      <div id="simResult" style="margin-top:16px"></div>
+    </div>
+    <div class="card">
+      <h3>Similarity Score 对比表</h3>
+      <div id="simTable"></div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Search Demo -->
+  <div class="panel" id="tab3">
+    <div class="card">
+      <h3>FAISS 向量搜索模拟</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+        模拟 FAISS IndexFlatIP (内积搜索) — 文档已预嵌入，输入查询查看检索结果
+      </div>
+      <div class="input-row">
+        <textarea id="searchQuery" placeholder="输入查询..." style="min-height:50px">What is machine learning?</textarea>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+        <button class="btn" onclick="runSearch()">搜索</button>
+        <span style="font-size:12px;color:var(--muted)">Top-K:</span>
+        <input type="number" id="topK" value="5" min="1" max="10" style="width:60px;background:var(--surface2);border:1px solid var(--surface2);color:var(--text);padding:4px 8px;border-radius:4px;font-size:13px">
+      </div>
+      <div id="searchResults"></div>
+    </div>
+    <div class="card">
+      <h3>相似度热力图</h3>
+      <div id="heatmapContainer"></div>
+    </div>
+  </div>
+
+  <!-- Tab 4: Full Pipeline -->
+  <div class="panel" id="tab4">
+    <div class="card">
+      <h3>RAG 完整流水线可视化</h3>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        从 PDF 上传到问答的完整流程，展示每个阶段的数据变化
+      </div>
+      <div id="pipelineViz"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip" style="display:none"></div>
+
+<script>
+// ========== Data ==========
+const MODELS = [
+  { id: 'minilm', name: 'all-MiniLM-L6-v2', full: 'sentence-transformers/all-MiniLM-L6-v2', dim: 384, speed: 'Fast', memory: '~80MB', mteb: 63.0, best: 'General purpose, default choice', color: '#4ade80' },
+  { id: 'bge-small', name: 'bge-small-en-v1.5', full: 'BAAI/bge-small-en-v1.5', dim: 384, speed: 'Fast', memory: '~90MB', mteb: 62.2, best: 'English retrieval', color: '#38bdf8' },
+  { id: 'bge-large', name: 'bge-large-en-v1.5', full: 'BAAI/bge-large-en-v1.5', dim: 1024, speed: 'Medium', memory: '~330MB', mteb: 64.2, best: 'High accuracy English', color: '#a78bfa' },
+  { id: 'e5-large', name: 'e5-large-v2', full: 'intfloat/e5-large-v2', dim: 1024, speed: 'Medium', memory: '~330MB', mteb: 64.7, best: 'Instruction-aware', color: '#fb923c' },
+  { id: 'qwen3emb', name: 'Qwen3-Embedding-0.6B', full: 'Qwen/Qwen3-Embedding-0.6B', dim: 1024, speed: 'Slow', memory: '~600MB', mteb: 66.0, best: 'Multilingual, highest quality', color: '#f472b6' },
+  { id: 'mpnet', name: 'all-mpnet-base-v2', full: 'sentence-transformers/all-mpnet-base-v2', dim: 768, speed: 'Medium', memory: '~220MB', mteb: 65.0, best: 'Balanced quality/speed', color: '#fbbf24' },
+];
+
+// Simulated document corpus for search demo
+const CORPUS = [
+  { id: 1, text: 'Machine learning is a subset of artificial intelligence that enables systems to learn from data.', topic: 'ML' },
+  { id: 2, text: 'Deep learning uses neural networks with multiple layers to model complex patterns in data.', topic: 'DL' },
+  { id: 3, text: 'Natural language processing allows computers to understand and generate human language.', topic: 'NLP' },
+  { id: 4, text: 'Computer vision enables machines to interpret and understand visual information from images.', topic: 'CV' },
+  { id: 5, text: 'Reinforcement learning trains agents to make decisions by rewarding desired behaviors.', topic: 'RL' },
+  { id: 6, text: 'Transfer learning reuses pre-trained models to solve new but related problems efficiently.', topic: 'TL' },
+  { id: 7, text: 'Supervised learning uses labeled data to train models for classification and regression tasks.', topic: 'ML' },
+  { id: 8, text: 'Unsupervised learning finds hidden patterns in data without using labeled examples.', topic: 'ML' },
+  { id: 9, text: 'The transformer architecture revolutionized NLP with self-attention mechanisms.', topic: 'NLP' },
+  { id: 10, text: 'Generative adversarial networks consist of two neural networks competing against each other.', topic: 'DL' },
+  { id: 11, text: 'Convolutional neural networks are specialized for processing grid-like data such as images.', topic: 'CV' },
+  { id: 12, text: 'Recurrent neural networks process sequential data like text and time series.', topic: 'NLP' },
+];
+
+// Simulated embeddings (pre-computed for demo, 8-dim simplified)
+function seededRandom(seed) {
+  let s = seed;
+  return () => { s = (s * 16807 + 0) % 2147483647; return (s - 1) / 2147483646; };
+}
+
+function generateSimEmbedding(text, dim = 8) {
+  let hash = 0;
+  for (let i = 0; i < text.length; i++) hash = ((hash << 5) - hash + text.charCodeAt(i)) | 0;
+  const rng = seededRandom(Math.abs(hash) + 1);
+  const vec = Array.from({ length: dim }, () => (rng() - 0.5) * 2);
+  // Bias by topic keywords
+  const lower = text.toLowerCase();
+  if (lower.includes('machine') || lower.includes('learning')) vec[0] += 1.5;
+  if (lower.includes('deep') || lower.includes('neural')) vec[1] += 1.5;
+  if (lower.includes('language') || lower.includes('nlp') || lower.includes('text')) vec[2] += 1.5;
+  if (lower.includes('image') || lower.includes('vision') || lower.includes('visual')) vec[3] += 1.5;
+  if (lower.includes('reinforcement') || lower.includes('reward')) vec[4] += 1.5;
+  if (lower.includes('supervised') || lower.includes('labeled')) vec[5] += 1.2;
+  if (lower.includes('unsupervised') || lower.includes('hidden')) vec[6] += 1.2;
+  if (lower.includes('transformer') || lower.includes('attention')) vec[7] += 1.5;
+  // Normalize
+  const norm = Math.sqrt(vec.reduce((s, v) => s + v * v, 0)) || 1;
+  return vec.map(v => v / norm);
+}
+
+function cosineSim(a, b) {
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  return dot / (Math.sqrt(na) * Math.sqrt(nb) + 1e-10);
+}
+
+// Pre-compute corpus embeddings
+const CORPUS_EMB = CORPUS.map(d => ({ ...d, embedding: generateSimEmbedding(d.text) }));
+
+// ========== Tab Switching ==========
+let currentTab = 0;
+function switchTab(idx) {
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+  document.querySelectorAll('.panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+  currentTab = idx;
+  if (idx === 4) renderPipeline();
+}
+
+// ========== Tab 0: Model Comparison ==========
+function renderModels() {
+  const grid = document.getElementById('modelGrid');
+  grid.innerHTML = MODELS.map(m => `
+    <div class="model-card" id="mc-${m.id}" onclick="selectModel('${m.id}')">
+      <div class="name">${m.name}</div>
+      <div class="props">
+        <span class="prop dim">${m.dim}D</span>
+        <span class="prop">${m.speed}</span>
+        <span class="prop">${m.memory}</span>
+        <span class="prop">MTEB: ${m.mteb}</span>
+      </div>
+    </div>
+  `).join('');
+
+  const tbody = document.getElementById('modelTable');
+  tbody.innerHTML = MODELS.map(m => `
+    <tr>
+      <td style="color:${m.color};font-weight:600">${m.name}</td>
+      <td>${m.dim}</td>
+      <td>${m.speed}</td>
+      <td>${m.memory}</td>
+      <td><span class="tag ${m.mteb >= 65 ? 'good' : m.mteb >= 63 ? 'warn' : 'bad'}">${m.mteb}</span></td>
+      <td style="color:var(--muted);font-size:12px">${m.best}</td>
+    </tr>
+  `).join('');
+}
+
+function selectModel(id) {
+  document.querySelectorAll('.model-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`mc-${id}`).classList.add('selected');
+  const m = MODELS.find(x => x.id === id);
+  document.getElementById('modelDetail').style.display = 'block';
+  document.getElementById('modelDetailTitle').textContent = `${m.full}`;
+  document.getElementById('modelDetailTitle').style.color = m.color;
+
+  // Generate random dim visualization
+  const rng = seededRandom(m.dim);
+  const dims = Array.from({ length: 64 }, () => (rng() - 0.5) * 2);
+  const vis = document.getElementById('dimVis');
+  vis.innerHTML = dims.map(v => {
+    const intensity = Math.abs(v);
+    const color = v > 0 ? `rgba(56,189,248,${0.2 + intensity * 0.8})` : `rgba(248,113,113,${0.2 + intensity * 0.8})`;
+    return `<div class="dim" style="background:${color};height:${10 + intensity * 20}px" title="dim: ${v.toFixed(3)}"></div>`;
+  }).join('');
+
+  document.getElementById('modelStats').innerHTML = `
+    <div style="font-size:13px;line-height:1.8">
+      <div><span style="color:var(--muted)">Full name:</span> ${m.full}</div>
+      <div><span style="color:var(--muted)">Dimension:</span> <span style="color:var(--accent)">${m.dim}</span></div>
+      <div><span style="color:var(--muted)">Speed tier:</span> ${m.speed}</div>
+      <div><span style="color:var(--muted)">Memory:</span> ${m.memory}</div>
+      <div><span style="color:var(--muted)">MTEB score:</span> <span class="tag ${m.mteb >= 65 ? 'good' : m.mteb >= 63 ? 'warn' : 'bad'}">${m.mteb}</span></div>
+      <div style="margin-top:12px"><span style="color:var(--muted)">使用场景:</span> ${m.best}</div>
+      <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:6px;font-family:Consolas,monospace;font-size:11px">
+        <div style="color:var(--muted)">Python 调用:</div>
+        <div style="color:var(--green)">from sentence_transformers import SentenceTransformer</div>
+        <div style="color:var(--green)">model = SentenceTransformer("${m.full}")</div>
+        <div style="color:var(--green)">vec = model.encode(["text"])</div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== Tab 1: Embedding Process ==========
+function setEmbedInput(text) { document.getElementById('embedInput').value = text; }
+
+function runEmbedding() {
+  const text = document.getElementById('embedInput').value.trim();
+  if (!text) return;
+
+  const vec = generateSimEmbedding(text, 8);
+  const model = MODELS[0]; // Default MiniLM
+
+  // Pipeline visualization
+  const tokens = text.split(/\s+/).slice(0, 8);
+  document.getElementById('pipeInput').textContent = text.length > 20 ? text.slice(0, 20) + '...' : text;
+  document.getElementById('pipeTokens').textContent = `[${tokens.length}] ${tokens.slice(0, 4).join(', ')}${tokens.length > 4 ? '...' : ''}`;
+  document.getElementById('pipeOutput').textContent = `${model.dim}-d vector`;
+
+  // Show vector
+  const displayVec = vec.map(v => v.toFixed(4));
+  document.getElementById('embedResult').innerHTML = `
+    <div class="grid-2">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Generated Embedding (simulated 8D, real model outputs ${model.dim}D)</div>
+        <div class="vector-display">
+          <span class="dim-label">[</span>${displayVec.map((v, i) => {
+            const color = parseFloat(v) > 0 ? 'var(--accent)' : 'var(--red)';
+            return `<span style="color:${color}" title="dim_${i}">${v}</span>`;
+          }).join(', ')}<span class="dim-label">]</span>
+        </div>
+        <div style="margin-top:12px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Dimension Heatmap</div>
+          <div class="dim-vis">
+            ${vec.map((v, i) => {
+              const intensity = Math.abs(v);
+              const color = v > 0 ? `rgba(56,189,248,${0.2 + intensity * 0.8})` : `rgba(248,113,113,${0.2 + intensity * 0.8})`;
+              return `<div class="dim" style="background:${color};height:${12 + intensity * 28}px" title="dim_${i}: ${v.toFixed(4)}"></div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">向量属性</div>
+        <div style="font-size:13px;line-height:2">
+          <div>📏 L2 Norm: <span style="color:var(--accent)">${Math.sqrt(vec.reduce((s,v)=>s+v*v,0)).toFixed(4)}</span></div>
+          <div>📊 Max value: <span style="color:var(--green)">${Math.max(...vec).toFixed(4)}</span></div>
+          <div>📉 Min value: <span style="color:var(--red)">${Math.min(...vec).toFixed(4)}</span></div>
+          <div>🔢 Dimensions: <span style="color:var(--yellow)">${model.dim}</span> (simulated: 8)</div>
+          <div>⚡ Model: <span style="color:var(--purple)">${model.name}</span></div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:var(--surface2);border-radius:6px;font-size:11px;line-height:1.6">
+          <div style="color:var(--muted)">Embedding 的关键特性:</div>
+          <div>✅ 语义相似的文本 → 向量距离近</div>
+          <div>✅ 固定维度 (不随文本长度变化)</div>
+          <div>✅ 归一化后内积 = 余弦相似度</div>
+          <div>⚠️ 不同模型的向量空间不兼容</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== Tab 2: Similarity ==========
+function setSimTexts(a, b) {
+  document.getElementById('simTextA').value = a;
+  document.getElementById('simTextB').value = b;
+}
+
+function runSimilarity() {
+  const textA = document.getElementById('simTextA').value.trim();
+  const textB = document.getElementById('simTextB').value.trim();
+  if (!textA || !textB) return;
+
+  const embA = generateSimEmbedding(textA);
+  const embB = generateSimEmbedding(textB);
+  const sim = cosineSim(embA, embB);
+
+  // Build comparison pairs
+  const pairs = [
+    { a: textA, b: textB, label: '当前对比' },
+    { a: textA, b: textA, label: '完全相同' },
+    { a: 'The cat sits on the mat', b: 'A cat is sitting on a mat', label: '同义句 (预设)' },
+    { a: 'The cat sits on the mat', b: 'Dogs are playing outside', label: '不相关 (预设)' },
+    { a: 'How does photosynthesis work?', b: 'What is the process of photosynthesis?', label: '问句相似 (预设)' },
+  ];
+
+  const simScores = pairs.map(p => {
+    const ea = generateSimEmbedding(p.a);
+    const eb = generateSimEmbedding(p.b);
+    return { ...p, score: cosineSim(ea, eb) };
+  });
+
+  const scoreColor = sim > 0.7 ? 'var(--green)' : sim > 0.3 ? 'var(--yellow)' : 'var(--red)';
+  const scoreLabel = sim > 0.7 ? '高度相似' : sim > 0.3 ? '中等相似' : '不太相似';
+
+  document.getElementById('simResult').innerHTML = `
+    <div style="text-align:center;padding:20px;background:var(--surface2);border-radius:10px">
+      <div style="font-size:48px;font-weight:700;color:${scoreColor}">${sim.toFixed(4)}</div>
+      <div style="font-size:14px;color:${scoreColor};margin-top:4px">${scoreLabel}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Cosine Similarity = A·B / (|A|×|B|)</div>
+    </div>
+    <div class="grid-2" style="margin-top:12px">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Vector A (20 dims shown)</div>
+        <div class="dim-vis">${embA.slice(0, 20).map(v => {
+          const c = v > 0 ? `rgba(56,189,248,${0.3+Math.abs(v)*0.7})` : `rgba(248,113,113,${0.3+Math.abs(v)*0.7})`;
+          return `<div class="dim" style="background:${c};height:${10+Math.abs(v)*20}px"></div>`;
+        }).join('')}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Vector B (20 dims shown)</div>
+        <div class="dim-vis">${embB.slice(0, 20).map(v => {
+          const c = v > 0 ? `rgba(74,222,128,${0.3+Math.abs(v)*0.7})` : `rgba(251,146,60,${0.3+Math.abs(v)*0.7})`;
+          return `<div class="dim" style="background:${c};height:${10+Math.abs(v)*20}px"></div>`;
+        }).join('')}</div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('simTable').innerHTML = `
+    <table class="comparison-table">
+      <thead><tr><th>对比</th><th>文本 A</th><th>文本 B</th><th>Score</th><th>判定</th></tr></thead>
+      <tbody>
+        ${simScores.map(p => {
+          const c = p.score > 0.7 ? 'good' : p.score > 0.3 ? 'warn' : 'bad';
+          const label = p.score > 0.7 ? '相似' : p.score > 0.3 ? '一般' : '无关';
+          return `<tr>
+            <td style="color:var(--muted)">${p.label}</td>
+            <td style="font-size:12px">${p.a.length > 30 ? p.a.slice(0, 30) + '...' : p.a}</td>
+            <td style="font-size:12px">${p.b.length > 30 ? p.b.slice(0, 30) + '...' : p.b}</td>
+            <td style="font-weight:600">${p.score.toFixed(4)}</td>
+            <td><span class="tag ${c}">${label}</span></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+// ========== Tab 3: Search ==========
+function runSearch() {
+  const query = document.getElementById('searchQuery').value.trim();
+  const topK = +document.getElementById('topK').value || 5;
+  if (!query) return;
+
+  const qEmb = generateSimEmbedding(query);
+  const results = CORPUS_EMB.map(d => ({
+    ...d,
+    score: cosineSim(qEmb, d.embedding)
+  })).sort((a, b) => b.score - a.score).slice(0, topK);
+
+  const maxScore = results[0]?.score || 1;
+
+  document.getElementById('searchResults').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Query: "${query}" → ${results.length} results (FAISS IndexFlatIP + L2 normalization)</div>
+    ${results.map((r, i) => {
+      const pct = Math.max((r.score / maxScore) * 100, 5);
+      const color = r.score > 0.7 ? 'var(--green)' : r.score > 0.4 ? 'var(--yellow)' : 'var(--orange)';
+      return `<div class="search-result" style="border-left-color:${color}">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span class="rank" style="color:${color}">#${i + 1}</span>
+            <span style="font-size:12px;color:var(--muted);margin-left:8px">Topic: ${r.topic}</span>
+          </div>
+          <span style="font-size:13px;font-weight:700;color:${color}">${r.score.toFixed(4)}</span>
+        </div>
+        <div class="text">${r.text}</div>
+        <div style="margin-top:6px">
+          <div class="similarity-bar">
+            <div class="bar-bg"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+
+  // Heatmap: query vs all corpus
+  const allScores = CORPUS_EMB.map(d => ({ text: d.text.slice(0, 25) + '...', score: cosineSim(qEmb, d.embedding) }));
+  const cols = 4;
+  const rows = Math.ceil(allScores.length / cols);
+  document.getElementById('heatmapContainer').innerHTML = `
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Query vs All Documents Similarity Heatmap</div>
+    <div class="heatmap" style="grid-template-columns:repeat(${cols}, 1fr)">
+      ${allScores.map((s, i) => {
+        const intensity = Math.max(0, Math.min(1, (s.score + 1) / 2));
+        const hue = intensity > 0.6 ? `rgba(74,222,128,${0.2 + intensity * 0.8})` :
+                    intensity > 0.3 ? `rgba(251,191,36,${0.2 + intensity * 0.8})` :
+                    `rgba(248,113,113,${0.1 + intensity * 0.5})`;
+        return `<div class="heatmap-cell" style="background:${hue};padding:8px;font-size:10px" title="Doc ${i+1}: ${s.score.toFixed(4)}">
+          <div style="text-align:center"><div style="font-weight:600">${s.score.toFixed(2)}</div><div style="font-size:8px;margin-top:2px;opacity:0.7">${CORPUS[i].topic}</div></div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">
+      🟢 高相似度 | 🟡 中等 | 🔴 低相似度 — 点击查看详情
+    </div>
+  `;
+}
+
+// ========== Tab 4: Full Pipeline ==========
+function renderPipeline() {
+  const steps = [
+    { icon: '📄', title: 'PDF Upload', desc: '用户上传讲义 PDF', detail: '支持 pypdf 文本提取', color: '#94a3b8' },
+    { icon: '✂️', title: 'Chunking', desc: '文本分块', detail: 'SmartChunker: 段落→句子→chunk (500字, 重叠100字)', color: '#fbbf24' },
+    { icon: '🧮', title: 'Embedding', desc: '向量编码', detail: 'MiniLM-L6-v2: text → 384-d normalized vector', color: '#38bdf8' },
+    { icon: '📦', title: 'FAISS Index', desc: '向量存储', detail: 'IndexFlatIP (内积) + L2归一化 = cosine similarity', color: '#a78bfa' },
+    { icon: '🔍', title: 'Query Embed', desc: '查询编码', detail: '同一模型编码查询 → 384-d query vector', color: '#4ade80' },
+    { icon: '🎯', title: 'FAISS Search', desc: '向量检索', detail: '内积搜索 → Top-K 最相似 chunks', color: '#fb923c' },
+    { icon: '📝', title: 'Context Build', desc: '上下文组装', detail: '[S1] source=X page=Y\\n{text}', color: '#f472b6' },
+    { icon: '🤖', title: 'LLM Generate', desc: '答案生成', detail: 'llama.cpp (localhost:8080/v1) → 回答 + 引用', color: '#4ade80' },
+  ];
+
+  document.getElementById('pipelineViz').innerHTML = `
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin-bottom:20px">
+      ${steps.map((s, i) => `
+        <div style="flex:1;min-width:140px;background:var(--surface2);border-radius:10px;padding:14px;border-top:3px solid ${s.color};position:relative">
+          <div style="font-size:20px;margin-bottom:6px">${s.icon}</div>
+          <div style="font-size:13px;font-weight:600;color:${s.color}">${s.title}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px">${s.desc}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px;padding:6px;background:rgba(0,0,0,0.2);border-radius:4px;line-height:1.4">${s.detail}</div>
+          ${i < steps.length - 1 ? `<div style="position:absolute;right:-12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--accent);z-index:1">→</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h3>Data Flow at Each Stage</h3>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+        <div style="text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--muted)">After Chunking</div>
+          <div style="font-size:20px;font-weight:700;color:var(--yellow);margin:4px 0">~50</div>
+          <div style="font-size:10px;color:var(--muted)">text chunks</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--muted)">After Embedding</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent);margin:4px 0">50×384</div>
+          <div style="font-size:10px;color:var(--muted)">float matrix</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--muted)">After Search</div>
+          <div style="font-size:20px;font-weight:700;color:var(--green);margin:4px 0">Top-3</div>
+          <div style="font-size:10px;color:var(--muted)">relevant chunks</div>
+        </div>
+        <div style="text-align:center;padding:12px;background:var(--surface2);border-radius:8px">
+          <div style="font-size:11px;color:var(--muted)">After LLM</div>
+          <div style="font-size:20px;font-weight:700;color:var(--pink);margin:4px 0">Answer</div>
+          <div style="font-size:10px;color:var(--muted)">+ citations</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== Init ==========
+document.addEventListener('DOMContentLoaded', () => {
+  renderModels();
+  selectModel('minilm');
+  runEmbedding();
+  runSimilarity();
+  runSearch();
+});
+</script>
+</body>
+</html>

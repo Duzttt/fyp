@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480">
+  <defs>
+    <linearGradient id="bg11" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#faf8f4"/>
+      <stop offset="100%" style="stop-color:#f0ece4"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#292524"/>
+      <stop offset="100%" style="stop-color:#1c1917"/>
+    </linearGradient>
+    <filter id="shadow11">
+      <feDropShadow dx="0" dy="4" stdDeviation="12" flood-color="#1c1917" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <rect width="960" height="480" fill="url(#bg11)"/>
+
+  <!-- Browser window frame -->
+  <g transform="translate(80, 30)" filter="url(#shadow11)">
+    <rect width="800" height="420" rx="14" fill="url(#dark)"/>
+
+    <!-- Title bar -->
+    <rect width="800" height="38" rx="14" fill="#292524"/>
+    <rect y="14" width="800" height="24" fill="#292524"/>
+    <!-- Traffic lights -->
+    <circle cx="24" cy="19" r="6" fill="#ef4444" opacity="0.7"/>
+    <circle cx="42" cy="19" r="6" fill="#f59e0b" opacity="0.7"/>
+    <circle cx="60" cy="19" r="6" fill="#22c55e" opacity="0.7"/>
+    <!-- Tab title -->
+    <text x="400" y="24" font-family="system-ui, sans-serif" font-size="11" fill="#a8a29e" text-anchor="middle">LectureQA — AI Lecture Note Q&amp;A</text>
+
+    <!-- Three-panel layout -->
+    <!-- Left panel: Sources -->
+    <rect x="0" y="38" width="180" height="382" fill="#1c1917" stroke="#3f3f46" stroke-width="0.5"/>
+    <text x="16" y="65" font-family="monospace" font-size="9" fill="#71717a" letter-spacing="1.5" text-transform="uppercase">SOURCES</text>
+
+    <!-- File list -->
+    <g transform="translate(10, 78)">
+      <rect width="160" height="32" rx="6" fill="#27272a" stroke="#3f3f46" stroke-width="0.5"/>
+      <rect x="10" y="8" width="16" height="16" rx="3" fill="#b45309" opacity="0.2"/>
+      <text x="14" y="20" font-family="system-ui, sans-serif" font-size="8" fill="#b45309">PDF</text>
+      <text x="34" y="20" font-family="system-ui, sans-serif" font-size="11" fill="#d4d4d8">lecture1.pdf</text>
+    </g>
+    <g transform="translate(10, 116)">
+      <rect width="160" height="32" rx="6" fill="#27272a" stroke="#3f3f46" stroke-width="0.5"/>
+      <rect x="10" y="8" width="16" height="16" rx="3" fill="#b45309" opacity="0.2"/>
+      <text x="14" y="20" font-family="system-ui, sans-serif" font-size="8" fill="#b45309">PDF</text>
+      <text x="34" y="20" font-family="system-ui, sans-serif" font-size="11" fill="#d4d4d8">lecture2.pdf</text>
+    </g>
+    <g transform="translate(10, 154)">
+      <rect width="160" height="32" rx="6" fill="#27272a" stroke="#3f3f46" stroke-width="0.5"/>
+      <rect x="10" y="8" width="16" height="16" rx="3" fill="#b45309" opacity="0.2"/>
+      <text x="14" y="20" font-family="system-ui, sans-serif" font-size="8" fill="#b45309">PDF</text>
+      <text x="34" y="20" font-family="system-ui, sans-serif" font-size="11" fill="#d4d4d8">lecture3.pdf</text>
+    </g>
+    <g transform="translate(10, 192)">
+      <rect width="160" height="32" rx="6" fill="#27272a" stroke="#3f3f46" stroke-width="0.5"/>
+      <rect x="10" y="8" width="16" height="16" rx="3" fill="#b45309" opacity="0.2"/>
+      <text x="14" y="20" font-family="system-ui, sans-serif" font-size="8" fill="#b45309">PDF</text>
+      <text x="34" y="20" font-family="system-ui, sans-serif" font-size="11" fill="#d4d4d8">lecture4.pdf</text>
+    </g>
+    <!-- Upload button -->
+    <g transform="translate(10, 340)">
+      <rect width="160" height="34" rx="8" fill="#b45309" opacity="0.15"/>
+      <text x="80" y="22" font-family="system-ui, sans-serif" font-size="11" fill="#b45309" text-anchor="middle" font-weight="600">+ Upload PDF</text>
+    </g>
+
+    <!-- Center panel: Chat -->
+    <rect x="180" y="38" width="420" height="382" fill="#1c1917" stroke="#3f3f46" stroke-width="0.5"/>
+    <text x="196" y="65" font-family="monospace" font-size="9" fill="#71717a" letter-spacing="1.5">CHAT</text>
+
+    <!-- Chat messages -->
+    <g transform="translate(196, 82)">
+      <!-- User message -->
+      <rect x="100" y="0" width="200" height="36" rx="10" fill="#b45309" opacity="0.2"/>
+      <text x="112" y="15" font-family="system-ui, sans-serif" font-size="9" fill="#f59e0b" font-weight="500">You</text>
+      <text x="112" y="28" font-family="system-ui, sans-serif" font-size="10" fill="#d4d4d8">What is gradient descent?</text>
+    </g>
+    <g transform="translate(196, 128)">
+      <!-- Assistant message -->
+      <rect x="0" y="0" width="380" height="80" rx="10" fill="#27272a"/>
+      <text x="12" y="16" font-family="system-ui, sans-serif" font-size="9" fill="#a8a29e" font-weight="500">Assistant</text>
+      <text x="12" y="30" font-family="system-ui, sans-serif" font-size="10" fill="#d4d4d8">Gradient descent is an optimization algorithm</text>
+      <text x="12" y="44" font-family="system-ui, sans-serif" font-size="10" fill="#d4d4d8">that minimizes the cost function by iteratively</text>
+      <text x="12" y="58" font-family="system-ui, sans-serif" font-size="10" fill="#d4d4d8">adjusting parameters in the direction of steepest</text>
+      <text x="12" y="72" font-family="system-ui, sans-serif" font-size="10" fill="#f59e0b">descent. [S1]</text>
+    </g>
+
+    <!-- Source citation box -->
+    <g transform="translate(196, 218)">
+      <rect width="380" height="24" rx="6" fill="#b45309" opacity="0.1"/>
+      <text x="12" y="16" font-family="monospace" font-size="9" fill="#b45309">Sources: lecture3.pdf — p.12 · lecture5.pdf — p.8</text>
+    </g>
+
+    <!-- Input area -->
+    <g transform="translate(196, 350)">
+      <rect width="380" height="40" rx="10" fill="#27272a" stroke="#3f3f46" stroke-width="1"/>
+      <text x="16" y="25" font-family="system-ui, sans-serif" font-size="11" fill="#71717a">Ask a question about your lectures...</text>
+    </g>
+
+    <!-- Right panel: Settings -->
+    <rect x="600" y="38" width="200" height="382" fill="#1c1917" stroke="#3f3f46" stroke-width="0.5"/>
+    <text x="616" y="65" font-family="monospace" font-size="9" fill="#71717a" letter-spacing="1.5">STUDIO</text>
+
+    <!-- Settings -->
+    <g transform="translate(610, 80)">
+      <rect width="170" height="56" rx="8" fill="#27272a"/>
+      <text x="12" y="18" font-family="monospace" font-size="8" fill="#71717a" letter-spacing="1">MODEL</text>
+      <text x="12" y="36" font-family="system-ui, sans-serif" font-size="12" fill="#d4d4d8">Gemini 2.5 Flash</text>
+    </g>
+    <g transform="translate(610, 144)">
+      <rect width="170" height="50" rx="8" fill="#27272a"/>
+      <text x="12" y="18" font-family="monospace" font-size="8" fill="#71717a" letter-spacing="1">TOP-K</text>
+      <text x="12" y="36" font-family="system-ui, sans-serif" font-size="12" fill="#d4d4d8">5</text>
+    </g>
+    <g transform="translate(610, 202)">
+      <rect width="170" height="50" rx="8" fill="#27272a"/>
+      <text x="12" y="18" font-family="monospace" font-size="8" fill="#71717a" letter-spacing="1">TEMPERATURE</text>
+      <text x="12" y="36" font-family="system-ui, sans-serif" font-size="12" fill="#d4d4d8">0.7</text>
+    </g>
+    <g transform="translate(610, 260)">
+      <rect width="170" height="50" rx="8" fill="#27272a"/>
+      <text x="12" y="18" font-family="monospace" font-size="8" fill="#71717a" letter-spacing="1">CHUNK SIZE</text>
+      <text x="12" y="36" font-family="system-ui, sans-serif" font-size="12" fill="#d4d4d8">400</text>
+    </g>
+  </g>
+</svg>

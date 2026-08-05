@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intelligent Agents &amp; Agentic AI — Flashcards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400&family=DM+Serif+Display&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #faf8f4;
+      --bg-alt: #f0ece4;
+      --surface: #ffffff;
+      --accent: #b45309;
+      --accent-soft: #fef3c7;
+      --accent-deep: #92400e;
+      --text: #1c1917;
+      --text-secondary: #57534e;
+      --text-muted: #a8a29e;
+      --border: #e7e5e0;
+      --radius: 12px;
+      --font-heading: 'DM Serif Display', serif;
+      --font-body: 'Source Serif 4', serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+    ::selection { background: var(--accent-soft); color: var(--text); }
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1 {
+      font-family: var(--font-heading);
+      font-size: clamp(24px, 3vw, 36px);
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .subtitle {
+      font-size: clamp(13px, 1.3vw, 17px);
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+    .controls {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 24px; flex-wrap: wrap; justify-content: center;
+    }
+    .controls button {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 20px;
+      cursor: pointer;
+      color: var(--text);
+      transition: all 0.15s;
+    }
+    .controls button:hover { border-color: var(--accent); color: var(--accent); }
+    .controls button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .counter {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: var(--text-muted);
+      min-width: 60px;
+      text-align: center;
+    }
+    .card-container {
+      perspective: 1200px;
+      width: 100%;
+      max-width: 720px;
+      height: 380px;
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+    .card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+    .card.flipped { transform: rotateY(180deg); }
+    .card-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px;
+      text-align: center;
+    }
+    .card-back {
+      transform: rotateY(180deg);
+    }
+    .card-label {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .card-question {
+      font-family: var(--font-heading);
+      font-size: clamp(18px, 2.2vw, 28px);
+      color: var(--text);
+      line-height: 1.4;
+    }
+    .card-answer {
+      font-size: clamp(14px, 1.5vw, 19px);
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+    .card-hint {
+      position: absolute;
+      bottom: 16px;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    .progress-bar {
+      width: 100%;
+      max-width: 720px;
+      height: 4px;
+      background: var(--bg-alt);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+    .grid-toggle { display: none; }
+    .grid-view {
+      display: none;
+      width: 100%;
+      max-width: 1100px;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+    .grid-view.active { display: grid; }
+    .grid-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .grid-card:hover { border-color: var(--accent); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+    .grid-card .q-num {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .grid-card .q-text {
+      font-weight: 600;
+      font-size: 14px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .grid-card .a-text {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s;
+    }
+    .grid-card.revealed .a-text { max-height: 200px; }
+    .grid-card .reveal-hint {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+    .grid-card.revealed .reveal-hint { display: none; }
+    .single-view { display: block; width: 100%; max-width: 720px; }
+    .single-view.hidden { display: none; }
+    @media (max-width: 600px) {
+      .card-container { height: 320px; }
+      .card-face { padding: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Intelligent Agents &amp; Agentic AI</h1>
+  <p class="subtitle">25 flashcards &mdash; click to flip</p>
+
+  <div class="controls">
+    <button id="btn-prev">&larr; Prev</button>
+    <span class="counter" id="counter">1 / 25</span>
+    <button id="btn-next">Next &rarr;</button>
+    <button id="btn-grid">Grid View</button>
+    <button id="btn-shuffle">Shuffle</button>
+  </div>
+
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <div class="single-view" id="single-view">
+    <div class="card-container" id="card-container">
+      <div class="card" id="card">
+        <div class="card-face card-front">
+          <div class="card-label">Question</div>
+          <div class="card-question" id="q-text"></div>
+          <div class="card-hint">click to reveal answer</div>
+        </div>
+        <div class="card-face card-back">
+          <div class="card-label">Answer</div>
+          <div class="card-answer" id="a-text"></div>
+          <div class="card-hint">click to see question</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-view" id="grid-view"></div>
+
+  <script>
+    const cards = [
+      { q: "What is the primary goal of modern AI according to the lecture?", a: "Modern AI = Goal-driven collaboration" },
+      { q: "What are the three key features of an agent according to the lecture?", a: "An agent is a computer system that is capable of independent (autonomous) action on behalf of its user or owner" },
+      { q: "What was the main focus of the reactive agents in the 1990s era?", a: "Reactive agents in the 1990s era were Subsumption robots, which respond to stimuli" },
+      { q: "What does the evolution towards agentic AI bring us, according to the lecture?", a: "The ability of computer systems to act independently, the ability of computer systems to act in a way that represents our best interests while interacting with other humans or systems" },
+      { q: "What are some examples of generative AI models that modern agents may use, according to the lecture?", a: "Modern agents may use generative AI models to reason, adapt to context, and create solutions without explicit re-programming" },
+      { q: "What is the main point about agents being autonomous?", a: "The main point about agents is they are autonomous: capable of independent action." },
+      { q: "What types of behaviour does an intelligent agent typically exhibit?", a: "An intelligent agent is a computer system capable of flexible autonomous action in some environment. It exhibits 3 types of behaviour: reactive, pro-active, and social ability." },
+      { q: "Why is a reactive system considered easy to build for fixed environments?", a: "If a program\u2019s environment is guaranteed to be fixed, the program need never worry about its own success or failure. The real world is not like that: most environments are dynamic and information is incomplete." },
+      { q: "What does proactiveness involve for agents?", a: "Pro-activeness: generating and attempting to achieve goals; not driven solely by events; taking the initiative and recognising opportunities." },
+      { q: "What is the difference between objects and agents, and how do agents differ from objects?", a: "Agents are autonomous: agents embody stronger notion of autonomy than objects, and in particular, they decide for themselves whether or not to perform an action on request from another agent. Agents are smart: agents are capable of flexible (reactive, pro-active, social) behaviour \u2013 the standard object-oriented model has nothing to say about such types of behaviour. Agents are active: agents are not passive service providers; a multi-agent system is inherently multi-threaded, in that each agent is assumed to have at least one thread of active control. Objects do it because they have to! Objects do it for free! Agents do it because they want to! Agents do it for personal gain!" },
+      { q: "What was the classical approach to building agents known as?", a: "The classical approach to building agents was known as symbolic AI." },
+      { q: "According to the lecture, what is the underlying problem with knowledge representation and reasoning?", a: "The underlying problem with knowledge representation / reasoning lies with the complexity of symbol manipulation algorithms." },
+      { q: "What is the key idea of agent-oriented programming as introduced by Yoav Shoham?", a: "The key idea of agent-oriented programming as introduced by Yoav Shoham is to directly program agents in terms of intentional notions like belief, desire, and intention, and to adopt the same abstraction as humans." },
+      { q: "What is the key component of an agent in AGENT0 that determines how the agent acts?", a: "The key component, which determines how the agent acts, is the commitment rule set." },
+      { q: "In AGENT0, what is the difference between a private action and a communicative action?", a: "Actions may be: Private: An externally executed computation; Communicative: Sending messages." },
+      { q: "What is the primary purpose of practical reasoning according to the lecture?", a: "Practical reasoning is reasoning directed towards actions \u2014 the process of figuring out what to do." },
+      { q: "What does Bratman suggest about practical reasoning?", a: "Bratman suggests that practical reasoning is a matter of weighing conflicting considerations for and against competing options, where the relevant considerations are provided by what the agent desires/values/cares about and what the agent believes." },
+      { q: "Explain the distinction between practical reasoning and theoretical reasoning as discussed in the lecture.", a: "Practical reasoning is reasoning directed towards actions \u2014 the process of figuring out what to do, while theoretical reasoning is directed towards belief." },
+      { q: "What is the role of intentions in practical reasoning, as explained in the lecture?", a: "Intention poses problems for agents, who need to determine ways of achieving them. Intention provides a \u2018filter\u2019 for adopting other intentions which must not conflict." },
+      { q: "What does the \u2018side effect or package deal problem\u2019 refer to in the context of practical reasoning?", a: "The side effect or package deal problem refers to the fact that I may believe that going to the dentist involves pain, and I may also intend to go to the dentist \u2014 but this does not imply that I intend to suffer pain!" },
+      { q: "What is the goal in the blocks world problem?", a: "The aim is to generate a plan for the robot arm to build towers out of blocks." },
+      { q: "What is the role of the Stanford Research Institute Problem Solver (STRIPS) in planning?", a: "Use first-order logic and theorem proving to plan strategies from start to goal." },
+      { q: "How does an agent select an intention to achieve after observing the world?", a: "The agent selects an intention to achieve that would have been optimal at the time it observed the world." },
+      { q: "What does the filter function in option generation and filtering do?", a: "In order to select between competing options, an agent uses a filter() function." },
+      { q: "What is the representation of the goal in the STRIPS planning system?", a: "Represented by logic, the STRIPS planning system uses first-order logic and theorem proving to plan strategies from start to goal." }
+    ];
+
+    let order = cards.map((_, i) => i);
+    let idx = 0;
+    let isGrid = false;
+
+    const cardEl = document.getElementById('card');
+    const qText = document.getElementById('q-text');
+    const aText = document.getElementById('a-text');
+    const counterEl = document.getElementById('counter');
+    const progressEl = document.getElementById('progress');
+    const singleView = document.getElementById('single-view');
+    const gridView = document.getElementById('grid-view');
+    const btnGrid = document.getElementById('btn-grid');
+
+    function renderCard() {
+      const c = cards[order[idx]];
+      qText.textContent = c.q;
+      aText.textContent = c.a;
+      counterEl.textContent = (idx + 1) + ' / ' + cards.length;
+      progressEl.style.width = ((idx + 1) / cards.length * 100) + '%';
+      cardEl.classList.remove('flipped');
+    }
+
+    function renderGrid() {
+      gridView.innerHTML = '';
+      order.forEach((ci, i) => {
+        const c = cards[ci];
+        const div = document.createElement('div');
+        div.className = 'grid-card';
+        div.innerHTML = '<div class="q-num">Q' + (i + 1) + '</div><div class="q-text">' + c.q + '</div><div class="a-text">' + c.a + '</div><div class="reveal-hint">click to reveal</div>';
+        div.addEventListener('click', () => div.classList.toggle('revealed'));
+        gridView.appendChild(div);
+      });
+    }
+
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      idx = (idx - 1 + cards.length) % cards.length;
+      renderCard();
+    });
+    document.getElementById('btn-next').addEventListener('click', () => {
+      idx = (idx + 1) % cards.length;
+      renderCard();
+    });
+    document.getElementById('card-container').addEventListener('click', () => {
+      cardEl.classList.toggle('flipped');
+    });
+    btnGrid.addEventListener('click', () => {
+      isGrid = !isGrid;
+      singleView.classList.toggle('hidden', isGrid);
+      gridView.classList.toggle('active', isGrid);
+      btnGrid.classList.toggle('active', isGrid);
+      btnGrid.textContent = isGrid ? 'Card View' : 'Grid View';
+      if (isGrid) renderGrid();
+    });
+    document.getElementById('btn-shuffle').addEventListener('click', () => {
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      idx = 0;
+      if (isGrid) renderGrid(); else renderCard();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (isGrid) return;
+      if (e.key === 'ArrowLeft') { idx = (idx - 1 + cards.length) % cards.length; renderCard(); }
+      if (e.key === 'ArrowRight') { idx = (idx + 1) % cards.length; renderCard(); }
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); cardEl.classList.toggle('flipped'); }
+    });
+
+    renderCard();
+  </script>
+</body>
+</html>

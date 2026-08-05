@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400">
+  <defs>
+    <linearGradient id="bg18" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#faf8f4"/>
+      <stop offset="50%" style="stop-color:#fef3c7" stop-opacity="0.3"/>
+      <stop offset="100%" style="stop-color:#f0ece4"/>
+    </linearGradient>
+    <linearGradient id="accent18" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#b45309"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="960" height="400" fill="url(#bg18)"/>
+
+  <!-- Large decorative circles -->
+  <circle cx="480" cy="200" r="160" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="480" cy="200" r="120" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.08"/>
+  <circle cx="480" cy="200" r="80" fill="none" stroke="#b45309" stroke-width="0.5" opacity="0.06"/>
+
+  <!-- Radial lines from center -->
+  <g opacity="0.04" stroke="#b45309" stroke-width="0.5">
+    <line x1="480" y1="200" x2="100" y2="40"/>
+    <line x1="480" y1="200" x2="860" y2="40"/>
+    <line x1="480" y1="200" x2="100" y2="360"/>
+    <line x1="480" y1="200" x2="860" y2="360"/>
+    <line x1="480" y1="200" x2="480" y2="20"/>
+    <line x1="480" y1="200" x2="480" y2="380"/>
+    <line x1="480" y1="200" x2="80" y2="200"/>
+    <line x1="480" y1="200" x2="880" y2="200"/>
+  </g>
+
+  <!-- Central icon -->
+  <g transform="translate(440, 100)">
+    <circle cx="40" cy="40" r="35" fill="url(#accent18)" opacity="0.9"/>
+    <!-- Checkmark -->
+    <path d="M25,40 L35,50 L55,30" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Three achievement items -->
+  <g transform="translate(140, 210)">
+    <!-- Item 1 -->
+    <circle cx="16" cy="16" r="14" fill="#dcfce7"/>
+    <text x="16" y="21" font-family="system-ui, sans-serif" font-size="14" fill="#166534" text-anchor="middle" font-weight="700">✓</text>
+    <text x="40" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#57534e">End-to-end RAG system built</text>
+  </g>
+
+  <g transform="translate(140, 250)">
+    <!-- Item 2 -->
+    <circle cx="16" cy="16" r="14" fill="#dcfce7"/>
+    <text x="16" y="21" font-family="system-ui, sans-serif" font-size="14" fill="#166534" text-anchor="middle" font-weight="700">✓</text>
+    <text x="40" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#57534e">Multi-provider LLM support</text>
+  </g>
+
+  <g transform="translate(140, 290)">
+    <!-- Item 3 -->
+    <circle cx="16" cy="16" r="14" fill="#dcfce7"/>
+    <text x="16" y="21" font-family="system-ui, sans-serif" font-size="14" fill="#166534" text-anchor="middle" font-weight="700">✓</text>
+    <text x="40" y="21" font-family="system-ui, sans-serif" font-size="13" fill="#57534e">Citation-backed answers delivered</text>
+  </g>
+
+  <!-- Decorative floating elements -->
+  <circle cx="80" cy="60" r="4" fill="#b45309" opacity="0.1"/>
+  <circle cx="880" cy="80" r="3" fill="#f59e0b" opacity="0.12"/>
+  <circle cx="750" cy="350" r="5" fill="#b45309" opacity="0.06"/>
+  <circle cx="200" cy="50" r="2.5" fill="#d97706" opacity="0.15"/>
+</svg>
