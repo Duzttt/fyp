@@ -21,7 +21,7 @@ import statistics
 import time
 from dataclasses import dataclass, asdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 # Test data - English lecture notes about machine learning
 TEST_DOCUMENTS = [
@@ -172,6 +172,24 @@ def compute_ndcg(relevances: List[int], k: int) -> float:
     return dcg / idcg if idcg > 0 else 0.0
 
 
+def _retrieve_doc_ids(
+    retriever: Any, query_text: str, top_k: int
+) -> List[str]:
+    """
+    Retrieve matching document ids from a retriever.
+
+    Supports both the hybrid ``retrieve()`` API (list of dicts with an
+    "id" key) and the BM25/dense ``search()`` API (list of
+    ``(doc_id, score)`` tuples).
+    """
+    retrieve = getattr(retriever, "retrieve", None)
+    if callable(retrieve):
+        results = retrieve(query_text, top_k=top_k)
+        return [doc.get("id") for doc in results if doc.get("id")]
+    results = retriever.search(query_text, top_k=top_k)
+    return [doc_id for doc_id, _score in results]
+
+
 def evaluate_retrieval(
     retriever: Any,
     queries: List[Dict[str, Any]],
@@ -195,7 +213,6 @@ def evaluate_retrieval(
     num_queries = 0
 
     for query_data in queries:
-        query_id = query_data["id"]
         query_text = query_data["query"]
         relevant_docs = set(query_data["relevant_docs"])
 
@@ -204,13 +221,11 @@ def evaluate_retrieval(
 
         # Perform retrieval with timing
         start_time = time.perf_counter()
-        results = retriever.retrieve(query_text, top_k=top_k)
+        retrieved_ids = _retrieve_doc_ids(retriever, query_text, top_k)
         end_time = time.perf_counter()
 
         latency_ms = (end_time - start_time) * 1000
         latencies.append(latency_ms)
-
-        retrieved_ids = [doc.get("id") for doc in results if doc.get("id")]
 
         # Compute relevances
         relevances = [1 if doc_id in relevant_docs else 0 for doc_id in retrieved_ids]
@@ -534,11 +549,11 @@ def generate_report(results: Dict[str, BenchmarkResult]) -> str:
 
     for name, result in results.items():
         lines.append(f"\n{name}:")
-        lines.append(f"  Latency:")
+        lines.append("  Latency:")
         lines.append(f"    Average: {result.avg_latency_ms:.2f}ms")
         lines.append(f"    P95: {result.p95_latency_ms:.2f}ms")
         lines.append(f"    P99: {result.p99_latency_ms:.2f}ms")
-        lines.append(f"  Retrieval Metrics:")
+        lines.append("  Retrieval Metrics:")
         lines.append(f"    Recall@1: {result.recall_at_1:.4f}")
         lines.append(f"    Recall@5: {result.recall_at_5:.4f}")
         lines.append(f"    Recall@10: {result.recall_at_10:.4f}")
