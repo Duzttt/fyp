@@ -1,0 +1,45 @@
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+Who is the author of the text?,"The author of the text is not explicitly mentioned in the provided reference materials. [S1] discusses a scenario involving two men at a copy room, but does not mention an author. [S2] discusses novels and their properties, but does not provide an author. [S3] and [S4] do not pertain to the authorship of a text. [S5] describes the game of chicken, which is unrelated to an author.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['4 Two men arrive at the copy room with a stack of paper to photocopy. Who gets to use the machine first?'
+ 'ONTOLOGIES •Part of the reason this interaction works is that Bob has knowledge that is relevant. •Bob knows that novels are fiction books. •Bob knows things about novels: they have •authors, •publishers, •publication dates, and so on. •Because “Prey” is a novel, it inherits the properties of novels. 25'
+ 'SOCIAL NORMS •Societies are often regulated by (often unwritten) rules of behaviour •Example: •A group of people is waiting at the bus stop. The bus arrives. Who gets on the bus first? •There’s only one seat on the bus and there’s a young man and an elderly man. Who gets the seat? •In an agent system, we can design the norms and program agents to follow them, or let norms evolve 8'
+ 'OVERVIEW 6'
+ 'GAME OF CHICKEN to drop out of the game by jumping out of the speeding car. •The winner is the one who lasts longest in the car. •Of course, if neither player jumps out of the car, then both cars fly off the cliff. 26 •The game is played by both players driving their cars at high speed towards a cliff . •The idea is that the least brave of the two (the “chicken”) will be the first']",Dr. Nur Zareen Zulkarnain,0.4,0.0,0.0,0.0
+What department is the author from?,"None of the provided reference materials contain information about the author's department. [S1], [S2], [S3], [S4], [S5]
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['WHAT IS PRACTICAL REASONING? •Practical reasoning is reasoning directed towards actions — the process of figuring out what to do •Practical reasoning is a matter of weighing conflicting considerations for and against competing options, where the relevant considerations are provided by what the agent desires/values/cares about and what the agent believes (Bratman) •Distinguish practical reasoning from theoretical reasoning – directed towards belief 3'
+ 'AGENT AND ENVIRONMENT Copyright: M. J. Wooldridge, S.Parsons and T.R.Payne , Spring 2013. Updated 2018 5'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6'
+ 'ONTOLOGIES •Part of the reason this interaction works is that Bob has knowledge that is relevant. •Bob knows that novels are fiction books. •Bob knows things about novels: they have •authors, •publishers, •publication dates, and so on. •Because “Prey” is a novel, it inherits the properties of novels. 25'
+ 'AGENT -BASED ANALYSIS •Analysis aims to understand , at least •What are the main actors interacting with the system •How the system interacts with these actors •What the system is supposed to do •Then, we associate accordingly •Roles responsibilities and capabilities •Interaction patterns between agents 5']",Department of Intelligent Computing and Analytics (ICA),1.0,0.0,0.0,1.0
+What are the course learning outcomes?,"The course learning outcomes include identifying and explaining the pitfalls of agent development, describing steps involved in the contract net protocol, describing practical reasoning and relating it to intentions, describing protocols and strategies in negotiation, and differentiating requested and non-requested coordination.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['LEARNING OUTCOMES At the end of this lecture, you should be able to: •Identify and explain the pitfalls of agent development 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe practical reasoning •Relate practical reasoning with intentions 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe protocol and strategies in negotiation 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","Upon completing this subject, you should be able to:
+- Evaluate various concepts of intelligent agent.
+- Organize effective solution steps in solving intelligent agent problems.
+- Manipulate techniques of intelligent agents for problem solving.",1.0,0.8540143906385074,0.19999999998,0.7
+What is the composition of the scheduled coursework?,"The scheduled coursework consists of 4 components: Lab Assessment (2), Lab Test, Mid Term Exam, and Project, each contributing 10%, 10%, 20%, and 30% respectively. [S1]
+
+**Sources**: [S1]","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 'WHAT IS PRACTICAL REASONING? •Practical reasoning is reasoning directed towards actions — the process of figuring out what to do •Practical reasoning is a matter of weighing conflicting considerations for and against competing options, where the relevant considerations are provided by what the agent desires/values/cares about and what the agent believes (Bratman) •Distinguish practical reasoning from theoretical reasoning – directed towards belief 3'
+ 'TASK SHARING: THE CONTRACT NET •Well known task -sharing protocol for task allocation is the contract net •The contract net includes five stages: 1.Recognition 2.Announcement 3.Bidding 4.Awarding 5.Expediting 13'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","•Lab Assessment (2) – 10%
+•Lab Test – 10%
+•Mid Term Exam – 20%
+•Project – 30%
+•Final Exam – 30%",1.0,0.8775538682990992,0.9999999999,1.0
+What does the term 'Ubiquity' refer to in the text?,"'Ubiquity' in the text refers to the continual reduction in cost of computing making processing power affordable in various places and devices, resulting in their intelligence becoming widespread. [S4]
+
+Sources: [S4]","['TRENDS IN THE HISTORY OF COMPUTING Ubiquity Interconnection Intelligence DelegationHuman -orientation 7'
+ 'FIPA ACL: “INFORM” AND “REQUEST” •“Inform” and “Request” are the two basic performatives in FIPA •Others are macro definitions, defined in terms of these •The meaning of inform and request is defined in two parts: •pre-condition : what must be true in order for the speech act to succeed •“rational effect” : what the sender of the message hopes to bring about 18'
+ 'CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 'UBIQUITY •Continual reduction in cost of computing makes it possible to introduce processing power into places and devices that would have once been uneconomic •As processing capability spreads , sophistication (and intelligence of a sort) becomes ubiquitous •Ubiquitous: present, appearing, or found everywhere 8'
+ 'DELIBERATION •How does an agent deliberate? •begin by trying to understand what the options available to you are •choose between them and commit to some •Chosen options are then intentions •The deliberate function can be decomposed into two distinct functional components: •option generation •filtering 12']","Continual reduction in cost of computing makes it possible to introduce processing power into places and devices that would have once been uneconomic
+As processing capability spreads , sophistication (and intelligence of a sort) becomes ubiquitous
+Ubiquitous: present, appearing, or found everywhere",1.0,0.852623770684126,0.7499999999625,1.0

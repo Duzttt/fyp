@@ -1,0 +1,39 @@
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+What department is Dr. Nur Zareen Zulkarnain from?,"Dr. Nur Zareen Zulkarnain is from the Department of Intelligent Computing and Analytics (ICA).
+
+**Sources: [S1], [S2], [S3], [S4], [S5]**","['WORKING TOGETHER 1 BAXI 3113 – INTELLIGENT AGENT Dr. Nur Zareen Zulkarnain Department of Intelligent Computing and Analytics (ICA) DG/1 -18 zareen@utem.edu.my 1'
+ 'METHODOLOGIES BAXI 3113 – INTELLIGENT AGENT Dr. Nur Zareen Zulkarnain Department of Intelligent Computing and Analytics (ICA) DG/1 -18 zareen@utem.edu.my 1'
+ 'INTRODUCTION TO AGENTS BAXI 3113 – INTELLIGENT AGENT Dr. Nur Zareen Zulkarnain Department of Intelligent Computing and Analytics (ICA) DG/1 -18 zareen@utem.edu.my 1'
+ 'INTELLIGENT AGENTS BAXI 3113 – INTELLIGENT AGENT Dr. Nur Zareen Zulkarnain Department of Intelligent Computing and Analytics (ICA) DG/1 -18 zareen@utem.edu.my 1'
+ 'REACHING AGREEMENTS 1 BITI 3113 –INTELLIGENT AGENT Dr. Nur Zareen Zulkarnain Department of Intelligent Computing and Analytics (ICA) DG/1 -18 zareen@utem.edu.my 1']",Department of Intelligent Computing and Analytics (ICA),nan,1.0,0.99999999998,1.0
+What are the course learning outcomes?,"The course learning outcomes include identifying and explaining the pitfalls of agent development, describing the steps involved in contract net protocol, describing practical reasoning and relating it to intentions, describing protocol and strategies in negotiation, and differentiating requested and non-requested coordination and comparing approaches to coordination.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['LEARNING OUTCOMES At the end of this lecture, you should be able to: •Identify and explain the pitfalls of agent development 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe practical reasoning •Relate practical reasoning with intentions 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe protocol and strategies in negotiation 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","Upon completing this subject, you should be able to:
+- Evaluate various concepts of intelligent agent.
+- Organize effective solution steps in solving intelligent agent problems.
+- Manipulate techniques of intelligent agents for problem solving.",1.0,0.8540143906385074,0.8333333332916666,0.0
+What is the project weight in the course assessment?,"The project weight in the course assessment is 30%.
+
+- Sources: [S1]","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 'MEANS -ENDS REASONING / P LANNING •Planning: The design of a course of action that will achieve some desired goal •Basically, give a planning system representation of: •goal/intention to achieve; •actions it can perform; •the environment; •and generate a plan to achieve the goal 3 Let the system figure out how to achieve the goal on its own!'
+ 'ystems like Deep Space 1 and the Autonomous Asteroid Exploration Project show that this is possible. 36Agents are the achievable bit of the AI project'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe hybrid architecture •Layered approached •TouringMachine 2'
+ 'DEDUCTIVE REASONING AGENTS •How does this fit into the abstract description we talked about last time? •The perception function is as before: •of course, this is (much) easier said than done •The next state function revises the database ∆ : 14']",Project – 30%,1.0,0.9366260660388774,0.9999999999,1.0
+What are the two lab assessment items?,"The two lab assessment items are the Lab Assessment (2) and the Lab Test.
+
+**Sources**: [S1]","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ '•The idea of a predicate task specification is admittedly abstract •It generalises two common types of tasks, achievement tasks and maintenance tasks : 1.Achievement tasks: Are those of the form “ achieve state of affairs φ”. 2.Maintenance tasks: Are those of the form “ maintain state of affairs ψ”. 48ACHIEVEMENT & MAINTENANCE TASKS'
+ '4 Two men arrive at the copy room with a stack of paper to photocopy. Who gets to use the machine first?'
+ 'FIPA ACL: “INFORM” AND “REQUEST” •“Inform” and “Request” are the two basic performatives in FIPA •Others are macro definitions, defined in terms of these •The meaning of inform and request is defined in two parts: •pre-condition : what must be true in order for the speech act to succeed •“rational effect” : what the sender of the message hopes to bring about 18'
+ 'ACHIEVEMENT & MAINTENANCE TASKS •An achievement task is specified by a set G of “good” or “goal” states: G ⊆ E •The agent succeeds if it is guaranteed to bring about at least one of these states (we don’t care which, as all are considered good) •The agent succeeds if in an achievement task if it can force the environment into one of the goal states g ∈ G 49•A maintenance goal is specified by a set B of “bad” states: B ⊆ E •The agent succeeds in a particular environment if it manages to avoid']",Lab Assessment (2) – 10%,1.0,0.9999999999999998,0.9999999999,1.0
+What are the key trends in the history of computing mentioned in the text?,"The key trends in the history of computing, as mentioned in the reference materials, are ubiquity, interconnection, and delegation. Ubiquity involves the continual reduction in computing costs, leading to processing power being introduced into many places and devices. Interconnection refers to the networking of computer systems into large distributed systems, and delegation involves the idea that tasks are distributed among multiple agents.
+
+Sources: [S1], [S4], [S5]","['TRENDS IN THE HISTORY OF COMPUTING Ubiquity Interconnection Intelligence DelegationHuman -orientation 7'
+ 'LEARNING OUTCOMES At the end of today’s lecture, you should be able to: •Identify trends in the history of computing •Explain agents and multiagent system •Determine appropriate implementation of agents in various fields 5'
+ 'AGENT -ORIENTED PROGRAMMING •Yoav Shoham introduced “agent -oriented programming” in 1990: “... new programming paradigm, based on a societal view of computation ...” •The key idea: •Directly programming agents in terms of intentional notions •like belief, desire, and intention •Adopts the same abstraction as humans •Resulted in the Agent0 programming language 21'
+ 'UBIQUITY •Continual reduction in cost of computing makes it possible to introduce processing power into places and devices that would have once been uneconomic •As processing capability spreads , sophistication (and intelligence of a sort) becomes ubiquitous •Ubiquitous: present, appearing, or found everywhere 8'
+ 'INTERCONNECTION •Computer systems no longer stand alone but are networked into large distributed systems •Internet an obvious example, but networking is spreading its ever-growing tentacles •Since distributed and concurrent systems have become the norm, some researchers are putting forward theoretical models that portray computing as primarily a process of interaction 13']","Ubiquity, Interconnection, Intelligence Delegation, Human -orientation",0.3333333333333333,0.9306201836729303,0.99999999998,1.0

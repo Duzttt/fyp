@@ -61,7 +61,6 @@ data_source/
 chunking/
 retrieval/
 config/
-evaluation/
 
 # Frontend
 frontend/node_modules/

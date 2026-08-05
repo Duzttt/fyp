@@ -1,0 +1,47 @@
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+What is the full name of the author of the document?,"The reference materials do not contain any information about the author of the document. Therefore, no author's name can be provided based on these sources.
+
+**Sources: None","['FIPA ACL: “INFORM” AND “REQUEST” •“Inform” and “Request” are the two basic performatives in FIPA •Others are macro definitions, defined in terms of these •The meaning of inform and request is defined in two parts: •pre-condition : what must be true in order for the speech act to succeed •“rational effect” : what the sender of the message hopes to bring about 18'
+ 'ABSTRACT ARGUMENTATION •Concerned with the overall structure of the argument (rather than internals of arguments) •Write x → y •“argument x attacks argument y” •“x is a counterexample of y” •“x is an attacker of y” where we are not actually concerned as to what x, y are •An abstract argument system is a collection of arguments together with a relation “ →” saying what attacks what •An argument is out if it has an undefeated attacker , and in if all its attackers are defeated 5'
+ 'STRATEGIES IN AXELROD’S TOURNAMENT •The best approach depends heavily on what the full set of approaches is •TIT-FOR -TAT won because there were other players it could co -operate with 24'
+ 'ONTOLOGIES •Part of the reason this interaction works is that Bob has knowledge that is relevant. •Bob knows that novels are fiction books. •Bob knows things about novels: they have •authors, •publishers, •publication dates, and so on. •Because “Prey” is a novel, it inherits the properties of novels. 25'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6']",Dr. Nur Zareen Zulkarnain,nan,0.0,0.0,0.0
+What is the department of the author mentioned in the document?,"There is no specific department of the author mentioned in the provided reference materials. The materials do not provide any information about an author or their department.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['FIPA ACL: “INFORM” AND “REQUEST” •“Inform” and “Request” are the two basic performatives in FIPA •Others are macro definitions, defined in terms of these •The meaning of inform and request is defined in two parts: •pre-condition : what must be true in order for the speech act to succeed •“rational effect” : what the sender of the message hopes to bring about 18'
+ 'high-level description of the delegated goal , and let the control mechanism figure out what to do, knowing that it will act in accordance with some built-in theory of rational agency 36'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6'
+ 'OVERVIEW 6'
+ 'ONTOLOGIES •Part of the reason this interaction works is that Bob has knowledge that is relevant. •Bob knows that novels are fiction books. •Bob knows things about novels: they have •authors, •publishers, •publication dates, and so on. •Because “Prey” is a novel, it inherits the properties of novels. 25']",Department of Intelligent Computing and Analytics (ICA),1.0,0.0,0.19999999998,0.0
+What are the course learning outcomes that students should be able to achieve?,"The course learning outcomes include identifying and explaining the pitfalls of agent development, describing the steps involved in the contract net protocol, describing protocols and strategies in negotiation, describing practical reasoning and relating it to intentions, and differentiating requested and non-requested coordination and comparing different coordination approaches.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['LEARNING OUTCOMES At the end of this lecture, you should be able to: •Identify and explain the pitfalls of agent development 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe protocol and strategies in negotiation 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe practical reasoning •Relate practical reasoning with intentions 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","CLO1: Evaluate various concepts of intelligent agent.
+CLO2: Organise effective solution steps in solving intelligent agent problems.
+CLO3: Manipulate techniques of intelligent agents for problem solving.",nan,0.7530903192893627,0.19999999998,1.0
+What is the schedule for the lab assessment and test in the course?,"According to the reference materials, the lab assessment accounts for 10%, and the lab test accounts for 10% of the coursework. No specific schedule for these assessments is provided, only their percentage contribution to the overall grade.
+
+**Sources: [S1]**","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 's applicable plan for the triggering event in the message content Delegate an Achievement Goal (Goal Delegation)achieve and unachieveThe sender requests the receiver (not) to try and achieve a state -of-affairs where the content of the message is true Delegate a Test Goal (Information Seeking)askOne and askAllThe sender wants to know whether the receiver knows ( askOne ) if the content is true (i.e. is there a single answer) or for all answers ( askAll ) 21'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2'
+ 'FIPA ACL: “INFORM” AND “REQUEST” •“Inform” and “Request” are the two basic performatives in FIPA •Others are macro definitions, defined in terms of these •The meaning of inform and request is defined in two parts: •pre-condition : what must be true in order for the speech act to succeed •“rational effect” : what the sender of the message hopes to bring about 18'
+ 'COURSE LEARNING OUTCOMES Upon completing this subject, you should be able to: CLO1: Evaluate various concepts of intelligent agent. CLO2: Organise effective solution steps in solving intelligent agent problems. CLO3: Manipulate techniques of intelligent agents for problem solving. 3']","Lab Assessment (2) – 10%
+Lab Test – 10%
+Mid Term Exam – 20%
+Project – 30%
+Final Exam – 30%",1.0,0.0,0.9999999999,0.25
+What is the purpose of the home automation wars mentioned in the document?,"The purpose of the home automation wars is to discuss the competitive nature and advancements in home automation technologies, particularly focusing on the timeline and timeline of the announced and launched products in 2014 and 2016 by major players like Amazon, Google, and Apple.
+
+**Sources: [S1]**","['HOME AUTOMATION WARS 10 Announced in 2014, full app support (iOS10) in Sept 2016Launched in the UK on 26th Sept 2016Announced in May and launched in Nov 2016 Google’s Home Amazon’s Echo Apple HomeKit'
+ 'SUMMARY •This lecture has looked in detail at what constitutes an intelligent agent •We looked at the properties of an intelligent agent and the properties of the environments in which it may operate •We introduced the intentional stance and discussed its use •Finally, we discussed what kinds of task an agent might need to carry out. 50'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Relate the speech act theory to agent communication language •Compare different types of agent communication language •Explain ontology with its purpose and different levels 2'
+ 'DELEGATION •Computers are doing more for us → Without our intervention •We are giving control to computers, even in safety critical tasks 15•Example: •Autonomous vehicle •Fly-by-wire (FBW): semi - automatic, computer - regulated flight control systems •Generative design tools'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6']","Announced in 2014, full app support (iOS10) in Sept 2016
+Launched in the UK on 26th Sept 2016
+Announced in May and launched in Nov 2016
+Google’s Home
+Amazon’s Echo
+Apple HomeKit",nan,0.9489332510973038,0.9999999999,0.0

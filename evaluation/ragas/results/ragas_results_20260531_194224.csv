@@ -1,0 +1,73 @@
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+What does the course outline suggest students should be able to do?,"The course outline suggests that students should be able to evaluate various concepts of intelligent agents, organize effective solution steps for intelligent agent problems, and manipulate techniques of intelligent agents for problem solving. [S1]
+
+### Explanation
+- CLO1 (Course Learning Outcome 1) requires students to evaluate various concepts of intelligent agents.
+- CLO2 (Course Learning Outcome 2) demands students to organize effective solution steps in solving intelligent agent problems.
+- CLO3 (Course Learning Outcome 3) necessitates students to manipulate techniques of intelligent agents for problem-solving.
+
+### Sources
+Sources: [S1], [S2], [S3], [S4], [S5]","['COURSE LEARNING OUTCOMES Upon completing this subject, you should be able to: CLO1: Evaluate various concepts of intelligent agent. CLO2: Organise effective solution steps in solving intelligent agent problems. CLO3: Manipulate techniques of intelligent agents for problem solving. 3'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Identify and explain the pitfalls of agent development 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe practical reasoning •Relate practical reasoning with intentions 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2']","Upon completing this subject, you should be able to:
+CLO1: Evaluate various concepts of intelligent agent.
+CLO2: Organise effective solution steps in solving intelligent agent problems.
+CLO3: Manipulate techniques of intelligent agents for problem solving.",1.0,0.6195935111632386,0.99999999998,1.0
+What are the percentages allocated to different components of the scheduled coursework?,"Based on the information provided in [S1], the percentages allocated to different components of the scheduled coursework are as follows:
+- Lab Assessment: 10%
+- Lab Test: 10%
+- Mid Term Exam: 20%
+- Project: 30%
+- Final Exam: 30%
+
+Sources: [S1]","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2'
+ 'TASK SHARING AND RESULT SHARING Based on the solution synthesis model, two activities that are likely to be present: 1.Task Sharing •components of a task are distributed to component agents •how do we decide how to allocate tasks to agents? 2.Result Sharing •information (partial results etc) is distributed •how do we assemble a complete solution from the parts? 12'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6'
+ 'TASK SHARING: THE CONTRACT NET •Well known task -sharing protocol for task allocation is the contract net •The contract net includes five stages: 1.Recognition 2.Announcement 3.Bidding 4.Awarding 5.Expediting 13']","•Lab Assessment (2) – 10%
+•Lab Test – 10%
+•Mid Term Exam – 20%
+•Project – 30%
+•Final Exam – 30%",0.8571428571428571,1.0,0.99999999995,1.0
+What is the content covered in the course overview section?,"The course overview section covers the basic concepts of speech acts and their performatives, including inform, request, and inquire, as presented in [S2] and [S3].
+
+| Performative | Description |
+|--------------|------------|
+| Inform | The sender intends to inform the receiver that something is true. |
+| Request | The sender requests the receiver to do something. |
+| Inquire | The sender asks the receiver about a state of affairs. |
+
+Sources: [S2], [S3]","['OVERVIEW 6'
+ 'PERFORMATIVES IN JASON Sharing Beliefs (Information Exchange)tell and untellThe sender intends the receiver (not) to believe the literal in the content to be true and that the sender believes it Sharing Plans (Deliberation)tellHow and untellHowThe sender requests the receiver (not) to include within their plan library the plan in the message content askHow The sender wants to know the receiver’s applicable plan for the triggering event in the message content Delegate an Achievement Goal (Goal'
+ 'Content The door is closed... •Performative: Request Speech act: “please close the door” •Performative: Inform speech act = “the door is closed!” •Performative: Inquire speech act = “is the door closed?” 8Same propositional content (“...the door is closed...”), but with different performatives'
+ 'CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 's applicable plan for the triggering event in the message content Delegate an Achievement Goal (Goal Delegation)achieve and unachieveThe sender requests the receiver (not) to try and achieve a state -of-affairs where the content of the message is true Delegate a Test Goal (Information Seeking)askOne and askAllThe sender wants to know whether the receiver knows ( askOne ) if the content is true (i.e. is there a single answer) or for all answers ( askAll ) 21']","Overview of trends in the history of computing, including ubiquity, interconnection, intelligence delegation, and human orientation.",nan,0.5906539235746794,0.4499999999775,0.0
+"What is the significance of ubiquitous computing, according to the text?","Ubiquitous computing makes processing power available in places and devices once deemed economically unfeasible, leading to a widespread and sophisticated form of intelligence.
+
+- The text states that continual reductions in computing costs allow for the introduction of processing power into previously uneconomic locations and devices, promoting ubiquitous presence and intelligence.
+- It mentions that as processing capability becomes more widespread, the sophistication and intelligence of systems also become ubiquitous.
+- Ubiquitous computing implies that processing power and intelligence are not confined to a few devices but are present everywhere, enhancing the overall environment.
+- The concept of ubiquity in computing means it is present, appearing, or found everywhere, making processing power accessible wherever needed, which is significant for technology integration and intelligence spread.
+
+Sources: [S1], [S3]","['UBIQUITY •Continual reduction in cost of computing makes it possible to introduce processing power into places and devices that would have once been uneconomic •As processing capability spreads , sophistication (and intelligence of a sort) becomes ubiquitous •Ubiquitous: present, appearing, or found everywhere 8'
+ 'SUMMARY •This lecture has looked in detail at what constitutes an intelligent agent •We looked at the properties of an intelligent agent and the properties of the environments in which it may operate •We introduced the intentional stance and discussed its use •Finally, we discussed what kinds of task an agent might need to carry out. 50'
+ 'TRENDS IN THE HISTORY OF COMPUTING Ubiquity Interconnection Intelligence DelegationHuman -orientation 7'
+ 'VICKREY AUCTION •Bidding to your true valuation is dominant strategy in Vickrey auctions •Incentive compatible: achieve the best outcome just by acting according to their true preferences •Historically used in the sale of stamps and other paper collectibles 13 Bidders submit a sealed bid for the goodThe winning bid is the highest bid, but the winning bidder pays the amount of the second highest bidSingle round -one-shot auctions PARAMETERS: •Second -price •Sealed -bid •One-shot'
+ 'INTERCONNECTION •Computer systems no longer stand alone but are networked into large distributed systems •Internet an obvious example, but networking is spreading its ever-growing tentacles •Since distributed and concurrent systems have become the norm, some researchers are putting forward theoretical models that portray computing as primarily a process of interaction 13']","Ubiquity: Continual reduction in cost of computing makes it possible to introduce processing power into places and devices that would have once been uneconomic. As processing capability spreads, sophistication (and intelligence of a sort) becomes ubiquitous.",0.6,0.7587484934489988,0.9999999999666667,1.0
+"What are some of the companies involved in the home automation market, as mentioned in the text?","Some of the companies involved in the home automation market, as mentioned in the reference materials, are Google's Home, Amazon's Echo, Apple's HomePod, Google's Nest Hub, and Samsung's SmartThings.
+
+Sources: [S1], [S5]","['HOME AUTOMATION WARS 10 Announced in 2014, full app support (iOS10) in Sept 2016Launched in the UK on 26th Sept 2016Announced in May and launched in Nov 2016 Google’s Home Amazon’s Echo Apple HomeKit'
+ '12 •Back in 2013, Xiaomi spotted the Internet of Things wave and responded with a five -year plan to invest in 100 hardware startups •By 2017, the ecosystem had 99 startups • The ecosystem is not only made up of this type of device, but also from all those produced by these small satellite companies , all different, that revolve around Xiaomi'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2'
+ 'TCL/TK •The (free) Tool Control Language (TCL — pronounced ‘tickle’) and its companion TK, are now often mentioned in connection with agent -based systems •TCL was primarily intended as a standard command language •It provides the facilities to easily implement your own command language 19'
+ '11Apple’s HomePodGoogle’s Nest Hub Samsung’s SmartThings']","Announced in 2014, full app support (iOS10) in Sept 2016
+Launched in the UK on 26th Sept 2016
+Announced in May and launched in Nov 2016
+Google's Home
+Amazon's Echo
+Apple HomeKit
+Apple's HomePod
+Google's Nest Hub
+Samsung's SmartThings",nan,0.9788738812465193,0.699999999965,0.6666666666666666

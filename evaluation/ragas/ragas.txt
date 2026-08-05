@@ -1,0 +1,1 @@
+python scripts/run_evaluation.py --dataset eval_baseline.jsonl --out outputs/ragas_afterimprove3retrieval.csv --base-url http://localhost:8080 --model "MiniCPM5-1B-Q8_0" --top-k 5

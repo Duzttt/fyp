@@ -1,0 +1,3 @@
+python scripts/ragas_baseline.py generate ^    --pdf-dir media/data_source/ragas ^    --out eval_baseline.jsonl ^    --base-url http://localhost:8080 ^    --model qwen2.5-3b-instruct-q4_k_m.gguf ^    --num-questions 5
+
+python scripts/ragas_baseline.py evaluate ^    --dataset eval_baseline.jsonl ^    --out eval_baseline_result.csv ^    --base-url http://localhost:8080 ^    --model Llama-3.2-3B-Instruct.Q4_K_M.gguf ^    --judge-base-url https://openrouter.ai/api/v1 ^    --judge-model nvidia/nemotron-3-super-120b-a12b:free ^    --judge-base-url https://integrate.api.nvidia.com/v1 ^    --judge-model nvidia/nemotron-3-super-120b-a12b ^    --judge-api-key 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 --top-k 5

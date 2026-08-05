@@ -1,0 +1,49 @@
+question,answer,contexts,ground_truth,faithfulness,answer_relevancy,context_precision,context_recall
+Who is the author of the course material?,"Based on the reference materials provided, there is no specific mention of the author or creator of the course material. Therefore, I cannot identify the author from these sources.
+
+**Sources:**","['GAME OF CHICKEN to drop out of the game by jumping out of the speeding car. •The winner is the one who lasts longest in the car. •Of course, if neither player jumps out of the car, then both cars fly off the cliff. 26 •The game is played by both players driving their cars at high speed towards a cliff . •The idea is that the least brave of the two (the “chicken”) will be the first'
+ 'CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ '4 Two men arrive at the copy room with a stack of paper to photocopy. Who gets to use the machine first?'
+ 'OVERVIEW 6'
+ 'SOCIAL NORMS •Societies are often regulated by (often unwritten) rules of behaviour •Example: •A group of people is waiting at the bus stop. The bus arrives. Who gets on the bus first? •There’s only one seat on the bus and there’s a young man and an elderly man. Who gets the seat? •In an agent system, we can design the norms and program agents to follow them, or let norms evolve 8']",Dr. Nur Zareen Zulkarnain,0.0,0.0,0.0,0.058823529411764705
+What department is the author associated with?,"Based on the reference materials provided, none of them mention the author's department. Therefore, we cannot determine the author's department from these sources.
+
+**Sources: [S1], [S2], [S3], [S4], [S5]**","['high-level description of the delegated goal , and let the control mechanism figure out what to do, knowing that it will act in accordance with some built-in theory of rational agency 36'
+ 'MULTI AGENT PLANNING •Another approach to coordinate is to explicitly plan what all the agents do •Could involve: •Centralised planning for distributed plans: One agent comes up with a plan for everybody •Distributed planning: A group of agents come up with a centralised plan for another group of agents. •Distributed planning for distributed plans : Agents build up plans for themselves, but take into account the actions of others 13'
+ 'RESOURCES •TELESCRIPT agents have an associated permit , which specifies: •what the agent can do (e.g., limitations on travel) •what resources the agent can use •The most important resources are: •‘money’, measured in ‘ teleclicks ’ (which correspond to real money) •lifetime (measured in seconds) •size (measured in bytes) •Agents and places are executed by an engine which is a kind of agent operating system 18'
+ 'ONTOLOGIES •Part of the reason this interaction works is that Bob has knowledge that is relevant. •Bob knows that novels are fiction books. •Bob knows things about novels: they have •authors, •publishers, •publication dates, and so on. •Because “Prey” is a novel, it inherits the properties of novels. 25'
+ 'AGENT -BASED ANALYSIS •Analysis aims to understand , at least •What are the main actors interacting with the system •How the system interacts with these actors •What the system is supposed to do •Then, we associate accordingly •Roles responsibilities and capabilities •Interaction patterns between agents 5']",Department of Intelligent Computing and Analytics (ICA),0.0,0.0,0.249999999975,1.0
+What are the course learning outcomes?,"Course learning outcomes include identifying and explaining the pitfalls of agent development, describing the steps involved in the contract net protocol, describing practical reasoning and relating it to intentions, describing protocols and strategies in negotiation, and differentiating requested and non-requested coordination.
+
+Sources: [S1], [S2], [S3], [S4], [S5]","['LEARNING OUTCOMES At the end of this lecture, you should be able to: •Identify and explain the pitfalls of agent development 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe the steps involved in contract net protocol 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe practical reasoning •Relate practical reasoning with intentions 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Describe protocol and strategies in negotiation 2'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","Upon completing this subject, you should be able to:
+- Evaluate various concepts of intelligent agent.
+- Organize effective solution steps in solving intelligent agent problems.
+- Manipulate techniques of intelligent agents for problem solving.",1.0,0.9999999999999156,0.99999999998,1.0
+What is the composition of the scheduled coursework?,"The scheduled coursework consists of Lab Assessment (2), Lab Test, Mid Term Exam, Project, and Final Exam, each contributing a specific percentage of the total score.
+
+- **Lab Assessment (2)**: 10%
+- **Lab Test**: 10%
+- **Mid Term Exam**: 20%
+- **Project**: 30%
+- **Final Exam**: 30%
+
+**Sources:** [S1]","['CLASS STRUCTURE •Lecture: 2 hours •Lab / Tutorial: 2 hours SCHEDULED COURSEWORK Please refer to the teaching plan for further details. 4•Lab Assessment (2) – 10% •Lab Test – 10% •Mid Term Exam – 20%•Project – 30% •Final Exam – 30%'
+ 'WHAT IS PRACTICAL REASONING? •Practical reasoning is reasoning directed towards actions — the process of figuring out what to do •Practical reasoning is a matter of weighing conflicting considerations for and against competing options, where the relevant considerations are provided by what the agent desires/values/cares about and what the agent believes (Bratman) •Distinguish practical reasoning from theoretical reasoning – directed towards belief 3'
+ 'TASK SHARING: THE CONTRACT NET •Well known task -sharing protocol for task allocation is the contract net •The contract net includes five stages: 1.Recognition 2.Announcement 3.Bidding 4.Awarding 5.Expediting 13'
+ 'AGENT -BASED DESIGN •Design aims to engineer , at least •What are the main components interacting within the system •What are the responsibilities and the capabilities of each component in the system •How the components interact to implement the system, i.e., the architecture of the system •Differently from analysis: we need to choose on which agents to use and how they interact 6'
+ 'LEARNING OUTCOMES At the end of this lecture, you should be able to: •Differentiate requested and non -requested coordination •Compare the different approaches to coordination 2']","•Lab Assessment (2) – 10%
+•Lab Test – 10%
+•Mid Term Exam – 20%
+•Project – 30%
+•Final Exam – 30%",nan,0.8402454659491182,0.7499999999625,0.6
+What is the title of the multiagent system mentioned in the text?,"Based on the reference materials, the text mentions ""A multiagent system (MAS)"" but does not provide a specific title or name for it. Therefore, we cannot determine the title of the multiagent system.
+
+**Sources: [S2]**","['MULTIAGENT SYSTEM IS INTERDISCIPLINARY •The field of Multiagent Systems is influenced and inspired by many other fields: 34Economics Philosophy Logic Ecology Game Theory Social Sciences Humanities •This can be both a strength (infusing well -founded methodologies into the field) and a weakness (there are many different views as to what the field is about)'
+ 'MULTI -AGENT SYSTEMS: A FIRST DEFINITION •A multiagent system (MAS) is one that consists of a number of agents, which interact with one another •In the most general case, agents will be acting on behalf of users with different goals and motivations •To successfully interact, they will require the ability to cooperate, coordinate, and negotiate with each other, much as people do 25'
+ 'LEARNING OUTCOMES At the end of today’s lecture, you should be able to: •Identify trends in the history of computing •Explain agents and multiagent system •Determine appropriate implementation of agents in various fields 5'
+ 'SOME VIEWS OF THE FIELD •Software engineers have derived a progressively better understanding of the characteristics of complexity in software. It is now widely recognized that interaction is probably the most important single characteristic of complex software. •Multiagent systems provide a novel new tool for simulating societies , which may help shed some light on various kinds of social processes.'
+ 'RESULTS SHARING IN BLACKBOARD SYSTEMS •The first scheme for cooperative problem solving → the blackboard system •Metaphor: A collection of intelligent agents gather around a blackboard, look at pieces of information written on it, think about them, and add their conclusions •Assumptions: •All of the agents can see all of the blackboards (BB) all the time, and what they see represents the current state of solution •Multiple agents (KSs/KAs) can write solution on the blackboard at anytime without']",BAXI 3113 – Intelligent Agent,1.0,0.0,0.8874999999778125,0.16666666666666666

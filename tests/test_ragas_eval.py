@@ -59,7 +59,7 @@ def test_evaluate_passes_local_embeddings_to_ragas(monkeypatch):
     if not apps.ready:
         django.setup()
 
-    from evaluation.ragas_evaluator import RAGASEvaluator
+    from evaluation.ragas.ragas_evaluator import RAGASEvaluator
 
     evaluator = RAGASEvaluator()
     local_embeddings = object()
@@ -117,8 +117,8 @@ def test_ragas_llm_config_uses_runtime_local_llm(monkeypatch):
     if not apps.ready:
         django.setup()
 
-    import evaluation.ragas_evaluator as ragas_evaluator
-    from evaluation.ragas_evaluator import RAGASEvaluator
+    import evaluation.ragas.ragas_evaluator as ragas_evaluator
+    from evaluation.ragas.ragas_evaluator import RAGASEvaluator
 
     monkeypatch.delenv("RAGAS_API_KEY", raising=False)
     monkeypatch.delenv("RAGAS_BASE_URL", raising=False)
@@ -292,7 +292,7 @@ def main():
     django.setup()
 
     # Run evaluation
-    from evaluation.ragas_evaluator import RAGASEvaluator
+    from evaluation.ragas.ragas_evaluator import RAGASEvaluator
     from app.config import settings
 
     evaluator = RAGASEvaluator()
