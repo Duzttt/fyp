@@ -215,12 +215,15 @@ def generate_comparison_table(all_metrics: List[Dict[str, Any]]) -> str:
 
     for key, label in metric_keys:
         row = f"{label:<20}"
-        values = [m.get(key, 0) for m in all_metrics]
-        for val in values:
-            if key == "p95_latency_ms":
-                row += f"{val:>17.2f}ms"
+        for m in all_metrics:
+            if "error" in m:
+                row += f"{'ERROR':>18}"
             else:
-                row += f"{val:>18.4f}"
+                val = m.get(key, 0)
+                if key == "p95_latency_ms":
+                    row += f"{val:>17.2f}ms"
+                else:
+                    row += f"{val:>18.4f}"
         lines.append(row)
 
     lines.append("-" * 80)
@@ -362,7 +365,7 @@ def main():
                 model_name=model_name,
                 documents=documents,
                 benchmark_queries=benchmark_queries,
-                top_k=10,
+                top_k=5,
             )
             all_metrics.append(metrics)
         except Exception as e:
