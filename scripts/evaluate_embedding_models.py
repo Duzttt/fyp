@@ -12,20 +12,44 @@ Usage:
 """
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
 from typing import Dict, List, Any
 
-import numpy as np
-
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from evaluation.retrieval_evaluator import RetrievalEvaluator, AggregateMetrics
+from evaluation.retrieval_evaluator import RetrievalEvaluator
 from retrieval.dense_retriever import DenseRetriever
+
+
+class DenseRetrieverAdapter:
+    """
+    Adapter that wraps DenseRetriever to provide a retrieve() method.
+    
+    The evaluator expects a retriever with retrieve(query, top_k) returning
+    List[Dict] with 'id' key. DenseRetriever only has search() returning
+    List[Tuple[str, float]].
+    """
+
+    def __init__(self, retriever: DenseRetriever):
+        self.retriever = retriever
+
+    def retrieve(self, query: str, top_k: int = 10) -> List[Dict[str, Any]]:
+        """
+        Retrieve documents for a query.
+        
+        Args:
+            query: Query string
+            top_k: Number of results to return
+            
+        Returns:
+            List of document dictionaries with 'id' key
+        """
+        search_results = self.retriever.search(query, top_k=top_k)
+        return [{"id": doc_id, "score": score} for doc_id, score in search_results]
 
 
 # Configuration
@@ -36,53 +60,47 @@ MODELS = [
     "intfloat/e5-large-v2",
 ]
 
-CHUNKS_PATH = PROJECT_ROOT / "data" / "faiss_index" / "chunks.npy"
+CHUNKS_DIR = PROJECT_ROOT / "data" / "chunks"
+FAISS_INDEX_DIR = PROJECT_ROOT / "data" / "faiss_index"
+CHUNK_METADATA_PATH = FAISS_INDEX_DIR / "chunk_metadata.json"
 BENCHMARK_PATH = PROJECT_ROOT / "data" / "evaluation" / "retrieval_benchmark.jsonl"
 REPORT_DIR = PROJECT_ROOT / "data" / "evaluation"
 REPORT_PATH = REPORT_DIR / "embedding_model_comparison_report.txt"
 
 
-def load_chunks(chunks_path: Path) -> List[Dict[str, Any]]:
+def load_chunks() -> List[Dict[str, Any]]:
     """
-    Load document chunks from chunks.npy file.
-
-    Args:
-        chunks_path: Path to chunks.npy file
+    Load document chunks for indexing.
+    
+    Looks for existing chunks in data/chunks/ or falls back to
+    rebuilding from the vector store metadata.
 
     Returns:
         List of document dictionaries with 'id' and 'text' keys
     """
-    if not chunks_path.exists():
-        raise FileNotFoundError(f"Chunks file not found: {chunks_path}")
-
-    loaded_chunks = np.load(chunks_path, allow_pickle=True).tolist()
-    if not isinstance(loaded_chunks, list):
-        loaded_chunks = [loaded_chunks]
-
-    documents = []
-    for idx, chunk in enumerate(loaded_chunks):
-        if isinstance(chunk, dict):
-            text = str(chunk.get("text", ""))
-            source = str(chunk.get("source", "unknown"))
-            page = chunk.get("page")
-        elif isinstance(chunk, str):
-            text = chunk
-            source = "unknown"
-            page = None
-        else:
-            text = str(chunk)
-            source = "unknown"
-            page = None
-
-        if text.strip():
-            documents.append({
-                "id": f"chunk_{idx}",
-                "text": text.strip(),
-                "source": source,
-                "page": page,
-            })
-
-    return documents
+    # Try loading from existing chunks directory
+    if CHUNKS_DIR.exists():
+        documents = []
+        for chunk_file in CHUNKS_DIR.glob("*.json"):
+            with open(chunk_file, "r", encoding="utf-8") as f:
+                chunk_data = json.load(f)
+                if isinstance(chunk_data, list):
+                    documents.extend(chunk_data)
+                else:
+                    documents.append(chunk_data)
+        if documents:
+            return documents
+    
+    # Fallback: try loading from FAISS index metadata
+    if FAISS_INDEX_DIR.exists():
+        if CHUNK_METADATA_PATH.exists():
+            with open(CHUNK_METADATA_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+    
+    raise FileNotFoundError(
+        "No document chunks found. Please ensure data/chunks/ or "
+        "data/faiss_index/chunk_metadata.json exists."
+    )
 
 
 def evaluate_model(
@@ -111,19 +129,22 @@ def evaluate_model(
 
     try:
         # Create DenseRetriever with the specified model
-        print(f"Loading model and building FAISS index...")
+        print("Loading model and building FAISS index...")
         retriever = DenseRetriever(
             documents=documents,
             model_name=model_name,
         )
         print(f"Index built with {retriever.get_document_count()} documents")
 
+        # Wrap retriever with adapter to match evaluator's expected API
+        adapted_retriever = DenseRetrieverAdapter(retriever)
+
         # Create evaluator
         evaluator = RetrievalEvaluator(test_queries=benchmark_queries)
 
         # Run evaluation
         print(f"Running evaluation with {len(benchmark_queries)} queries...")
-        aggregate, results = evaluator.evaluate(retriever, top_k=top_k)
+        aggregate, results = evaluator.evaluate(adapted_retriever, top_k=top_k)
 
         elapsed = time.time() - start_time
 
@@ -183,7 +204,7 @@ def generate_comparison_table(all_metrics: List[Dict[str, Any]]) -> str:
         ("precision_at_5", "Precision@5"),
         ("mrr", "MRR"),
         ("ndcg_at_5", "NDCG@5"),
-        ("ndcg_at_10", "NCDG@10"),
+        ("ndcg_at_10", "NDCG@10"),
         ("p95_latency_ms", "p95 Latency (ms)"),
     ]
 
@@ -291,7 +312,7 @@ def generate_report(
         lines.append("")
         lines.append(f"RECOMMENDED MODEL: {best_by_recall['model_name']}")
         lines.append(f"  Reason: Highest Recall@5 ({best_by_recall.get('recall_at_5', 0):.4f})")
-        lines.append(f"  This model retrieves the most relevant documents in the top 5 results.")
+        lines.append("  This model retrieves the most relevant documents in the top 5 results.")
     else:
         lines.append("No valid model results to recommend.")
 
@@ -309,20 +330,18 @@ def main():
     print("Embedding Model Evaluation Script")
     print("=" * 60)
 
-    # Check if chunks file exists
-    if not CHUNKS_PATH.exists():
-        print(f"Error: Chunks file not found at {CHUNKS_PATH}")
-        print("Please ensure the FAISS index has been built first.")
-        sys.exit(1)
-
     # Check if benchmark file exists
     if not BENCHMARK_PATH.exists():
         print(f"Error: Benchmark file not found at {BENCHMARK_PATH}")
         sys.exit(1)
 
     # Load chunks
-    print(f"\nLoading chunks from {CHUNKS_PATH}...")
-    documents = load_chunks(CHUNKS_PATH)
+    print("\nLoading chunks...")
+    try:
+        documents = load_chunks()
+    except FileNotFoundError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     print(f"Loaded {len(documents)} document chunks")
 
     # Load benchmark queries
