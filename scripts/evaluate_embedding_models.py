@@ -103,6 +103,11 @@ def load_chunks() -> List[Dict[str, Any]]:
     )
 
 
+# Aliases for backward compatibility / external imports
+MODELS_TO_EVALUATE = MODELS
+load_documents_from_chunks = load_chunks
+
+
 def evaluate_model(
     model_name: str,
     documents: List[Dict[str, Any]],
