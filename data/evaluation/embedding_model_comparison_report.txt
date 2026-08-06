@@ -1,0 +1,90 @@
+================================================================================
+EMBEDDING MODEL EVALUATION REPORT
+================================================================================
+
+Date: 2026-08-07 00:48:31
+Number of models evaluated: 4
+Benchmark queries: retrieval_benchmark.jsonl
+
+================================================================================
+PER-MODEL METRICS
+================================================================================
+
+Model: BAAI/bge-m3
+----------------------------------------
+  ERROR: Failed to load embedding model: Due to a serious vulnerability issue in `torch.load`, even with `weights_only=True`, we now require users to upgrade torch to at least v2.6 in order to use the function. This version restriction does not apply when loading files with safetensors.
+See the vulnerability report here https://nvd.nist.gov/vuln/detail/CVE-2025-32434
+
+Model: jinaai/jina-embeddings-v3
+----------------------------------------
+  ERROR: Failed to load embedding model: No module named 'custom_st'
+
+Model: BAAI/bge-large-en-v1.5
+----------------------------------------
+  Queries evaluated: 33
+  Recall@1:     0.8838
+  Recall@3:     0.9596
+  Recall@5:     1.0000
+  Recall@10:    1.0000
+  Precision@1:  1.0000
+  Precision@5:  0.2545
+  MRR:          1.0000
+  NDCG@5:       0.9837
+  NDCG@10:      0.9837
+  p95 Latency:  53.16ms
+  Total Time:   331.64s
+
+Model: intfloat/e5-large-v2
+----------------------------------------
+  Queries evaluated: 33
+  Recall@1:     0.8838
+  Recall@3:     0.9747
+  Recall@5:     1.0000
+  Recall@10:    1.0000
+  Precision@1:  1.0000
+  Precision@5:  0.2545
+  MRR:          1.0000
+  NDCG@5:       0.9904
+  NDCG@10:      0.9904
+  p95 Latency:  27.27ms
+  Total Time:   207.17s
+
+================================================================================
+EMBEDDING MODEL COMPARISON TABLE
+================================================================================
+
+Metric                          bge-m3   jina-embeddings   bge-large-en-v1       e5-large-v2
+--------------------------------------------------------------------------------
+Recall@1                        0.0000            0.0000            0.8838            0.8838
+Recall@3                        0.0000            0.0000            0.9596            0.9747
+Recall@5                        0.0000            0.0000            1.0000            1.0000
+Recall@10                       0.0000            0.0000            1.0000            1.0000
+Precision@1                     0.0000            0.0000            1.0000            1.0000
+Precision@5                     0.0000            0.0000            0.2545            0.2545
+MRR                             0.0000            0.0000            1.0000            1.0000
+NDCG@5                          0.0000            0.0000            0.9837            0.9904
+NDCG@10                         0.0000            0.0000            0.9837            0.9904
+p95 Latency (ms)                 0.00ms             0.00ms            53.16ms            27.27ms
+--------------------------------------------------------------------------------
+
+BEST MODEL BY METRIC:
+  Recall@5: bge-large-en-v1.5
+  MRR: bge-large-en-v1.5
+  NDCG@5: e5-large-v2
+
+================================================================================
+BEST MODEL RECOMMENDATION
+================================================================================
+
+Based on the evaluation results:
+  - Best Recall@5:  BAAI/bge-large-en-v1.5
+  - Best MRR:       BAAI/bge-large-en-v1.5
+  - Best NDCG@5:    intfloat/e5-large-v2
+
+RECOMMENDED MODEL: BAAI/bge-large-en-v1.5
+  Reason: Highest Recall@5 (1.0000)
+  This model retrieves the most relevant documents in the top 5 results.
+
+================================================================================
+END OF REPORT
+================================================================================

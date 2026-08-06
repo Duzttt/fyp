@@ -1,0 +1,134 @@
+[
+  {
+    "id": "chunk_140",
+    "text": "An intelligent agent is a computer system capable of flexible autonomous action in some environment. It is typically thought of as exhibiting three types of behaviour: reactive, pro-active, and social ability. Reactive behaviour means the agent can respond to changes in its environment. Pro-active behaviour means the agent can take initiative and pursue goals. Social ability means the agent can interact with other agents or humans."
+  },
+  {
+    "id": "chunk_25",
+    "text": "Agentic AI refers to AI systems that can act independently, make decisions, and perform tasks to achieve specific goals. They combine reasoning, memory, and generative abilities to plan and adapt. Unlike traditional AI systems that follow predefined rules, agentic AI takes initiative and can collaborate with humans or other agents to accomplish complex objectives."
+  },
+  {
+    "id": "chunk_60",
+    "text": "The contract net protocol (CNP) is one of the oldest and most widely used agent interaction protocols. A manager agent announces one or several tasks to a group of agents. Agents then place bids for performing the tasks, and the task is assigned according to an evaluation function applied to the bids. For example, the manager might choose the cheapest agent. This is a well-known task-sharing protocol for task allocation in multi-agent systems."
+  },
+  {
+    "id": "chunk_61",
+    "text": "The contract net includes five stages: 1. Recognition - the manager realizes it cannot achieve the goal in isolation; 2. Announcement - the manager broadcasts the task to potential contractor agents; 3. Bidding - agents evaluate the task and submit bids; 4. Awarding - the manager selects the best bid and awards the contract; 5. Expediting - the contractor executes the task and reports results."
+  },
+  {
+    "id": "chunk_53",
+    "text": "Task allocation in multi-agent systems can be achieved through various protocols. The contract net protocol is a market-based approach where tasks are allocated through a bidding process. Other approaches include auction-based mechanisms, centralized allocation by a master agent, and distributed negotiation among peers."
+  },
+  {
+    "id": "chunk_62",
+    "text": "After the awarding stage in the contract net protocol, the expediting stage begins. The winning contractor executes the assigned task and reports the results back to the manager. The manager then integrates the results into its overall solution. If the task cannot be completed, the manager may re-announce it or assign it to the next highest bidder."
+  },
+  {
+    "id": "chunk_72",
+    "text": "The blackboard system is the first scheme for cooperative problem solving. The metaphor is a collection of intelligent agents gathering around a blackboard, looking at pieces of information written on it, thinking about them, and adding their conclusions. All agents can see the blackboard all the time, and multiple agents can write on it simultaneously without interfering with each other."
+  },
+  {
+    "id": "chunk_73",
+    "text": "Blackboard systems make several assumptions about agents accessing the board. All of the agents can see all of the blackboards all the time, and what they see represents the current state of the solution. Multiple agents (Knowledge Sources or Knowledge Agents) can write solutions on the blackboard at any time without getting in any other's way. This allows for concurrent and collaborative problem solving."
+  },
+  {
+    "id": "chunk_74",
+    "text": "The main components of a blackboard architecture are: a blackboard (a global database containing data and partial solutions or hypotheses), a set of Knowledge Sources (KS) or agents that can read from and write to the blackboard, and a control mechanism that determines which knowledge source should act next. The control mechanism is crucial for coordinating the activities of multiple agents."
+  },
+  {
+    "id": "chunk_75",
+    "text": "Blackboard systems must have some control mechanism to determine which agent writes next. Effective control takes into account goal-directed factors (based on what an agent wants to achieve) and data-directed factors (based on what an agent is best able to do with the current information). Blackboard control is difficult because of complex interrelationships among agents and the dynamic nature of the problem-solving process."
+  },
+  {
+    "id": "chunk_160",
+    "text": "A real time interaction is one in which time plays a part in evaluating an agent's performance. Examples include a decision that must be made within a given time bound, a state of affairs that must occur as quickly as possible, or a task that must be repeated as often as possible. Real-time constraints add complexity to agent design because the agent must balance quality of decisions with speed of response."
+  },
+  {
+    "id": "chunk_225",
+    "text": "Concurrent MetateM is a multi-agent language developed by Michael Fisher. Each agent is programmed by giving it a temporal logic specification of the behavior it should exhibit. These specifications are executed directly to generate the behavior of the agent. Concurrent MetateM allows agents to reason about time and causality, enabling sophisticated temporal reasoning in multi-agent systems."
+  },
+  {
+    "id": "chunk_220",
+    "text": "Messages in AGENT0 are constrained to be one of three types: Requests (to commit to action), Unrequests (to refrain from action), and Informs (which pass on information). These three performatives form the basis of communication in AGENT0, one of the earliest agent communication languages. The language demonstrates how simple message types can enable complex agent interactions."
+  },
+  {
+    "id": "chunk_400",
+    "text": "Inform and Request are the two basic performatives in FIPA ACL (Agent Communication Language). Other performatives are macro definitions defined in terms of these two. Their meaning is defined by a pre-condition (what must be true for the message to be sent) and a rational effect (what the sender intends to achieve). FIPA ACL provides a standard foundation for agent communication."
+  },
+  {
+    "id": "chunk_300",
+    "text": "The TouringMachine control sub-system consists of three layers: a reactive layer with situation-action rules for quick responses to environmental changes, a planning layer for construction of plans and action selection based on goals, and a modelling layer containing symbolic representations of the mental states of other agents. The layers communicate via explicit control rules that determine which layer has authority in different situations."
+  },
+  {
+    "id": "chunk_45",
+    "text": "Cooperative Distributed Problem Solving (CDPS) studies how a loosely coupled network of problem solvers can work together to solve problems beyond their individual capabilities. Problems faced by the nodes cannot be completed without cooperation, because no single node has sufficient expertise, resources, and information. CDPS addresses how to divide work, coordinate activities, and combine results across multiple agents."
+  },
+  {
+    "id": "chunk_41",
+    "text": "In cooperative distributed problem solving, agents must share information and coordinate their activities. This requires communication protocols, shared representations, and mechanisms for resolving conflicts. The key challenge is achieving global coherence while allowing local autonomy for individual agents."
+  },
+  {
+    "id": "chunk_325",
+    "text": "TIT-FOR-TAT won Axelrod's famous iterated prisoner's dilemma tournament because there were other players it could co-operate with. The strategy's success demonstrates that the best approach depends heavily on what the full set of approaches is. TIT-FOR-TAT is simple: cooperate on the first move, then mirror the opponent's previous move. Its success led to important insights about the evolution of cooperation."
+  },
+  {
+    "id": "chunk_44",
+    "text": "If agents represent the interests of the general, we cannot make the benevolence assumption. Agents are assumed to act to further their own interests, possibly at the expense of others. This creates potential for conflict, may complicate the design task enormously, and strategic behaviour may be required. Self-interested agents require mechanisms like auctions, negotiations, and game-theoretic approaches to reach agreements."
+  },
+  {
+    "id": "chunk_163",
+    "text": "An environment is discrete if there are a fixed, finite number of actions and percepts in it, otherwise it is continuous. A chess game is an example of a discrete environment because there are a finite number of board positions and moves. Taxi driving is a continuous environment because the possible actions and percepts are not finite. Often a continuous environment is treated as discrete for simplicity."
+  },
+  {
+    "id": "chunk_180",
+    "text": "In an agent with internal state, the see function is the agent's ability to observe its environment, whereas the action function represents the agent's decision-making process. The output of the see function is a percept, which maps environment states to percepts. The see function transforms raw environmental data into a structured representation that the agent can reason about."
+  },
+  {
+    "id": "chunk_181",
+    "text": "The agent keeps an internal data structure recording the environment state and history. The action-selection function maps internal states to actions, and an additional function next maps an internal state and a percept to a new internal state. This is how the agent updates its view of the world when it gets a new percept. The internal state allows the agent to maintain memory and make decisions based on past experiences."
+  },
+  {
+    "id": "chunk_249",
+    "text": "In implementing practical reasoning agents, instead of the function next (which took a percept and used it to update the internal state), there is a belief revision function. The belief revision function updates the agent's beliefs based on new observations, allowing the agent to maintain a consistent world model even when new information contradicts previous beliefs."
+  },
+  {
+    "id": "chunk_238",
+    "text": "The side effect or package deal problem in intentions concerns whether agents need to intend all the expected side effects of their intentions. For example, I may believe that going to the dentist involves pain and intend to go, but this does not imply that I intend to suffer pain. The pain is a side effect, not a goal. This distinction is important for practical reasoning because it affects how agents plan and make decisions."
+  },
+  {
+    "id": "chunk_250",
+    "text": "P{Bel} is the power set of beliefs, where Bel is the set of all possible beliefs that an agent might have. In implementing practical reasoning agents, deliberation and means-ends reasoning are not instantaneous processes. The agent selects an intention that would have been optimal at the time it observed the world, accounting for the computational cost of reasoning."
+  },
+  {
+    "id": "chunk_154",
+    "text": "MYCIN is an expert system that knows about blood diseases in humans. Unlike agents that are situated in an environment, MYCIN is not aware of the world: it only obtains information by asking the user questions. Agents act while MYCIN does not operate on patients. MYCIN demonstrates the difference between expert systems (which reason but don't act) and agents (which both reason and act in their environment)."
+  },
+  {
+    "id": "chunk_186",
+    "text": "The fact that an agent is optimal does not mean that it will be best on a particular run; it only means that on average we can expect it to do best. Optimality is defined with respect to a performance measure and a environment model. An optimal agent maximizes its expected performance, but random variation in the environment means it may not always achieve the best outcome on any single trial."
+  },
+  {
+    "id": "chunk_127",
+    "text": "In many cases the most important components of a software system will be legacy: functionally essential but technologically obsolete software components which cannot readily be rebuilt. When proposing a new software solution it is essential to work with such components. Legacy systems often contain critical business logic and data that must be preserved and integrated with new technologies."
+  },
+  {
+    "id": "chunk_200",
+    "text": "Agent architectures have evolved from symbolic reasoning to hybrid systems. Symbolic Reasoning Agents (1956-present) decide by manipulating symbols and using explicit logical reasoning. Problems with symbolic reasoning led to a reaction against it, giving rise to Reactive Agents (1985-present) that respond directly to stimuli without internal representation. Hybrid architectures (1990-present) attempt to combine the best of reasoning and reactive architectures."
+  },
+  {
+    "id": "chunk_350",
+    "text": "Auctions are only concerned with the allocation of goods; richer techniques for reaching agreements are required for complex multi-agent interactions. Negotiation is the process of reaching agreements on matters of common interest and usually proceeds in a series of rounds, with every agent making a proposal at every round. Unlike auctions, negotiation allows for multi-issue bargaining and more flexible agreement structures."
+  },
+  {
+    "id": "chunk_260",
+    "text": "Blind commitment makes the control loop more reactive and able to change intention when the world changes, but the agent is still overcommitted to its intentions (ends) and never stops to consider whether or not its intentions are appropriate. Blind commitment is a basic commitment strategy that balances reactivity with goal persistence, but it can lead to suboptimal behavior when circumstances change significantly."
+  },
+  {
+    "id": "chunk_275",
+    "text": "Brooks' research on behavioural architectures is based on two key ideas: 1. Situatedness and embodiment - real intelligence is situated in the world, not in disembodied systems such as theorem provers. The agent must be embedded in its environment and interact with it directly. 2. Intelligence and emergence - intelligent behaviour arises from an agent's interaction with its environment, not from internal symbolic reasoning."
+  },
+  {
+    "id": "chunk_375",
+    "text": "In deductive argumentation, arguments are modelled using logical formulae. Argumentation models defeasible reasoning: conclusions can be rebutted by counter-arguments, and premises (and warrants) can be challenged. Deductive argumentation provides a formal framework for reasoning about conflicting information and reaching conclusions that can be defended against attacks."
+  }
+]
