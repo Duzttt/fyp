@@ -191,6 +191,14 @@ class EmbeddingModelManager:
             "description": "Multilingual model with dense, sparse, and ColBERT retrieval",
             "recommended": False,
         },
+        "jinaai/jina-embeddings-v3": {
+            "name": "Jina Embeddings v3",
+            "dimension": 1024,
+            "speed": "Medium",
+            "memory": "~570 MB",
+            "description": "Jina's latest multilingual embedding model",
+            "recommended": False,
+        },
         "nvidia/NV-Embed-v2": {
             "name": "NV-Embed-v2",
             "dimension": 4096,
