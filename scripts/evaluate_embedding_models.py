@@ -60,6 +60,11 @@ MODELS = [
     "intfloat/e5-large-v2",
 ]
 
+# Models that require trust_remote_code=True
+MODELS_REQUIRING_TRUST_REMOTE_CODE = {
+    "jinaai/jina-embeddings-v3",
+}
+
 CHUNKS_DIR = PROJECT_ROOT / "data" / "chunks"
 FAISS_INDEX_DIR = PROJECT_ROOT / "data" / "faiss_index"
 CHUNK_METADATA_PATH = FAISS_INDEX_DIR / "chunk_metadata.json"
@@ -135,10 +140,21 @@ def evaluate_model(
     try:
         # Create DenseRetriever with the specified model
         print("Loading model and building FAISS index...")
-        retriever = DenseRetriever(
-            documents=documents,
-            model_name=model_name,
-        )
+        
+        # Check if model requires trust_remote_code
+        if model_name in MODELS_REQUIRING_TRUST_REMOTE_CODE:
+            from sentence_transformers import SentenceTransformer
+            embedder = SentenceTransformer(model_name, trust_remote_code=True)
+            retriever = DenseRetriever(
+                documents=documents,
+                embedder=embedder,
+            )
+        else:
+            retriever = DenseRetriever(
+                documents=documents,
+                model_name=model_name,
+            )
+        
         print(f"Index built with {retriever.get_document_count()} documents")
 
         # Wrap retriever with adapter to match evaluator's expected API
