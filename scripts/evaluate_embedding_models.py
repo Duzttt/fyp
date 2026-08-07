@@ -54,6 +54,7 @@ class DenseRetrieverAdapter:
 
 # Configuration
 MODELS = [
+    "sentence-transformers/all-MiniLM-L6-v2",  # 原本使用的模型
     "BAAI/bge-m3",
     "jinaai/jina-embeddings-v3",
     "BAAI/bge-large-en-v1.5",
