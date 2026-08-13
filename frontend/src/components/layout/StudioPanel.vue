@@ -57,8 +57,6 @@ const showQuizViewer = ref(false)
 
 const selectedDocs = computed(() => documentStore.selectedDocIds)
 const selectedCount = computed(() => selectedDocs.value.length)
-const currentSummary = computed(() => summaryStore.currentSummary)
-const isGenerating = computed(() => summaryStore.isGenerating)
 
 const handleToolClick = (tool) => {
   if (tool.disabled) return
@@ -108,26 +106,17 @@ const closeQuizViewer = () => {
   quizStore.clearCurrent()
 }
 
-const handleSummaryGenerate = async (config) => {
-  await summaryStore.generate(selectedDocs.value, config)
-  showSummaryModal.value = false
-  showSummaryViewer.value = true
-}
-
-const handleSummaryRegenerate = async () => {
-  if (currentSummary.value?.history_id) {
-    const newConfig = summaryStore.lastConfig || {}
-    await summaryStore.regenerate(currentSummary.value.history_id, newConfig)
+const handleSummaryCreate = async ({ documentId, config }) => {
+  const created = await summaryStore.createJob(documentId, config)
+  if (created) {
+    showSummaryModal.value = false
+    showSummaryViewer.value = true
   }
-}
-
-const handleSummaryFeedback = (rating) => {
-  console.log('Feedback:', rating)
 }
 
 const closeSummaryViewer = () => {
   showSummaryViewer.value = false
-  summaryStore.clearCurrent()
+  summaryStore.reset()
 }
 </script>
 
@@ -178,11 +167,8 @@ const closeSummaryViewer = () => {
               </div>
               <div class="modal-body">
                 <SummaryViewer
-                  :summary="currentSummary"
-                  :config="summaryStore.lastConfig"
-                  :is-loading="isGenerating"
-                  @regenerate="handleSummaryRegenerate"
-                  @feedback="handleSummaryFeedback"
+                  :show="showSummaryViewer"
+                  @close="closeSummaryViewer"
                 />
               </div>
             </div>
@@ -195,7 +181,7 @@ const closeSummaryViewer = () => {
     <SummaryModal
       v-model:show="showSummaryModal"
       :selected-docs="selectedDocs"
-      @generate="handleSummaryGenerate"
+      @create="handleSummaryCreate"
       @close="showSummaryModal = false"
     />
 

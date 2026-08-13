@@ -22,6 +22,7 @@ export const useSummaryStore = defineStore('summary', () => {
   const lastEventId = ref('')
 
   let eventSource = null
+  let reloadTimeout = null
 
   // Actions
   async function createJob(documentId, config = {}) {
@@ -63,7 +64,8 @@ export const useSummaryStore = defineStore('summary', () => {
     eventSource.onerror = () => {
       // EventSource auto-reconnects with Last-Event-ID; only hard-fail
       // if the job is unknown (e.g. deleted). Re-hydrate on terminal error.
-      setTimeout(async () => {
+      reloadTimeout = setTimeout(async () => {
+        reloadTimeout = null
         if (!job.value?.id) return
         try {
           await loadJob(job.value.id)
@@ -95,6 +97,11 @@ export const useSummaryStore = defineStore('summary', () => {
         job.value.result_markdown = payload.summary
       }
       hydrate()
+      if (reloadTimeout) {
+        clearTimeout(reloadTimeout)
+        reloadTimeout = null
+      }
+      disconnect()
     } else if (type === 'failed' || type === 'cancelled') {
       if (job.value) {
         job.value.status = type
@@ -102,6 +109,11 @@ export const useSummaryStore = defineStore('summary', () => {
         job.value.error_message = payload.error_message
       }
       hydrate()
+      if (reloadTimeout) {
+        clearTimeout(reloadTimeout)
+        reloadTimeout = null
+      }
+      disconnect()
     }
   }
 

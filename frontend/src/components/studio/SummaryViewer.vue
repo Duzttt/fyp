@@ -1,227 +1,209 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useSummaryStore } from '../../stores/summaryStore'
+import PdfViewer from '../documents/PdfViewer.vue'
 
 const props = defineProps({
-  summary: Object,
-  config: Object,
-  isLoading: Boolean,
+  show: Boolean,
 })
 
-const emit = defineEmits(['close', 'regenerate', 'feedback'])
+const emit = defineEmits(['close'])
 
-const showCitations = ref(false)
-const showComparison = ref(true)
-const copied = ref(false)
+const summaryStore = useSummaryStore()
 
-const lengthLabels = {
-  short: 'Short',
-  medium: 'Medium',
-  detailed: 'Detailed',
+const activeTab = ref('result')
+const showPdf = ref(false)
+const pdfState = ref({ url: '', page: 1, highlight: '' })
+
+const job = computed(() => summaryStore.job)
+const partialSections = computed(() => summaryStore.partialSections)
+const history = computed(() => summaryStore.history)
+const isActive = computed(
+  () => job.value && ['queued', 'running'].includes(job.value.status)
+)
+
+const resultSections = computed(() => {
+  if (job.value?.result_json?.sections) return job.value.result_json.sections
+  return partialSections.value
+})
+
+const stageLabel = computed(() => {
+  const labels = {
+    language: 'Detecting language',
+    topics: 'Discovering topics',
+    partial: 'Summarizing topics',
+    overview: 'Writing overview',
+    render: 'Rendering notes',
+    done: 'Done',
+    failed: 'Failed',
+    cancelled: 'Cancelled',
+  }
+  return labels[job.value?.stage] || (job.value ? 'Working...' : '')
+})
+
+const stagePercent = computed(() => job.value?.progress ?? 0)
+
+watch(
+  () => props.show,
+  (visible) => {
+    if (visible) summaryStore.loadHistory(20)
+  }
+)
+
+const openCitation = (page) => {
+  const docId = job.value?.document_id
+  if (!docId || !page) return
+  pdfState.value = {
+    url: '/media/data_source/' + encodeURIComponent(docId),
+    page,
+    highlight: '',
+  }
+  showPdf.value = true
 }
 
-const styleLabels = {
-  bullets: 'Bulleted',
-  narrative: 'Narrative',
-  academic: 'Academic',
-  executive: 'Executive',
-}
-
-const languageLabels = {
-  zh: 'Chinese',
-  en: 'English',
-}
-
-const documentCount = computed(() => props.summary?.document_count || 1)
-const hasComparison = computed(() => props.summary?.comparison && props.summary.comparison.length > 0)
-const hasCitations = computed(() => props.summary?.citations && props.summary.citations.length > 0)
-
-const copySummary = async () => {
+const copyMarkdown = async () => {
+  const markdown = job.value?.result_markdown || ''
+  if (!markdown) return
   try {
-    await navigator.clipboard.writeText(props.summary?.text || '')
-    copied.value = true
-    setTimeout(() => {
-      copied.value = false
-    }, 2000)
+    await navigator.clipboard.writeText(markdown)
   } catch (err) {
-    console.error('Failed to copy:', err)
+    console.error('Failed to copy markdown:', err)
   }
 }
 
-const exportAsMarkdown = () => {
-  const docList = props.summary?.documents?.join(', ') || 'Unknown'
-  const content = `# Document Summary
-
-**Generated At**: ${new Date().toLocaleString('en-US')}
-**Documents**: ${docList}
-**Config**: ${lengthLabels[props.config?.length || 'medium']} | ${styleLabels[props.config?.style || 'narrative']} | ${languageLabels[props.config?.language || 'zh']}
-
----
-
-${props.summary?.text || ''}
-
-${showCitations.value && hasCitations.value ? `
-## Key Citations
-
-${props.summary.citations.map(c => `- **${c.point}**\n  > "${c.citation}"\n  — ${c.source}${c.page ? ` p.${c.page}` : ''}`).join('\n\n')}
-` : ''}
-`
-
-  const blob = new Blob([content], { type: 'text/markdown' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `summary_${Date.now()}.md`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+const handleClose = () => {
+  emit('close')
 }
 
-const handleFeedback = (rating) => {
-  emit('feedback', rating)
+const selectHistory = async (item) => {
+  activeTab.value = 'result'
+  await summaryStore.loadJob(item.id)
+}
+
+const handleRetry = async (item) => {
+  await summaryStore.loadJob(item.id)
+  await summaryStore.retryActive()
+}
+
+const handleRemove = async (item) => {
+  await summaryStore.remove(item.id)
 }
 </script>
 
 <template>
   <div class="summary-viewer">
-    <!-- Loading State -->
-    <div v-if="isLoading" class="summary-loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">Generating summary...</div>
-      <div class="loading-sub">This may take a few minutes</div>
+    <div class="viewer-tabs">
+      <button
+        class="viewer-tab"
+        :class="{ active: activeTab === 'result' }"
+        @click="activeTab = 'result'"
+      >
+        Result
+      </button>
+      <button
+        class="viewer-tab"
+        :class="{ active: activeTab === 'history' }"
+        @click="activeTab = 'history'"
+      >
+        History ({{ history.length }})
+      </button>
     </div>
 
-    <!-- Summary Content -->
-    <div v-else-if="summary" class="summary-content">
-      <!-- Header -->
-      <div class="summary-header">
-        <div class="summary-meta">
-          <span class="meta-badge">
-            📄 {{ documentCount }} documents
-          </span>
-          <span class="meta-badge">
-            {{ lengthLabels[config?.length || 'medium'] }} summary
-          </span>
-          <span class="meta-badge">
-            {{ styleLabels[config?.style || 'narrative'] }} style
-          </span>
-        </div>
-        <div class="summary-actions">
-          <button @click="copySummary" class="action-btn" title="Copy summary">
-            {{ copied ? '✓' : '📋' }}
-          </button>
-          <button @click="exportAsMarkdown" class="action-btn" title="Export Markdown">
-            📥
-          </button>
-          <button 
-            v-if="hasCitations" 
-            @click="showCitations = !showCitations" 
-            class="action-btn"
-            :class="{ active: showCitations }"
-            title="Show citations"
-          >
-            📌
-          </button>
-          <button 
-            v-if="hasComparison" 
-            @click="showComparison = !showComparison" 
-            class="action-btn"
-            :class="{ active: showComparison }"
-            title="Show comparison"
-          >
-            ⚖
-          </button>
-        </div>
+    <div v-if="activeTab === 'result'" class="viewer-result">
+      <div v-if="!job" class="viewer-empty">
+        No summary yet. Generate one from the Summarize PDF tool.
       </div>
 
-      <!-- Comparison Table -->
-      <div v-if="showComparison && hasComparison" class="comparison-section">
-        <div class="section-header">
-          <h4>📊 Document Comparison</h4>
+      <template v-else>
+        <div v-if="isActive" class="viewer-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: stagePercent + '%' }"></div>
+          </div>
+          <p class="progress-label">
+            {{ stageLabel }} — {{ stagePercent }}%
+          </p>
+          <button class="viewer-btn danger" @click="summaryStore.cancelActive">
+            Cancel
+          </button>
         </div>
-        <div class="comparison-table-wrapper">
-          <table class="comparison-table">
-            <thead>
-              <tr>
-                <th>Document</th>
-                <th>Main Points</th>
-                <th>Keywords</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(doc, idx) in summary.comparison" :key="idx" class="comparison-row">
-                <td class="doc-name-cell">
-                  <span class="doc-name" :title="doc.name">{{ doc.name }}</span>
-                </td>
-                <td class="points-cell">{{ doc.mainPoints || 'N/A' }}</td>
-                <td class="keywords-cell">
-                  <span v-for="(kw, kidx) in (doc.keywords || [])" :key="kidx" class="keyword-tag">
-                    {{ kw }}
-                  </span>
-                  <span v-if="!doc.keywords || doc.keywords.length === 0" class="no-keywords">-</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
 
-      <!-- Summary Text -->
-      <div class="summary-text-wrapper">
-        <div class="section-header">
-          <h4>📝 Summary Content</h4>
+        <div v-if="job.status === 'failed'" class="viewer-error">
+          <p><strong>Summary failed</strong> ({{ job.error_code }})</p>
+          <p>{{ job.error_message }}</p>
+          <button class="viewer-btn" @click="summaryStore.retryActive">Retry</button>
         </div>
-        <div class="summary-text" v-html="summary.text.replace(/\n/g, '<br>')"></div>
-      </div>
 
-      <!-- Citations -->
-      <div v-if="showCitations && hasCitations" class="citations-section">
-        <div class="section-header">
-          <h4>📌 Key Citations</h4>
+        <div v-if="job.status === 'interrupted'" class="viewer-error">
+          <p><strong>Summary interrupted</strong> — the server restarted mid-run.</p>
+          <button class="viewer-btn" @click="summaryStore.retryActive">Retry</button>
         </div>
-        <div class="citations-list">
-          <div v-for="(cite, idx) in summary.citations" :key="idx" class="citation-item">
-            <div class="citation-point">
-              <span class="point-icon">💡</span>
-              <span class="point-text">{{ cite.point }}</span>
-            </div>
-            <div class="citation-text">
-              <span class="quote-mark">"</span>
-              {{ cite.citation }}
-              <span class="quote-mark">"</span>
-            </div>
-            <div class="citation-source">
-              — {{ cite.source }}<span v-if="cite.page"> p.{{ cite.page }}</span>
-            </div>
+
+        <div v-if="job.status === 'completed' && job.result_json" class="viewer-result-body">
+          <p class="overview">{{ job.result_json.overview }}</p>
+          <section v-for="section in resultSections" :key="section.title" class="topic-section">
+            <h3>{{ section.title }}</h3>
+            <ul class="topic-points">
+              <li v-for="point in section.points" :key="point.text">
+                <span>{{ point.text }}</span>
+                <button
+                  v-for="page in point.pages"
+                  :key="page"
+                  class="page-badge"
+                  @click="openCitation(page)"
+                >
+                  p.{{ page }}
+                </button>
+              </li>
+            </ul>
+          </section>
+          <p v-if="job.result_json.skipped_topics?.length" class="skipped-note">
+            Topics with no matching content: {{ job.result_json.skipped_topics.join(', ') }}
+          </p>
+          <div class="viewer-actions">
+            <button class="viewer-btn" @click="copyMarkdown">Copy Markdown</button>
           </div>
         </div>
-      </div>
 
-      <!-- Footer -->
-      <div class="summary-footer">
-        <button class="regenerate-btn" @click="$emit('regenerate')" aria-label="Regenerate summary">
-          🔄 Regenerate
-        </button>
-        <div class="feedback-section">
-          <span class="feedback-label">Summary quality?</span>
-          <div class="feedback-buttons">
-            <button @click="handleFeedback('good')" class="feedback-btn" title="Helpful">
-              👍
-            </button>
-            <button @click="handleFeedback('bad')" class="feedback-btn" title="Needs improvement">
-              👎
-            </button>
-          </div>
+        <div v-else-if="partialSections.length" class="viewer-result-body">
+          <p class="partial-note">Partial output — still generating...</p>
+          <section v-for="section in partialSections" :key="section.title" class="topic-section">
+            <h3>{{ section.title }}</h3>
+            <ul class="topic-points">
+              <li v-for="point in section.points" :key="point.text">{{ point.text }}</li>
+            </ul>
+          </section>
+        </div>
+      </template>
+    </div>
+
+    <div v-else class="viewer-history">
+      <div v-if="!history.length" class="viewer-empty">No summary history.</div>
+      <div v-for="item in history" :key="item.id" class="history-item">
+        <div class="history-info">
+          <span class="history-doc" :title="item.document_id">{{ item.document_id }}</span>
+          <span class="history-status" :class="'status-' + item.status">{{ item.status }}</span>
+          <span class="history-date">{{ new Date(item.created_at).toLocaleString() }}</span>
+        </div>
+        <div class="history-actions">
+          <button class="viewer-btn" @click="selectHistory(item)">Open</button>
+          <button
+            v-if="['failed', 'interrupted', 'cancelled'].includes(item.status)"
+            class="viewer-btn"
+            @click="handleRetry(item)"
+          >
+            Retry
+          </button>
+          <button class="viewer-btn danger" @click="handleRemove(item)">Delete</button>
         </div>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-else class="summary-empty">
-      <div class="empty-icon">📝</div>
-      <div class="empty-text">No summary yet</div>
-      <div class="empty-sub">Select documents and click Generate Summary</div>
-    </div>
+    <PdfViewer
+      :show="showPdf"
+      :pdf-url="pdfState.url"
+      :target-page="pdfState.page"
+      @close="showPdf = false"
+    />
   </div>
 </template>
 
@@ -229,365 +211,206 @@ const handleFeedback = (rating) => {
 .summary-viewer {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Loading State */
-.summary-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 3px solid var(--primary-container);
-  border-top-color: var(--primary);
-  animation: spin 1s linear infinite;
-  margin-bottom: 16px;
-}
-
-.loading-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--on-surface);
-  margin-bottom: 6px;
-}
-
-.loading-sub {
-  font-size: 12px;
-  color: var(--on-surface-variant);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Summary Content */
-.summary-content {
-  display: flex;
-  flex-direction: column;
   gap: 16px;
-  overflow-y: auto;
-  padding: 16px;
+  min-height: 320px;
 }
 
-/* Header */
-.summary-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.summary-meta {
+.viewer-tabs {
   display: flex;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
-.meta-badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--primary-container);
-  border: 1px solid var(--primary);
-  font-size: 11px;
-  color: var(--on-primary);
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.summary-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.action-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--outline-variant);
-  background: var(--surface-container);
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.action-btn:hover {
-  border-color: var(--primary-container);
-  color: var(--primary-container);
-  background: var(--surface-container-high);
-}
-
-.action-btn.active {
-  background: var(--primary-container);
-  border-color: var(--primary);
-  color: var(--on-primary);
-}
-
-/* Comparison Section */
-.comparison-section {
-  background: var(--surface-container-high);
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-  overflow: hidden;
-}
-
-.section-header {
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-.section-header h4 {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--on-surface-variant);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.comparison-table-wrapper {
-  overflow-x: auto;
-}
-
-.comparison-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-
-.comparison-table th {
-  padding: 10px 14px;
-  text-align: left;
-  font-weight: 600;
-  color: var(--on-surface-variant);
-  border-bottom: 1px solid var(--outline-variant);
-  background: var(--surface-container);
-  white-space: nowrap;
-}
-
-.comparison-table td {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--outline-variant);
-  vertical-align: top;
-}
-
-.comparison-row:hover {
-  background: var(--surface-container);
-}
-
-.doc-name-cell {
-  max-width: 200px;
-}
-
-.doc-name {
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  color: var(--on-surface);
-  font-weight: 500;
-}
-
-.points-cell {
-  color: var(--on-surface);
-  line-height: 1.4;
-}
-
-.keywords-cell {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-.keyword-tag {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--primary-container);
-  border: 1px solid var(--primary);
-  font-size: 10px;
-  color: var(--on-primary);
-  white-space: nowrap;
-}
-
-.no-keywords {
-  color: var(--on-surface-variant);
-  font-style: italic;
-}
-
-/* Summary Text */
-.summary-text-wrapper {
-  background: var(--surface-container-high);
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-  overflow: hidden;
-}
-
-.summary-text {
-  padding: 16px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--on-surface);
-}
-
-/* Citations Section */
-.citations-section {
-  background: var(--surface-container-high);
-  border-radius: 12px;
-  border: 1px solid var(--outline-variant);
-  overflow: hidden;
-}
-
-.citations-list {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.citation-item {
-  padding: 12px;
-  border-radius: 10px;
-  background: var(--surface-container);
-  border-left: 3px solid var(--primary-container);
-}
-
-.citation-point {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.point-icon {
-  font-size: 14px;
-}
-
-.point-text {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--on-surface);
-}
-
-.citation-text {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--on-surface-variant);
-  padding-left: 22px;
-  font-style: italic;
-}
-
-.quote-mark {
-  color: var(--primary-container);
-  opacity: 0.7;
-}
-
-.citation-source {
-  margin-top: 6px;
-  padding-left: 22px;
-  font-size: 11px;
-  color: var(--on-surface-variant);
-  text-align: right;
-}
-
-/* Footer */
-.summary-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 8px;
-  border-top: 1px solid var(--outline-variant);
-}
-
-.regenerate-btn {
+.viewer-tab {
   padding: 8px 16px;
   border-radius: 8px;
-  border: 1px solid var(--primary);
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container);
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.viewer-tab.active {
   background: var(--primary-container);
   color: var(--on-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
-.regenerate-btn:hover {
-  background: var(--primary);
-  border-color: var(--primary);
+.viewer-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--on-surface-variant);
+  font-size: 13px;
 }
 
-.feedback-section {
+.viewer-progress {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
 }
 
-.feedback-label {
+.progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--surface-container-high);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
+
+.progress-label {
+  margin: 0;
+  font-size: 12px;
+  color: var(--on-surface-variant);
+}
+
+.viewer-error {
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--tertiary-container);
+  border: 1px solid var(--tertiary);
+  color: var(--on-tertiary);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viewer-error p {
+  margin: 0;
+}
+
+.viewer-result-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview {
+  font-size: 13px;
+  color: var(--on-surface);
+  margin: 0;
+}
+
+.topic-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: var(--on-surface);
+}
+
+.topic-points {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.topic-points li {
+  font-size: 12px;
+  color: var(--on-surface-variant);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.page-badge {
+  border: 1px solid var(--primary);
+  background: var(--primary-container);
+  color: var(--on-primary);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.page-badge:hover {
+  background: var(--primary);
+}
+
+.skipped-note,
+.partial-note {
   font-size: 11px;
   color: var(--on-surface-variant);
 }
 
-.feedback-buttons {
+.viewer-actions {
   display: flex;
-  gap: 6px;
+  gap: 8px;
 }
 
-.feedback-btn {
-  width: 32px;
-  height: 32px;
+.viewer-btn {
+  padding: 8px 14px;
   border-radius: 8px;
   border: 1px solid var(--outline-variant);
   background: var(--surface-container);
+  color: var(--on-surface);
+  font-size: 12px;
   cursor: pointer;
-  font-size: 16px;
-  transition: all 0.2s;
 }
 
-.feedback-btn:hover {
-  border-color: var(--primary-container);
-  transform: scale(1.1);
+.viewer-btn.danger {
+  border-color: var(--tertiary);
+  color: var(--on-tertiary);
 }
 
-/* Empty State */
-.summary-empty {
+.viewer-history {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 60px 20px;
-  text-align: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--outline-variant);
+  background: var(--surface-container-high);
 }
 
-.empty-icon {
-  font-size: 48px;
-  margin-bottom: 12px;
-  opacity: 0.5;
+.history-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
-.empty-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--on-surface);
-  margin-bottom: 6px;
-}
-
-.empty-sub {
+.history-doc {
   font-size: 12px;
+  color: var(--on-surface);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.history-status {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: var(--surface-container);
   color: var(--on-surface-variant);
+}
+
+.history-status.status-failed {
+  background: var(--tertiary-container);
+  color: var(--on-tertiary);
+}
+
+.history-date {
+  font-size: 10px;
+  color: var(--on-surface-variant);
+}
+
+.history-actions {
+  display: flex;
+  gap: 6px;
 }
 </style>
