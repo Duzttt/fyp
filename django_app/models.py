@@ -3,6 +3,7 @@ Django models for the Lecture Note Q&A System.
 """
 
 import uuid
+from typing import Optional
 
 from django.db import models
 
@@ -453,3 +454,115 @@ class Message(models.Model):
 
     def __str__(self) -> str:
         return f"{self.role}: {self.content[:50]}"
+
+
+class MCQQuiz(models.Model):
+    """
+    Model to store generated multiple-choice quizzes and their questions.
+
+    Each question dict has the shape:
+    {"id": "q1", "question": str, "options": {"A".."D": str},
+     "correct_answer": "A".."D", "explanation": str,
+     "difficulty": str, "source_doc": str}
+    """
+
+    DIFFICULTY_CHOICES = [
+        ("mixed", "Mixed"),
+        ("easy", "Easy"),
+        ("medium", "Medium"),
+        ("hard", "Hard"),
+    ]
+
+    questions = models.JSONField(
+        default=list,
+        help_text="List of MCQ question dicts (id, question, options, "
+        "correct_answer, explanation, difficulty, source_doc)",
+    )
+
+    document_names = models.TextField(
+        help_text="Comma-separated list of document names this quiz "
+        "was generated from"
+    )
+
+    difficulty = models.CharField(
+        max_length=10,
+        choices=DIFFICULTY_CHOICES,
+        default="mixed",
+        help_text="Requested difficulty level",
+    )
+
+    question_count = models.IntegerField(default=0)
+
+    llm_provider = models.CharField(
+        max_length=20,
+        default="local_llm",
+        help_text="LLM provider used for generation",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True, help_text="When this quiz was created"
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True, help_text="When this quiz was last updated"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["-created_at"])]
+
+    def __str__(self) -> str:
+        return f"MCQQuiz #{self.id} ({self.question_count} questions)"
+
+    def get_document_names(self) -> list:
+        """Get list of document names."""
+        if not self.document_names:
+            return []
+        return [
+            name.strip()
+            for name in self.document_names.split(",")
+            if name.strip()
+        ]
+
+    def best_score(self) -> Optional[float]:
+        """Return the highest attempt percentage, or None if no attempts."""
+        best: Optional[float] = None
+        for attempt in self.attempts.all():
+            if attempt.total > 0:
+                pct = round(attempt.score / attempt.total * 100, 1)
+                if best is None or pct > best:
+                    best = pct
+        return best
+
+
+class MCQAttempt(models.Model):
+    """
+    Model to store a user's answer attempt on a generated quiz.
+    """
+
+    quiz = models.ForeignKey(
+        MCQQuiz,
+        on_delete=models.CASCADE,
+        related_name="attempts",
+        help_text="The quiz this attempt belongs to",
+    )
+
+    answers = models.JSONField(
+        default=list,
+        help_text="List of {question_id, selected} dicts",
+    )
+
+    score = models.IntegerField(default=0)
+
+    total = models.IntegerField(default=0)
+
+    created_at = models.DateTimeField(
+        auto_now_add=True, help_text="When this attempt was submitted"
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["-created_at"])]
+
+    def __str__(self) -> str:
+        return f"MCQAttempt #{self.id} for quiz #{self.quiz_id} ({self.score}/{self.total})"
