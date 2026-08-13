@@ -7,7 +7,7 @@ from documents using the configured LLM.
 
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.config import settings
 from app.services.llm_client import call_llm
@@ -30,7 +30,7 @@ class QuizGenerationError(Exception):
 class QuizGenerator:
     """Quiz generation service using the configured LLM."""
 
-    def __init__(self, llm_provider: str = None, model: str = None):
+    def __init__(self, llm_provider: Optional[str] = None, model: Optional[str] = None):
         from app.services.runtime_llm import load_runtime_llm_settings
 
         rt = load_runtime_llm_settings()
@@ -172,7 +172,7 @@ Respond with ONLY a JSON array (no markdown fences, no extra text) in this exact
         except json.JSONDecodeError as exc:
             raise QuizGenerationError(f"Failed to parse LLM JSON: {str(exc)}") from exc
 
-    def _normalize_question(self, raw: Any) -> Dict[str, Any]:
+    def _normalize_question(self, raw: Any) -> Optional[Dict[str, Any]]:
         if not isinstance(raw, dict):
             return None
 
