@@ -13,7 +13,6 @@ Core services implementing the RAG pipeline: embedding, vector search, LLM gener
 | `local_rag.py` | RAG orchestration: `retrieve_with_faiss()`, `generate_with_local_llm()`, `query_with_citations()` |
 | `rag_pipeline.py` | High-level `RAGPipeline` class combining retrieval + generation |
 | `question_suggestions.py` | `QuestionSuggestionService` — uses LLM to generate follow-up questions from context |
-| `summarizer.py` | `SummarizerService` — LLM-based document summarization with citation support |
 
 ## LLM Integration
 

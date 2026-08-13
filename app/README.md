@@ -20,8 +20,7 @@ app/
     ├── pdf_indexing.py        # PDF → FAISS index pipeline
     ├── local_rag.py           # RAG orchestration + local LLM calls
     ├── rag_pipeline.py        # High-level RAG pipeline
-    ├── question_suggestions.py # Auto-generate question suggestions
-    └── summarizer.py          # Document summarization via LLM
+    └── question_suggestions.py # Auto-generate question suggestions
 ```
 
 ## Key Files
@@ -32,7 +31,6 @@ app/
 - **services/vector_store.py** — FAISS index load/save/search with metadata.
 - **services/pdf_indexing.py** — Full pipeline: PDF → text extraction → chunking → embedding → FAISS index.
 - **services/question_suggestions.py** — Uses LLM to generate follow-up questions from retrieved context.
-- **services/summarizer.py** — Summarizes documents via LLM with configurable provider.
 
 ## Dependencies
 
