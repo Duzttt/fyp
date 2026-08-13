@@ -1,0 +1,173 @@
+{
+  "benchmark": "data/evaluation/retrieval_benchmark.jsonl",
+  "candidate_top_k": 30,
+  "eval_top_k": 10,
+  "device": "auto",
+  "elapsed_seconds": 1061.05,
+  "results": [
+    {
+      "model": "ms-marco-MiniLM-L6-v2",
+      "model_id": "cross-encoder/ms-marco-MiniLM-L6-v2",
+      "model_type": "cross_encoder",
+      "parameters": "22.7M",
+      "quality": {
+        "recall_at_1": 0.8283,
+        "recall_at_3": 0.9293,
+        "recall_at_5": 0.9293,
+        "recall_at_10": 0.9596,
+        "precision_at_1": 0.9091,
+        "precision_at_3": 0.3737,
+        "precision_at_5": 0.2242,
+        "precision_at_10": 0.1182,
+        "mrr": 0.9394,
+        "ndcg_at_5": 0.9184,
+        "ndcg_at_10": 0.9309
+      },
+      "latency": {
+        "total_ms": 8413.4,
+        "avg_ms": 254.85,
+        "p50_ms": 282.92,
+        "p95_ms": 488.81,
+        "p99_ms": 532.59,
+        "qps": 3.92
+      },
+      "rank_movement": {
+        "moved_up": 196,
+        "moved_down": 59,
+        "unchanged": 42,
+        "avg_positions_changed": 5.91
+      },
+      "baseline": {
+        "mrr": 0.9091,
+        "recall_at_5": 0.8081
+      },
+      "deltas": {
+        "mrr": 0.0303,
+        "recall_at_5": 0.1212
+      }
+    },
+    {
+      "model": "bge-reranker-base",
+      "model_id": "BAAI/bge-reranker-base",
+      "model_type": "cross_encoder",
+      "parameters": "278M",
+      "quality": {
+        "recall_at_1": 0.8131,
+        "recall_at_3": 0.9091,
+        "recall_at_5": 0.9444,
+        "recall_at_10": 0.9596,
+        "precision_at_1": 0.8788,
+        "precision_at_3": 0.3535,
+        "precision_at_5": 0.2303,
+        "precision_at_10": 0.1182,
+        "mrr": 0.9192,
+        "ndcg_at_5": 0.9125,
+        "ndcg_at_10": 0.9178
+      },
+      "latency": {
+        "total_ms": 61113.52,
+        "avg_ms": 1851.83,
+        "p50_ms": 2015.06,
+        "p95_ms": 3076.64,
+        "p99_ms": 4072.35,
+        "qps": 0.54
+      },
+      "rank_movement": {
+        "moved_up": 194,
+        "moved_down": 62,
+        "unchanged": 41,
+        "avg_positions_changed": 5.73
+      },
+      "baseline": {
+        "mrr": 0.9091,
+        "recall_at_5": 0.8081
+      },
+      "deltas": {
+        "mrr": 0.0101,
+        "recall_at_5": 0.1364
+      }
+    },
+    {
+      "model": "bge-reranker-v2-m3",
+      "model_id": "BAAI/bge-reranker-v2-m3",
+      "model_type": "cross_encoder",
+      "parameters": "568M",
+      "quality": {
+        "recall_at_1": 0.798,
+        "recall_at_3": 0.9192,
+        "recall_at_5": 0.9444,
+        "recall_at_10": 0.9596,
+        "precision_at_1": 0.8788,
+        "precision_at_3": 0.3636,
+        "precision_at_5": 0.2303,
+        "precision_at_10": 0.1182,
+        "mrr": 0.9242,
+        "ndcg_at_5": 0.9134,
+        "ndcg_at_10": 0.9193
+      },
+      "latency": {
+        "total_ms": 209731.36,
+        "avg_ms": 6355.4,
+        "p50_ms": 7021.95,
+        "p95_ms": 10435.27,
+        "p99_ms": 13772.21,
+        "qps": 0.16
+      },
+      "rank_movement": {
+        "moved_up": 194,
+        "moved_down": 66,
+        "unchanged": 37,
+        "avg_positions_changed": 5.8
+      },
+      "baseline": {
+        "mrr": 0.9091,
+        "recall_at_5": 0.8081
+      },
+      "deltas": {
+        "mrr": 0.0152,
+        "recall_at_5": 0.1364
+      }
+    },
+    {
+      "model": "jina-reranker-v2",
+      "model_id": "jinaai/jina-reranker-v2-base-multilingual",
+      "model_type": "jina",
+      "parameters": "278M",
+      "quality": {
+        "recall_at_1": 0.8131,
+        "recall_at_3": 0.9192,
+        "recall_at_5": 0.9293,
+        "recall_at_10": 0.9596,
+        "precision_at_1": 0.8788,
+        "precision_at_3": 0.3636,
+        "precision_at_5": 0.2242,
+        "precision_at_10": 0.1182,
+        "mrr": 0.9192,
+        "ndcg_at_5": 0.9057,
+        "ndcg_at_10": 0.9182
+      },
+      "latency": {
+        "total_ms": 760353.92,
+        "avg_ms": 23040.94,
+        "p50_ms": 25143.74,
+        "p95_ms": 43245.93,
+        "p99_ms": 62206.52,
+        "qps": 0.04
+      },
+      "rank_movement": {
+        "moved_up": 190,
+        "moved_down": 69,
+        "unchanged": 38,
+        "avg_positions_changed": 5.95
+      },
+      "baseline": {
+        "mrr": 0.9091,
+        "recall_at_5": 0.8081
+      },
+      "deltas": {
+        "mrr": 0.0101,
+        "recall_at_5": 0.1212
+      }
+    }
+  ]
+}

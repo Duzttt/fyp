@@ -1,1 +1,4 @@
 python scripts/run_evaluation.py --dataset eval_baseline.jsonl --out outputs/ragas_afterimprove3retrieval.csv --base-url http://localhost:8080 --model "MiniCPM5-1B-Q8_0" --top-k 5
+
+# RAGAS V2 (v0.4.x API) - JSONL evaluation
+python scripts/ragas_v2_eval.py evaluate --dataset eval_baseline.jsonl --out results/ragas_v2_result.csv --judge-base-url http://localhost:8080/v1 --judge-model deepseek/deepseek-v4-flash --top-k 5

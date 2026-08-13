@@ -2,13 +2,28 @@
 EMBEDDING MODEL EVALUATION REPORT
 ================================================================================
 
-Date: 2026-08-07 00:48:31
-Number of models evaluated: 4
+Date: 2026-08-07 15:11:50
+Number of models evaluated: 5
 Benchmark queries: retrieval_benchmark.jsonl
 
 ================================================================================
 PER-MODEL METRICS
 ================================================================================
+
+Model: sentence-transformers/all-MiniLM-L6-v2
+----------------------------------------
+  Queries evaluated: 33
+  Recall@1:     0.8535
+  Recall@3:     0.9697
+  Recall@5:     0.9848
+  Recall@10:    0.9848
+  Precision@1:  0.9394
+  Precision@5:  0.2485
+  MRR:          0.9697
+  NDCG@5:       0.9635
+  NDCG@10:      0.9635
+  p95 Latency:  10.99ms
+  Total Time:   6.72s
 
 Model: BAAI/bge-m3
 ----------------------------------------
@@ -17,7 +32,18 @@ See the vulnerability report here https://nvd.nist.gov/vuln/detail/CVE-2025-3243
 
 Model: jinaai/jina-embeddings-v3
 ----------------------------------------
-  ERROR: Failed to load embedding model: No module named 'custom_st'
+  Queries evaluated: 33
+  Recall@1:     0.8687
+  Recall@3:     0.9444
+  Recall@5:     0.9848
+  Recall@10:    0.9848
+  Precision@1:  0.9697
+  Precision@5:  0.2485
+  MRR:          0.9773
+  NDCG@5:       0.9706
+  NDCG@10:      0.9706
+  p95 Latency:  49.10ms
+  Total Time:   17.16s
 
 Model: BAAI/bge-large-en-v1.5
 ----------------------------------------
@@ -31,8 +57,8 @@ Model: BAAI/bge-large-en-v1.5
   MRR:          1.0000
   NDCG@5:       0.9837
   NDCG@10:      0.9837
-  p95 Latency:  53.16ms
-  Total Time:   331.64s
+  p95 Latency:  35.27ms
+  Total Time:   10.39s
 
 Model: intfloat/e5-large-v2
 ----------------------------------------
@@ -46,25 +72,25 @@ Model: intfloat/e5-large-v2
   MRR:          1.0000
   NDCG@5:       0.9904
   NDCG@10:      0.9904
-  p95 Latency:  27.27ms
-  Total Time:   207.17s
+  p95 Latency:  28.83ms
+  Total Time:   21.98s
 
 ================================================================================
 EMBEDDING MODEL COMPARISON TABLE
 ================================================================================
 
-Metric                          bge-m3   jina-embeddings   bge-large-en-v1       e5-large-v2
+Metric                 all-MiniLM-L6-v            bge-m3   jina-embeddings   bge-large-en-v1       e5-large-v2
 --------------------------------------------------------------------------------
-Recall@1                        0.0000            0.0000            0.8838            0.8838
-Recall@3                        0.0000            0.0000            0.9596            0.9747
-Recall@5                        0.0000            0.0000            1.0000            1.0000
-Recall@10                       0.0000            0.0000            1.0000            1.0000
-Precision@1                     0.0000            0.0000            1.0000            1.0000
-Precision@5                     0.0000            0.0000            0.2545            0.2545
-MRR                             0.0000            0.0000            1.0000            1.0000
-NDCG@5                          0.0000            0.0000            0.9837            0.9904
-NDCG@10                         0.0000            0.0000            0.9837            0.9904
-p95 Latency (ms)                 0.00ms             0.00ms            53.16ms            27.27ms
+Recall@1                        0.8535             ERROR            0.8687            0.8838            0.8838
+Recall@3                        0.9697             ERROR            0.9444            0.9596            0.9747
+Recall@5                        0.9848             ERROR            0.9848            1.0000            1.0000
+Recall@10                       0.9848             ERROR            0.9848            1.0000            1.0000
+Precision@1                     0.9394             ERROR            0.9697            1.0000            1.0000
+Precision@5                     0.2485             ERROR            0.2485            0.2545            0.2545
+MRR                             0.9697             ERROR            0.9773            1.0000            1.0000
+NDCG@5                          0.9635             ERROR            0.9706            0.9837            0.9904
+NDCG@10                         0.9635             ERROR            0.9706            0.9837            0.9904
+p95 Latency (ms)                10.99ms             ERROR            49.10ms            35.27ms            28.83ms
 --------------------------------------------------------------------------------
 
 BEST MODEL BY METRIC:
