@@ -250,6 +250,40 @@ export const getSuggestionHistory = async (limit = 20, docId = '') => {
   return response.data
 }
 
+// MCQ API
+export const generateMcq = async (documentIds, config = {}) => {
+  const response = await api.post(
+    '/mcq/generate',
+    {
+      document_ids: documentIds,
+      num_questions: config.num_questions || 5,
+      difficulty: config.difficulty || 'mixed',
+    },
+    { timeout: 180000 }
+  )
+  return response.data
+}
+
+export const getMcqHistory = async (limit = 20) => {
+  const response = await api.get(`/mcq/history?limit=${limit}`)
+  return response.data
+}
+
+export const getMcq = async (quizId) => {
+  const response = await api.get(`/mcq/${quizId}`)
+  return response.data
+}
+
+export const submitMcqAttempt = async (quizId, answers) => {
+  const response = await api.post(`/mcq/${quizId}/attempt`, { answers })
+  return response.data
+}
+
+export const deleteMcq = async (quizId) => {
+  const response = await api.delete(`/mcq/${quizId}`)
+  return response.data
+}
+
 // Admin Dashboard API (Phase 1)
 export const getAdminStats = async () => {
   const response = await api.get('/admin/stats')
