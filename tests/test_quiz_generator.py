@@ -46,7 +46,9 @@ def _patch_llm(monkeypatch, responses):
     responses = list(responses)
 
     def fake_call_llm(**kwargs):
-        return responses.pop(0)
+        if responses:
+            return responses.pop(0)
+        return "exhausted fallback: not valid json"
 
     monkeypatch.setattr("app.services.quiz_generator.call_llm", fake_call_llm)
     return responses
@@ -123,6 +125,140 @@ def test_generate_quiz_rejects_questions_without_explanation(monkeypatch):
 def test_generate_quiz_raises_without_documents():
     with pytest.raises(QuizGenerationError):
         _make_generator().generate_quiz([], _config(1, 1, 0))
+
+
+def test_generate_quiz_fixes_unquoted_letter_answers(monkeypatch):
+    raw = (
+        '[{"type": "single", "text": "Q?", '
+        '"options": ["a", "b", "c", "d"], "answer": [A], '
+        '"explanation": "a is correct."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [0]
+
+
+def test_generate_quiz_fixes_multi_letter_answers(monkeypatch):
+    raw = (
+        '[{"type": "multiple", "text": "Q?", '
+        '"options": ["a", "b", "c", "d"], "answer": [A, C], '
+        '"explanation": "a and c are correct."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 0, 1))
+    assert result["questions"][0]["answer"] == [0, 2]
+
+
+def test_generate_quiz_accepts_quoted_letter_answers(monkeypatch):
+    payload = [
+        {
+            "type": "single",
+            "text": "Q?",
+            "options": ["a", "b", "c", "d"],
+            "answer": ["C"],
+            "explanation": "c is correct.",
+        }
+    ]
+    _patch_llm(monkeypatch, [json.dumps(payload)])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [2]
+
+
+def test_generate_quiz_accepts_bare_letter_string_answer(monkeypatch):
+    payload = [
+        {
+            "type": "single",
+            "text": "Q?",
+            "options": ["a", "b", "c", "d"],
+            "answer": "B",
+            "explanation": "b is correct.",
+        }
+    ]
+    _patch_llm(monkeypatch, [json.dumps(payload)])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [1]
+
+
+def test_generate_quiz_handles_concatenated_arrays(monkeypatch):
+    raw = (
+        '[{"type": "single", "text": "Q1?", '
+        '"options": ["a", "b", "c", "d"], "answer": [0], '
+        '"explanation": "a is correct."}]'
+        '[{"type": "single", "text": "Q2?", '
+        '"options": ["a", "b", "c", "d"], "answer": [1], '
+        '"explanation": "b is correct."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert len(result["questions"]) == 1
+    assert result["questions"][0]["text"] == "Q1?"
+
+
+def test_generate_quiz_takes_first_valid_array_when_second_is_garbage(monkeypatch):
+    raw = (
+        '[{"type": "single", "text": "Q1?", '
+        '"options": ["a", "b", "c", "d"], "answer": [0], '
+        '"explanation": "a is correct."}]'
+        "[this is not json"
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert len(result["questions"]) == 1
+
+
+def test_generate_quiz_skips_non_dict_arrays(monkeypatch):
+    raw = (
+        '["Intro", "Concepts", "Examples", "Summary"]'
+        '[{"type": "single", "text": "Q?", '
+        '"options": ["a", "b", "c", "d"], "answer": [0], '
+        '"explanation": "a is correct."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert len(result["questions"]) == 1
+
+
+def test_generate_quiz_trims_excess_questions(monkeypatch):
+    _patch_llm(
+        monkeypatch,
+        [json.dumps([SINGLE_Q, SINGLE_Q, MULTI_Q, SINGLE_Q, MULTI_Q, SINGLE_Q])],
+    )
+    result = _make_generator().generate_quiz(DOCS, _config(3, 2, 1))
+    assert len(result["questions"]) == 3
+
+
+def test_generate_quiz_quotes_unquoted_keys(monkeypatch):
+    raw = (
+        '[{type: single, text: "Q?", '
+        'options: ["a", "b", "c", "d"], answer: [0], '
+        'explanation: "a is correct."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [0]
+
+
+def test_generate_quiz_quotes_single_quoted_keys(monkeypatch):
+    raw = (
+        "[{ 'type': \"single\", 'text': \"Q?\", "
+        '\'options\': ["a", "b", "c", "d"], \'answer\': [0], '
+        "'explanation': \"a is correct.\" }]"
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [0]
+
+
+def test_generate_quiz_fixes_inner_quotes_in_strings(monkeypatch):
+    raw = (
+        '[{"type": "single", "text": "Q?", '
+        '"options": ["a", "b", "c", "d"], "answer": [0], '
+        '"explanation": "Intentions provide a "filter" for adoption."}]'
+    )
+    _patch_llm(monkeypatch, [raw])
+    result = _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert result["questions"][0]["answer"] == [0]
+    assert "filter" in result["questions"][0]["explanation"]
 
 
 def test_generate_quiz_uses_quiz_call_type(monkeypatch):

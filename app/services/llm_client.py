@@ -167,6 +167,8 @@ def _call_local_llm(
         payload["temperature"] = kwargs["temperature"]
     if "num_predict" in kwargs:
         payload["max_tokens"] = kwargs["num_predict"]
+    if "grammar" in kwargs:
+        payload["grammar"] = kwargs["grammar"]
 
     return_thinking = kwargs.get("return_thinking", False)
     use_thinking = return_thinking and _model_supports_thinking(model)

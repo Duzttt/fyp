@@ -391,19 +391,29 @@ export const getHealthScore = async () => {
 }
 
 // Quiz API
+const QUIZ_TIMEOUT_MS = 300000
+
 export const generateQuiz = async (documentIds, config = {}) => {
-  const response = await api.post('/quiz/generate', {
-    document_ids: documentIds,
-    config,
-  })
+  const response = await api.post(
+    '/quiz/generate',
+    {
+      document_ids: documentIds,
+      config,
+    },
+    { timeout: QUIZ_TIMEOUT_MS }
+  )
   return response.data
 }
 
 export const submitQuiz = async (quizId, answers) => {
-  const response = await api.post('/quiz/submit', {
-    quiz_id: quizId,
-    answers,
-  })
+  const response = await api.post(
+    '/quiz/submit',
+    {
+      quiz_id: quizId,
+      answers,
+    },
+    { timeout: QUIZ_TIMEOUT_MS }
+  )
   return response.data
 }
 
