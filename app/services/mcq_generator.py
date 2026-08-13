@@ -9,7 +9,10 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.config import settings
-from app.services.runtime_llm import load_runtime_llm_settings
+from app.services.runtime_llm import (
+    load_runtime_llm_settings,
+    resolve_gemini_api_model,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -275,8 +278,86 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
         return questions
 
     def _call_llm(self, prompt: str) -> str:
-        """Dispatch to the configured LLM provider (implemented in Task 3)."""
-        raise NotImplementedError
+        """Dispatch to the configured LLM provider."""
+        if self.llm_provider == "local_llm":
+            return self._call_local_llm(prompt)
+        elif self.llm_provider == "gemini":
+            return self._call_gemini(prompt)
+        elif self.llm_provider == "openrouter":
+            return self._call_openrouter(prompt)
+        raise MCQGenerationError(f"Unknown LLM provider: {self.llm_provider}")
+
+    def _call_local_llm(self, prompt: str) -> str:
+        """Call local LLM via llama.cpp."""
+        try:
+            from app.services.llm_client import call_llm
+
+            return call_llm(
+                provider="local_llm",
+                model=self._runtime_model or settings.LOCAL_LLM_MODEL,
+                call_type="mcq",
+                messages=[{"role": "user", "content": prompt}],
+                query_text=prompt[:200],
+                base_url=self._runtime_base_url
+                or settings.LOCAL_LLM_BASE_URL,
+                timeout=settings.LOCAL_LLM_TIMEOUT_SECONDS,
+                temperature=0.5,
+                num_predict=2048,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MCQGenerationError(f"Local LLM call failed: {exc}")
+
+    def _call_gemini(self, prompt: str) -> str:
+        """Call Gemini API."""
+        try:
+            from app.services.llm_client import call_llm
+
+            api_key = self._runtime_api_key or settings.GEMINI_API_KEY
+            if not api_key:
+                raise MCQGenerationError("GEMINI_API_KEY is not configured")
+
+            return call_llm(
+                provider="gemini",
+                model=resolve_gemini_api_model(
+                    self._runtime_model, settings.GEMINI_MODEL
+                ),
+                call_type="mcq",
+                messages=[{"role": "user", "content": prompt}],
+                query_text=prompt[:200],
+                api_key=api_key,
+                base_url=self._runtime_base_url or settings.GEMINI_BASE_URL,
+                temperature=0.5,
+                max_tokens=2048,
+                response_format="json",
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MCQGenerationError(f"Gemini call failed: {exc}")
+
+    def _call_openrouter(self, prompt: str) -> str:
+        """Call OpenRouter API."""
+        try:
+            from app.services.llm_client import call_llm
+
+            api_key = self._runtime_api_key or settings.OPENROUTER_API_KEY
+            if not api_key:
+                raise MCQGenerationError(
+                    "OPENROUTER_API_KEY is not configured"
+                )
+
+            return call_llm(
+                provider="openrouter",
+                model=self._runtime_model or settings.OPENROUTER_MODEL,
+                call_type="mcq",
+                messages=[{"role": "user", "content": prompt}],
+                query_text=prompt[:200],
+                api_key=api_key,
+                base_url=self._runtime_base_url
+                or settings.OPENROUTER_BASE_URL,
+                temperature=0.5,
+                max_tokens=2048,
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise MCQGenerationError(f"OpenRouter call failed: {exc}")
 
 
 __all__ = [

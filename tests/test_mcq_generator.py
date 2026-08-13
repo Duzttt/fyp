@@ -142,3 +142,89 @@ def test_validate_questions_truncates_extra_questions():
         {"questions": [VALID_ITEM, VALID_ITEM, VALID_ITEM]}, 2
     )
     assert len(questions) == 2
+
+
+def _json_response(items):
+    return json.dumps({"questions": items})
+
+
+def _mock_llm(monkeypatch, side_effect):
+    from unittest.mock import MagicMock
+
+    mock = MagicMock(side_effect=side_effect)
+    monkeypatch.setattr("app.services.llm_client.call_llm", mock)
+    return mock
+
+
+def test_generate_mcqs_success(monkeypatch):
+    mock = _mock_llm(monkeypatch, [_json_response([VALID_ITEM])])
+    questions = _service().generate_mcqs(_documents(), num_questions=1)
+    assert len(questions) == 1
+    assert questions[0]["question"] == "What is RAG?"
+    assert mock.call_count == 1
+    assert mock.call_args.kwargs["call_type"] == "mcq"
+    assert mock.call_args.kwargs["provider"] == "local_llm"
+
+
+def test_generate_mcqs_retries_then_succeeds(monkeypatch):
+    mock = _mock_llm(
+        monkeypatch, ["not json at all", _json_response([VALID_ITEM])]
+    )
+    questions = _service().generate_mcqs(_documents(), num_questions=1)
+    assert len(questions) == 1
+    assert mock.call_count == 2
+
+
+def test_generate_mcqs_all_retries_fail(monkeypatch):
+    mock = _mock_llm(monkeypatch, ["bad", "still bad", "nope"])
+    with pytest.raises(MCQGenerationError):
+        _service().generate_mcqs(_documents(), num_questions=1)
+    assert mock.call_count == 3
+
+
+def test_generate_mcqs_timeout_raises(monkeypatch):
+    import time
+
+    def slow_llm(**kwargs):
+        time.sleep(0.2)
+        return _json_response([VALID_ITEM])
+
+    mock = _mock_llm(monkeypatch, slow_llm)
+    with pytest.raises(MCQGenerationError, match="timed out"):
+        _service().generate_mcqs(
+            _documents(), num_questions=1, timeout_seconds=0.05
+        )
+    assert mock.call_count == 1
+
+
+def test_generate_mcqs_empty_documents_raises():
+    with pytest.raises(MCQGenerationError):
+        _service().generate_mcqs([], num_questions=1)
+
+
+def test_generate_mcqs_clamps_num_questions(monkeypatch):
+    items = [{**VALID_ITEM, "question": f"Q{i}?"} for i in range(20)]
+    mock = _mock_llm(monkeypatch, [_json_response(items)])
+    questions = _service().generate_mcqs(_documents(), num_questions=99)
+    assert len(questions) == 20
+    prompt = mock.call_args.kwargs["messages"][0]["content"]
+    assert "EXACTLY 20" in prompt
+
+
+def test_provider_gemini_routing(monkeypatch):
+    class FakeSettings:
+        GEMINI_API_KEY = "test-key"
+        GEMINI_MODEL = "gemini-2.0-flash"
+        GEMINI_BASE_URL = "https://example.invalid/v1beta"
+        LLM_PROVIDER = "local_llm"
+
+    monkeypatch.setattr(
+        "app.services.mcq_generator.settings", FakeSettings
+    )
+    mock = _mock_llm(monkeypatch, [_json_response([VALID_ITEM])])
+    service = MCQGeneratorService(llm_provider="gemini")
+    questions = service.generate_mcqs(_documents(), num_questions=1)
+    assert len(questions) == 1
+    assert mock.call_args.kwargs["provider"] == "gemini"
+    assert mock.call_args.kwargs["response_format"] == "json"
+    assert mock.call_args.kwargs["api_key"] == "test-key"
