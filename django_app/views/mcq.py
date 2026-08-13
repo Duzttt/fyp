@@ -125,6 +125,7 @@ def generate_mcq(request: HttpRequest) -> JsonResponse:
     )
 
 
+@csrf_exempt
 @require_http_methods(["GET", "DELETE"])
 def get_mcq(request: HttpRequest, quiz_id: int) -> JsonResponse:
     from django_app.models import MCQQuiz
