@@ -93,7 +93,7 @@ app/
     ├── local_rag.py        # RAG orchestration & LLM calls
     ├── rag_pipeline.py     # RAG pipeline
     ├── citation_rag.py     # Citation-aware RAG
-    ├── summarizer.py       # Document summarization
+    ├── topic_summarizer.py # Retrieval-based topic summarization
     └── question_suggestions.py
 retrieval/            # Hybrid retrieval (BM25 + dense)
 ├── bm25_index.py

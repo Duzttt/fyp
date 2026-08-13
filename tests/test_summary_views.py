@@ -20,6 +20,7 @@ from django_app.models import SummaryEvent, SummaryJob
 
 class TestCreateJob(TestCase):
     def setUp(self) -> None:
+        SummaryJob.objects.all().delete()
         self.client = Client()
 
     def test_create_job_with_valid_document(self):
@@ -96,6 +97,7 @@ class TestCreateJob(TestCase):
 
 class TestListAndDetail(TestCase):
     def setUp(self) -> None:
+        SummaryJob.objects.all().delete()
         self.client = Client()
 
     def test_list_jobs_paginated(self):
@@ -129,6 +131,7 @@ class TestListAndDetail(TestCase):
 
 class TestCancelRetryDelete(TestCase):
     def setUp(self) -> None:
+        SummaryJob.objects.all().delete()
         self.client = Client()
 
     def test_cancel_job(self):
@@ -188,6 +191,7 @@ class TestCancelRetryDelete(TestCase):
 
 class TestSSE(TestCase):
     def setUp(self) -> None:
+        SummaryJob.objects.all().delete()
         self.client = Client()
 
     def test_sse_replays_events_and_terminates(self):
