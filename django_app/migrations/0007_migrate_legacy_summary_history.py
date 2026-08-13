@@ -49,10 +49,11 @@ def migrate_summary_history(apps, schema_editor):
             )
             continue
 
-        legacy_config = dict(entry.get("config") or {})
-        legacy_config["legacy_documents"] = [str(doc) for doc in documents]
+        legacy_config = entry.get("config") or {}
 
         try:
+            legacy_config = dict(legacy_config)
+            legacy_config["legacy_documents"] = [str(doc) for doc in documents]
             SummaryJob.objects.create(
                 document_id=str(documents[0]),
                 status="completed",
