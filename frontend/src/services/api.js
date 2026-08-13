@@ -184,32 +184,41 @@ export const clearEmbeddingModelCache = async () => {
   return response.data
 }
 
-// Document Summary API
-export const generateSummary = async (documentIds, config = {}) => {
-  const response = await api.post('/summary/generate', {
-    document_ids: documentIds,
+// Document Summary API (retrieval-based jobs)
+export const createSummaryJob = async (documentId, config = {}) => {
+  const response = await api.post('/summary/jobs', {
+    document_id: documentId,
     config,
   })
   return response.data
 }
 
-export const getSummaryHistory = async (limit = 20) => {
-  const response = await api.get(`/summary/history?limit=${limit}`)
+export const getSummaryJobs = async (limit = 20) => {
+  const response = await api.get(`/summary/jobs?limit=${limit}`)
   return response.data
 }
 
-export const deleteSummary = async (summaryId) => {
-  const response = await api.post(`/summary/${summaryId}/delete`)
+export const getSummaryJob = async (jobId) => {
+  const response = await api.get(`/summary/jobs/${jobId}`)
   return response.data
 }
 
-export const regenerateSummary = async (historyId, config = {}) => {
-  const response = await api.post('/summary/regenerate', {
-    history_id: historyId,
-    config,
-  })
+export const cancelSummaryJob = async (jobId) => {
+  const response = await api.post(`/summary/jobs/${jobId}/cancel`)
   return response.data
 }
+
+export const retrySummaryJob = async (jobId) => {
+  const response = await api.post(`/summary/jobs/${jobId}/retry`)
+  return response.data
+}
+
+export const deleteSummaryJob = async (jobId) => {
+  const response = await api.delete(`/summary/jobs/${jobId}/delete`)
+  return response.data
+}
+
+export const getSummaryJobEventUrl = (jobId) => `/api/summary/jobs/${jobId}/events`
 
 // Question Suggestions API
 export const getQuestionSuggestions = async (

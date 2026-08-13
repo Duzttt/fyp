@@ -1,154 +1,225 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { generateSummary, getSummaryHistory, deleteSummary, regenerateSummary } from '../services/api'
+import {
+  createSummaryJob,
+  getSummaryJobs,
+  getSummaryJob,
+  cancelSummaryJob,
+  retrySummaryJob,
+  deleteSummaryJob,
+  getSummaryJobEventUrl,
+} from '../services/api'
+
+const TERMINAL = ['completed', 'failed', 'cancelled', 'interrupted']
 
 export const useSummaryStore = defineStore('summary', () => {
   // State
-  const currentSummary = ref(null)
-  const summaryHistory = ref([])
+  const job = ref(null)
+  const history = ref([])
+  const partialSections = ref([])
   const isLoading = ref(false)
-  const isGenerating = ref(false)
   const error = ref(null)
-  const lastConfig = ref(null)
+  const lastEventId = ref('')
+
+  let eventSource = null
 
   // Actions
-  async function loadHistory(limit = 20) {
+  async function createJob(documentId, config = {}) {
     try {
       isLoading.value = true
       error.value = null
-      const response = await getSummaryHistory(limit)
-      summaryHistory.value = response.history || []
+      partialSections.value = []
+      const response = await createSummaryJob(documentId, config)
+      job.value = response.job
+      connectEvents()
+      return job.value
     } catch (err) {
       error.value = err.message
-      console.error('Failed to load summary history:', err)
+      console.error('Failed to create summary job:', err)
+      return null
     } finally {
       isLoading.value = false
     }
   }
 
-  async function generate(documentIds, config = {}) {
-    try {
-      isGenerating.value = true
-      error.value = null
-      lastConfig.value = config
+  function connectEvents() {
+    if (!job.value?.id) return
+    disconnect()
+    eventSource = new EventSource(getSummaryJobEventUrl(job.value.id))
 
-      const response = await generateSummary(documentIds, config)
-      
-      currentSummary.value = {
-        text: response.summary,
-        citations: response.citations || [],
-        comparison: response.comparison || [],
-        document_count: response.document_count,
-        documents: response.documents,
-        history_id: response.history_id,
-      }
+    eventSource.onmessage = (event) => handleEvent(JSON.parse(event.data))
 
-      // Add to history
-      summaryHistory.value.unshift({
-        id: response.history_id,
-        timestamp: new Date().toISOString(),
-        documents: response.documents,
-        summary: response.summary,
-        config,
+    const handleNamed = (type) => {
+      eventSource.addEventListener(type, (event) => {
+        handleEvent(JSON.parse(event.data), type)
       })
-
-      return currentSummary.value
-    } catch (err) {
-      error.value = err.message
-      console.error('Failed to generate summary:', err)
-      return null
-    } finally {
-      isGenerating.value = false
     }
-  }
+    handleNamed('stage')
+    handleNamed('partial')
+    handleNamed('completed')
+    handleNamed('failed')
+    handleNamed('cancelled')
 
-  async function regenerate(historyId, newConfig = {}) {
-    try {
-      isGenerating.value = true
-      error.value = null
-
-      const response = await regenerateSummary(historyId, newConfig)
-      
-      currentSummary.value = {
-        text: response.summary,
-        citations: response.citations || [],
-        comparison: response.comparison || [],
-        config: response.config,
-      }
-
-      // Update history entry
-      const idx = summaryHistory.value.findIndex(h => h.id === historyId)
-      if (idx !== -1) {
-        summaryHistory.value[idx] = {
-          ...summaryHistory.value[idx],
-          summary: response.summary,
-          config: response.config,
-          regenerated_at: new Date().toISOString(),
+    eventSource.onerror = () => {
+      // EventSource auto-reconnects with Last-Event-ID; only hard-fail
+      // if the job is unknown (e.g. deleted). Re-hydrate on terminal error.
+      setTimeout(async () => {
+        if (!job.value?.id) return
+        try {
+          await loadJob(job.value.id)
+        } catch {
+          /* keep existing state */
         }
-      }
-
-      return currentSummary.value
-    } catch (err) {
-      error.value = err.message
-      console.error('Failed to regenerate summary:', err)
-      return null
-    } finally {
-      isGenerating.value = false
+      }, 2000)
     }
   }
 
-  async function remove(summaryId) {
+  function handleEvent(payload, type) {
+    if (!payload) return
+    if (eventSource?.lastEventId) lastEventId.value = eventSource.lastEventId
+
+    if (type === 'stage') {
+      if (!job.value) return
+      job.value.stage = payload.stage || job.value.stage
+      job.value.progress = payload.progress ?? job.value.progress
+      if (payload.topics) job.value.topics = payload.topics
+      if (payload.language) job.value.detected_language = payload.language
+    } else if (type === 'partial') {
+      if (payload.section) partialSections.value.push(payload.section)
+      if (!job.value) return
+      job.value.progress = payload.progress ?? job.value.progress
+    } else if (type === 'completed') {
+      if (job.value) {
+        job.value.status = 'completed'
+        job.value.progress = 100
+        job.value.result_markdown = payload.summary
+      }
+      hydrate()
+    } else if (type === 'failed' || type === 'cancelled') {
+      if (job.value) {
+        job.value.status = type
+        job.value.error_code = payload.error_code
+        job.value.error_message = payload.error_message
+      }
+      hydrate()
+    }
+  }
+
+  async function hydrate() {
+    if (!job.value?.id) return
+    try {
+      const response = await getSummaryJob(job.value.id)
+      job.value = response.job
+      await loadHistory(20)
+    } catch (err) {
+      console.error('Failed to hydrate summary job:', err)
+    }
+  }
+
+  function disconnect() {
+    if (eventSource) {
+      eventSource.close()
+      eventSource = null
+    }
+  }
+
+  async function loadJob(jobId) {
+    try {
+      isLoading.value = true
+      error.value = null
+      const response = await getSummaryJob(jobId)
+      job.value = response.job
+      partialSections.value = []
+      if (job.value.result_json?.sections) {
+        partialSections.value = job.value.result_json.sections
+      }
+      if (job.value.status && !TERMINAL.includes(job.value.status)) {
+        connectEvents()
+      }
+      return job.value
+    } catch (err) {
+      error.value = err.message
+      return null
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function loadHistory(limit = 20) {
     try {
       error.value = null
-      await deleteSummary(summaryId)
-      
-      // Remove from history
-      summaryHistory.value = summaryHistory.value.filter(h => h.id !== summaryId)
-      
-      // Clear current if it's the same
-      if (currentSummary.value?.history_id === summaryId) {
-        currentSummary.value = null
-      }
-      
+      const response = await getSummaryJobs(limit)
+      history.value = response.jobs || []
+    } catch (err) {
+      error.value = err.message
+      console.error('Failed to load summary history:', err)
+    }
+  }
+
+  async function cancelActive() {
+    if (!job.value?.id) return false
+    try {
+      await cancelSummaryJob(job.value.id)
       return true
     } catch (err) {
       error.value = err.message
-      console.error('Failed to delete summary:', err)
       return false
     }
   }
 
-  function clearCurrent() {
-    currentSummary.value = null
-    error.value = null
-  }
-
-  function selectFromHistory(summary) {
-    currentSummary.value = {
-      text: summary.summary,
-      citations: summary.citations || [],
-      comparison: summary.comparison || [],
-      document_count: summary.document_count,
-      documents: summary.documents,
-      history_id: summary.id,
-      config: summary.config,
+  async function retryActive() {
+    if (!job.value?.id) return false
+    try {
+      partialSections.value = []
+      const response = await retrySummaryJob(job.value.id)
+      job.value = response.job
+      connectEvents()
+      return true
+    } catch (err) {
+      error.value = err.message
+      return false
     }
   }
 
+  async function remove(jobId) {
+    try {
+      error.value = null
+      await deleteSummaryJob(jobId)
+      history.value = history.value.filter((item) => item.id !== jobId)
+      if (job.value?.id === jobId) {
+        disconnect()
+        job.value = null
+        partialSections.value = []
+      }
+      return true
+    } catch (err) {
+      error.value = err.message
+      return false
+    }
+  }
+
+  function reset() {
+    disconnect()
+    job.value = null
+    partialSections.value = []
+    error.value = null
+  }
+
   return {
-    // State
-    currentSummary,
-    summaryHistory,
+    job,
+    history,
+    partialSections,
     isLoading,
-    isGenerating,
     error,
-    lastConfig,
-    // Actions
+    lastEventId,
+    createJob,
+    connectEvents,
+    disconnect,
+    loadJob,
     loadHistory,
-    generate,
-    regenerate,
+    cancelActive,
+    retryActive,
     remove,
-    clearCurrent,
-    selectFromHistory,
+    reset,
   }
 })
