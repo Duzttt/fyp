@@ -853,7 +853,7 @@ def test_generate_mcqs_timeout_raises(monkeypatch):
         time.sleep(0.2)
         return _json_response([VALID_ITEM])
 
-    mock = _mock_llm(monkeypatch, [slow_llm])
+    mock = _mock_llm(monkeypatch, slow_llm)
     with pytest.raises(MCQGenerationError, match="timed out"):
         _service().generate_mcqs(
             _documents(), num_questions=1, timeout_seconds=0.05
