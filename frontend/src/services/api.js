@@ -381,4 +381,31 @@ export const getHealthScore = async () => {
   return response.data
 }
 
+// Quiz API
+export const generateQuiz = async (documentIds, config = {}) => {
+  const response = await api.post('/quiz/generate', {
+    document_ids: documentIds,
+    config,
+  })
+  return response.data
+}
+
+export const submitQuiz = async (quizId, answers) => {
+  const response = await api.post('/quiz/submit', {
+    quiz_id: quizId,
+    answers,
+  })
+  return response.data
+}
+
+export const getQuizHistory = async (limit = 20) => {
+  const response = await api.get(`/quiz/history?limit=${limit}`)
+  return response.data
+}
+
+export const deleteQuiz = async (quizId) => {
+  const response = await api.post(`/quiz/${quizId}/delete`)
+  return response.data
+}
+
 export default api
