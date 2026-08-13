@@ -3,14 +3,18 @@ import { ref, computed } from 'vue'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useSummaryStore } from '../../stores/summaryStore'
 import { useQuizStore } from '../../stores/quizStore'
+import { useMcqStore } from '../../stores/mcqStore'
 import SummaryModal from '../studio/SummaryModal.vue'
 import SummaryViewer from '../studio/SummaryViewer.vue'
 import QuizModal from '../studio/QuizModal.vue'
+import McqModal from '../studio/McqModal.vue'
 import QuizViewer from '../studio/QuizViewer.vue'
+import QuizSessionViewer from '../studio/QuizSessionViewer.vue'
 
 const documentStore = useDocumentStore()
 const summaryStore = useSummaryStore()
 const quizStore = useQuizStore()
+const mcqStore = useMcqStore()
 
 const studioTools = [
   {
@@ -25,7 +29,7 @@ const studioTools = [
     title: 'Generate MCQ',
     desc: 'Create multiple-choice questions from the selected documents.',
     icon: 'M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 8h6v2H10v-2zm0-4h6v2H10V7zm0 8h6v2H10v-2zM7 7h2v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2z',
-    comingSoon: true,
+    action: 'mcq',
   },
   {
     id: 'quiz',
@@ -53,7 +57,9 @@ const studioTools = [
 const showSummaryModal = ref(false)
 const showSummaryViewer = ref(false)
 const showQuizModal = ref(false)
-const showQuizViewer = ref(false)
+const showMcqModal = ref(false)
+const showMcqViewer = ref(false)
+const showQuizSessionViewer = ref(false)
 
 const selectedDocs = computed(() => documentStore.selectedDocIds)
 const selectedCount = computed(() => selectedDocs.value.length)
@@ -69,6 +75,9 @@ const handleToolClick = (tool) => {
   }
   if (tool.action === 'quiz') {
     openQuizModal()
+  }
+  if (tool.action === 'mcq') {
+    openMcqModal()
   }
 }
 
@@ -92,17 +101,17 @@ const handleQuizGenerate = async (config) => {
   const quiz = await quizStore.generate(selectedDocs.value, config)
   if (quiz) {
     showQuizModal.value = false
-    showQuizViewer.value = true
+    showQuizSessionViewer.value = true
   }
 }
 
 const handleQuizOpenFromHistory = () => {
   showQuizModal.value = false
-  showQuizViewer.value = true
+  showQuizSessionViewer.value = true
 }
 
-const closeQuizViewer = () => {
-  showQuizViewer.value = false
+const closeQuizSessionViewer = () => {
+  showQuizSessionViewer.value = false
   quizStore.clearCurrent()
 }
 
@@ -117,6 +126,38 @@ const handleSummaryCreate = async ({ documentId, config }) => {
 const closeSummaryViewer = () => {
   showSummaryViewer.value = false
   summaryStore.reset()
+}
+
+const openMcqModal = () => {
+  if (selectedCount.value === 0) {
+    alert('Please select at least one document in the sidebar first')
+    return
+  }
+  showMcqModal.value = true
+  mcqStore.error = null
+}
+
+const handleMcqGenerate = async (config) => {
+  const quiz = await mcqStore.generate(selectedDocs.value, config)
+  if (quiz) {
+    showMcqModal.value = false
+    showMcqViewer.value = true
+  }
+}
+
+const handleQuizSubmit = async (answers) => {
+  if (mcqStore.currentQuiz?.quiz_id) {
+    await mcqStore.submit(mcqStore.currentQuiz.quiz_id, answers)
+  }
+}
+
+const handleQuizRetake = () => {
+  mcqStore.lastResult = null
+}
+
+const closeMcqViewer = () => {
+  showMcqViewer.value = false
+  mcqStore.clearCurrent()
 }
 </script>
 
@@ -145,11 +186,7 @@ const closeSummaryViewer = () => {
             <span class="tool-desc">{{ tool.desc }}</span>
           </div>
           <span v-if="tool.comingSoon" class="tool-badge soon" aria-hidden="true">Soon</span>
-          <span
-            v-else-if="(tool.action === 'summary' || tool.action === 'quiz') && selectedCount > 0"
-            class="tool-badge"
-            aria-hidden="true"
-          >
+          <span v-else-if="['summary', 'quiz', 'mcq'].includes(tool.action) && selectedCount > 0" class="tool-badge" aria-hidden="true">
             {{ selectedCount }}
           </span>
         </button>
@@ -176,6 +213,55 @@ const closeSummaryViewer = () => {
         </Transition>
       </Teleport>
 
+      <Teleport to="body">
+        <Transition name="modal-fade">
+          <div v-if="showMcqViewer" class="summary-modal-overlay" @click.self="closeMcqViewer">
+            <div class="summary-modal">
+              <div class="modal-header">
+                <span class="modal-title">MCQ Quiz</span>
+                <button type="button" class="modal-close" aria-label="Close quiz" @click="closeMcqViewer">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div v-if="mcqStore.error && !mcqStore.currentQuiz" class="error-message">
+                  {{ mcqStore.error }}
+                </div>
+                <QuizViewer
+                  :quiz="mcqStore.currentQuiz"
+                  :result="mcqStore.lastResult"
+                  :loading="mcqStore.isGenerating"
+                  @submit="handleQuizSubmit"
+                  @retake="handleQuizRetake"
+                  @close="closeMcqViewer"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <Teleport to="body">
+        <Transition name="modal-fade">
+          <div v-if="showQuizSessionViewer" class="summary-modal-overlay" @click.self="closeQuizSessionViewer">
+            <div class="summary-modal">
+              <div class="modal-header">
+                <span class="modal-title">Quiz</span>
+                <button type="button" class="modal-close" aria-label="Close quiz" @click="closeQuizSessionViewer">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <QuizSessionViewer
+                  v-model:show="showQuizSessionViewer"
+                  @close="closeQuizSessionViewer"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
     </div>
 
     <SummaryModal
@@ -193,9 +279,13 @@ const closeSummaryViewer = () => {
       @close="showQuizModal = false"
     />
 
-    <QuizViewer
-      v-model:show="showQuizViewer"
-      @close="closeQuizViewer"
+    <McqModal
+      v-model:show="showMcqModal"
+      :selected-docs="selectedDocs"
+      :loading="mcqStore.isGenerating"
+      :error="mcqStore.error"
+      @generate="handleMcqGenerate"
+      @close="showMcqModal = false"
     />
   </div>
 </template>
@@ -352,6 +442,15 @@ const closeSummaryViewer = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.error-message {
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--tertiary-container);
+  border: 1px solid var(--tertiary);
+  color: var(--on-tertiary);
+  font-size: 12px;
 }
 
 .summary-modal {

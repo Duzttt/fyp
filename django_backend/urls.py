@@ -161,6 +161,17 @@ urlpatterns = [
     path("api/quiz/history/", views.get_quiz_history),
     path("api/quiz/<str:quiz_id>/delete", views.delete_quiz),
     path("api/quiz/<str:quiz_id>/delete/", views.delete_quiz),
+    # MCQ Quiz endpoints
+    path("api/mcq/generate", views.generate_mcq),
+    path("api/mcq/generate/", views.generate_mcq),
+    path("api/mcq/history", views.get_mcq_history),
+    path("api/mcq/history/", views.get_mcq_history),
+    path("api/mcq/<int:quiz_id>", views.get_mcq),
+    path("api/mcq/<int:quiz_id>/", views.get_mcq),
+    path("api/mcq/<int:quiz_id>/attempt", views.submit_mcq_attempt),
+    path("api/mcq/<int:quiz_id>/attempt/", views.submit_mcq_attempt),
+    path("api/mcq/<int:quiz_id>/delete", views.delete_mcq),
+    path("api/mcq/<int:quiz_id>/delete/", views.delete_mcq),
     # LLM Monitoring
     path("llm-logs", views.llm_logs_page, name="llm_logs_page"),
     path("llm-logs/", views.llm_logs_page, name="llm_logs_page_slash"),

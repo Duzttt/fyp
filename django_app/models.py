@@ -264,6 +264,7 @@ class QueryLog(models.Model):
         ("suggestion", "Question Suggestion"),
         ("citation", "Citation"),
         ("rewrite", "Conversation Rewrite"),
+        ("mcq", "MCQ Generation"),
     ]
 
     call_type = models.CharField(
@@ -565,7 +566,7 @@ class MCQAttempt(models.Model):
         indexes = [models.Index(fields=["-created_at"])]
 
     def __str__(self) -> str:
-        return f"MCQAttempt #{self.id} for quiz #{self.quiz_id} ({self.score}/{self.total})"
+        return f"MCQAttempt #{self.quiz_id} ({self.score}/{self.total})"
 
 
 class SummaryJob(models.Model):
@@ -633,3 +634,9 @@ class SummaryEvent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.job_id}:{self.event_type}@{self.stage}"
+
+
+
+
+
+
