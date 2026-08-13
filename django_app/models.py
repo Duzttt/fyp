@@ -264,6 +264,7 @@ class QueryLog(models.Model):
         ("suggestion", "Question Suggestion"),
         ("citation", "Citation"),
         ("rewrite", "Conversation Rewrite"),
+        ("mcq", "MCQ Generation"),
     ]
 
     call_type = models.CharField(

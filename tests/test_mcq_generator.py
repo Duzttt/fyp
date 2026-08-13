@@ -218,3 +218,45 @@ def test_provider_gemini_routing(monkeypatch):
     assert mock.call_args.kwargs["provider"] == "gemini"
     assert mock.call_args.kwargs["response_format"] == "json"
     assert mock.call_args.kwargs["api_key"] == "test-key"
+
+
+def test_gemini_missing_api_key_raises_no_retry(monkeypatch):
+    from unittest.mock import MagicMock
+
+    class FakeSettings:
+        GEMINI_API_KEY = ""
+        GEMINI_MODEL = "gemini-2.0-flash"
+        GEMINI_BASE_URL = "https://example.invalid/v1beta"
+        LLM_PROVIDER = "local_llm"
+
+    monkeypatch.setattr("app.services.mcq_generator.settings", FakeSettings)
+    mock = MagicMock()
+    monkeypatch.setattr("app.services.llm_client.call_llm", mock)
+    service = MCQGeneratorService(llm_provider="gemini")
+    with pytest.raises(MCQGenerationError, match="not configured"):
+        service.generate_mcqs([{"name": "a.pdf", "content": "text"}], num_questions=1)
+    assert mock.call_count == 0
+
+
+def test_openrouter_missing_api_key_raises_no_retry(monkeypatch):
+    from unittest.mock import MagicMock
+
+    class FakeSettings:
+        OPENROUTER_API_KEY = ""
+        OPENROUTER_MODEL = "some-model"
+        OPENROUTER_BASE_URL = "https://example.invalid/v1"
+        LLM_PROVIDER = "local_llm"
+
+    monkeypatch.setattr("app.services.mcq_generator.settings", FakeSettings)
+    mock = MagicMock()
+    monkeypatch.setattr("app.services.llm_client.call_llm", mock)
+    service = MCQGeneratorService(llm_provider="openrouter")
+    with pytest.raises(MCQGenerationError, match="not configured"):
+        service.generate_mcqs([{"name": "a.pdf", "content": "text"}], num_questions=1)
+    assert mock.call_count == 0
+
+
+def test_unknown_provider_raises_immediately():
+    service = MCQGeneratorService(llm_provider="bogus")
+    with pytest.raises(MCQGenerationError, match="Unknown LLM provider"):
+        service.generate_mcqs([{"name": "a.pdf", "content": "text"}], num_questions=1)

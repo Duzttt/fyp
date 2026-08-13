@@ -39,6 +39,10 @@ class MCQGenerationError(Exception):
     """Custom exception for MCQ generation errors."""
 
 
+class MCQConfigError(MCQGenerationError):
+    """Non-retryable configuration error (missing API key, unknown provider)."""
+
+
 class MCQGeneratorService:
     """
     Service for generating multiple-choice questions from documents.
@@ -86,6 +90,8 @@ class MCQGeneratorService:
                 return questions
             except TimeoutError as exc:
                 raise MCQGenerationError(f"LLM call timed out: {exc}")
+            except MCQConfigError:
+                raise
             except MCQGenerationError as exc:
                 last_error = exc
                 logger.warning("MCQ generation attempt %d failed: %s", attempt + 1, exc)
@@ -258,7 +264,7 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
             return self._call_gemini(prompt)
         elif self.llm_provider == "openrouter":
             return self._call_openrouter(prompt)
-        raise MCQGenerationError(f"Unknown LLM provider: {self.llm_provider}")
+        raise MCQConfigError(f"Unknown LLM provider: {self.llm_provider}")
 
     def _call_local_llm(self, prompt: str) -> str:
         """Call local LLM via llama.cpp."""
@@ -281,12 +287,11 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
 
     def _call_gemini(self, prompt: str) -> str:
         """Call Gemini API."""
+        api_key = self._runtime_api_key or settings.GEMINI_API_KEY
+        if not api_key:
+            raise MCQConfigError("GEMINI_API_KEY is not configured")
         try:
             from app.services.llm_client import call_llm
-
-            api_key = self._runtime_api_key or settings.GEMINI_API_KEY
-            if not api_key:
-                raise MCQGenerationError("GEMINI_API_KEY is not configured")
 
             return call_llm(
                 provider="gemini",
@@ -307,12 +312,11 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
 
     def _call_openrouter(self, prompt: str) -> str:
         """Call OpenRouter API."""
+        api_key = self._runtime_api_key or settings.OPENROUTER_API_KEY
+        if not api_key:
+            raise MCQConfigError("OPENROUTER_API_KEY is not configured")
         try:
             from app.services.llm_client import call_llm
-
-            api_key = self._runtime_api_key or settings.OPENROUTER_API_KEY
-            if not api_key:
-                raise MCQGenerationError("OPENROUTER_API_KEY is not configured")
 
             return call_llm(
                 provider="openrouter",
@@ -333,6 +337,7 @@ __all__ = [
     "DIFFICULTY_HINTS",
     "MAX_QUESTIONS",
     "MAX_RETRIES",
+    "MCQConfigError",
     "MCQGenerationError",
     "MCQGeneratorService",
     "MCQ_TIMEOUT_SECONDS",
