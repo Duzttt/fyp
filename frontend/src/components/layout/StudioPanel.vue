@@ -2,11 +2,15 @@
 import { ref, computed } from 'vue'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useSummaryStore } from '../../stores/summaryStore'
+import { useQuizStore } from '../../stores/quizStore'
 import SummaryModal from '../studio/SummaryModal.vue'
 import SummaryViewer from '../studio/SummaryViewer.vue'
+import QuizModal from '../studio/QuizModal.vue'
+import QuizViewer from '../studio/QuizViewer.vue'
 
 const documentStore = useDocumentStore()
 const summaryStore = useSummaryStore()
+const quizStore = useQuizStore()
 
 const studioTools = [
   {
@@ -28,7 +32,7 @@ const studioTools = [
     title: 'Quiz',
     desc: 'Test your understanding with an interactive quiz.',
     icon: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z',
-    comingSoon: true,
+    action: 'quiz',
   },
   {
     id: 'flashcard',
@@ -48,6 +52,8 @@ const studioTools = [
 
 const showSummaryModal = ref(false)
 const showSummaryViewer = ref(false)
+const showQuizModal = ref(false)
+const showQuizViewer = ref(false)
 
 const selectedDocs = computed(() => documentStore.selectedDocIds)
 const selectedCount = computed(() => selectedDocs.value.length)
@@ -63,6 +69,9 @@ const handleToolClick = (tool) => {
   if (tool.action === 'summary') {
     openSummaryModal()
   }
+  if (tool.action === 'quiz') {
+    openQuizModal()
+  }
 }
 
 const openSummaryModal = () => {
@@ -71,6 +80,32 @@ const openSummaryModal = () => {
     return
   }
   showSummaryModal.value = true
+}
+
+const openQuizModal = () => {
+  if (selectedCount.value === 0) {
+    alert('Please select at least one document in the sidebar first')
+    return
+  }
+  showQuizModal.value = true
+}
+
+const handleQuizGenerate = async (config) => {
+  const quiz = await quizStore.generate(selectedDocs.value, config)
+  showQuizModal.value = false
+  if (quiz) {
+    showQuizViewer.value = true
+  }
+}
+
+const handleQuizOpenFromHistory = () => {
+  showQuizModal.value = false
+  showQuizViewer.value = true
+}
+
+const closeQuizViewer = () => {
+  showQuizViewer.value = false
+  quizStore.clearCurrent()
 }
 
 const handleSummaryGenerate = async (config) => {
@@ -121,7 +156,11 @@ const closeSummaryViewer = () => {
             <span class="tool-desc">{{ tool.desc }}</span>
           </div>
           <span v-if="tool.comingSoon" class="tool-badge soon" aria-hidden="true">Soon</span>
-          <span v-else-if="tool.action === 'summary' && selectedCount > 0" class="tool-badge" aria-hidden="true">
+          <span
+            v-else-if="(tool.action === 'summary' || tool.action === 'quiz') && selectedCount > 0"
+            class="tool-badge"
+            aria-hidden="true"
+          >
             {{ selectedCount }}
           </span>
         </button>
@@ -158,6 +197,19 @@ const closeSummaryViewer = () => {
       :selected-docs="selectedDocs"
       @generate="handleSummaryGenerate"
       @close="showSummaryModal = false"
+    />
+
+    <QuizModal
+      v-model:show="showQuizModal"
+      :selected-docs="selectedDocs"
+      @generate="handleQuizGenerate"
+      @view="handleQuizOpenFromHistory"
+      @close="showQuizModal = false"
+    />
+
+    <QuizViewer
+      v-model:show="showQuizViewer"
+      @close="closeQuizViewer"
     />
   </div>
 </template>
