@@ -189,8 +189,8 @@ async function handleDeleteHistory(quizId) {
             </div>
           </div>
 
-          <div v-if="error" class="error-message">
-            {{ error }}
+          <div v-if="error || quizStore.error" class="error-message">
+            {{ error || quizStore.error }}
           </div>
         </div>
         <div class="modal-footer">

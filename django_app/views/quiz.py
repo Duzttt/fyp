@@ -199,6 +199,7 @@ def generate_quiz(request: HttpRequest) -> JsonResponse:
             "questions": _strip_answers(questions),
             "config": config,
             "document_count": len(documents),
+            "documents": [doc["name"] for doc in documents],
         }
     )
 
@@ -280,8 +281,11 @@ def submit_quiz(request: HttpRequest) -> JsonResponse:
 @require_http_methods(["GET"])
 def get_quiz_history(request: HttpRequest) -> JsonResponse:
     try:
-        limit = int(request.GET.get("limit", 20))
-        limit = min(limit, 50)
+        try:
+            limit = int(request.GET.get("limit", 20))
+        except (TypeError, ValueError):
+            limit = 20
+        limit = max(0, min(limit, 50))
 
         history = _load_quiz_history()
         result = []

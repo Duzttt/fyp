@@ -92,8 +92,8 @@ const openQuizModal = () => {
 
 const handleQuizGenerate = async (config) => {
   const quiz = await quizStore.generate(selectedDocs.value, config)
-  showQuizModal.value = false
   if (quiz) {
+    showQuizModal.value = false
     showQuizViewer.value = true
   }
 }

@@ -123,3 +123,15 @@ def test_generate_quiz_rejects_questions_without_explanation(monkeypatch):
 def test_generate_quiz_raises_without_documents():
     with pytest.raises(QuizGenerationError):
         _make_generator().generate_quiz([], _config(1, 1, 0))
+
+
+def test_generate_quiz_uses_quiz_call_type(monkeypatch):
+    captured = {}
+
+    def fake_call_llm(**kwargs):
+        captured.update(kwargs)
+        return json.dumps([SINGLE_Q])
+
+    monkeypatch.setattr("app.services.quiz_generator.call_llm", fake_call_llm)
+    _make_generator().generate_quiz(DOCS, _config(1, 1, 0))
+    assert captured["call_type"] == "quiz"

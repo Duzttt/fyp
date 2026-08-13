@@ -41,7 +41,7 @@ export const useQuizStore = defineStore('quiz', () => {
         questions: response.questions || [],
         config: response.config,
         documents: response.documents || [],
-        attempts: 0,
+        attempts: [],
       }
       lastResult.value = null
 
