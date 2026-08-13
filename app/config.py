@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     LOCAL_LLM_MODEL: str = "qwen2.5:3b"
     LOCAL_LLM_BASE_URL: str = "http://localhost:8080"
     LOCAL_LLM_TIMEOUT_SECONDS: int = 300
+    SUMMARY_JOB_CONCURRENCY: int = 1
+    SUMMARY_TOPIC_CONCURRENCY: int = 2
 
     QA_GEN_BASE_URL: Optional[str] = None
     QA_GEN_MODEL: Optional[str] = None

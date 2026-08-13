@@ -11,6 +11,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
+import requests
+
 from app.config import settings
 from app.services.runtime_embedding import load_runtime_embedding_settings
 from app.services.vector_store import VectorStore
@@ -402,3 +404,54 @@ def run_pipeline(
         "skipped_topics": skipped_topics,
         "markdown": markdown,
     }
+
+
+def build_llm_caller() -> Callable[[List[Dict[str, str]], Optional[str]], str]:
+    """Wrap call_llm with runtime settings; map failures to error codes."""
+    from app.services.llm_client import call_llm
+    from app.services.runtime_llm import load_runtime_llm_settings
+
+    rt = load_runtime_llm_settings()
+
+    def llm_call(
+        messages: List[Dict[str, str]], response_format: Optional[str] = None
+    ) -> str:
+        try:
+            return call_llm(
+                provider=rt["provider"],
+                model=rt["model"],
+                call_type="summary",
+                messages=messages,
+                api_key=rt["api_key"],
+                base_url=rt["base_url"],
+                timeout=settings.LOCAL_LLM_TIMEOUT_SECONDS,
+                temperature=0.3,
+                max_tokens=2048,
+                response_format=response_format,
+            )
+        except requests.Timeout as exc:
+            raise TopicSummarizerError("LLM request timed out", code="timeout") from exc
+        except TopicSummarizerError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise TopicSummarizerError(
+                f"LLM unavailable: {exc}", code="llm_unavailable"
+            ) from exc
+
+    return llm_call
+
+
+def build_retriever(document_id: str) -> Callable[[str, int], List[Dict[str, Any]]]:
+    """Wrap retrieve_with_faiss, restricted to one document."""
+
+    def retrieve_fn(query: str, top_k: int) -> List[Dict[str, Any]]:
+        from app.services.local_rag import retrieve_with_faiss
+
+        return retrieve_with_faiss(
+            query=query,
+            top_k=top_k,
+            source_filter=[document_id],
+            reranker_enabled=False,
+        )
+
+    return retrieve_fn
