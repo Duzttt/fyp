@@ -51,10 +51,14 @@ def ask_question(request: HttpRequest) -> JsonResponse:
         return _error_response("Query cannot be empty", status=400)
 
     try:
+        from config.retrieval_config import get_config
+
+        retrieval_config = get_config().retrieval
         retrieved_sources = retrieve_with_faiss(
             query=query,
             top_k=3,
             source_filter=source_filter,
+            similarity_threshold=retrieval_config.min_cosine_threshold,
             reranker_enabled=settings.RERANKER_ENABLED,
         )
         context = build_context_from_sources(retrieved_sources)
@@ -155,6 +159,7 @@ def ask(request: HttpRequest) -> JsonResponse:
             query=query,
             top_k=top_k,
             source_filter=source_filter,
+            similarity_threshold=similarity_threshold,
             reranker_enabled=reranker_enabled,
         )
         context = build_context_from_sources(retrieved_sources)
@@ -673,6 +678,7 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
     top_k = rag_config.get("top_k", 3)
     llm_model = rag_config.get("llm_model") or _build_runtime_llm_settings()["model"]
     temperature = rag_config.get("temperature", 0.7)
+    similarity_threshold = float(rag_config.get("similarity_threshold", 0.6))
 
     retrieved_sources: List[Dict[str, Any]] = []
     citations: List[Dict[str, Any]] = []
@@ -683,17 +689,15 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
             query=query,
             top_k=top_k,
             source_filter=None,
+            similarity_threshold=similarity_threshold,
             reranker_enabled=bool(rag_config.get("reranker_enabled", True)),
         )
         context = build_context_from_sources(retrieved_sources)
 
-        distances = [r.get("distance", 0) for r in retrieved_sources]
-        max_distance = max(distances) if distances else 1.0
-        max_distance = max(max_distance, 0.001)
-
         for idx, src in enumerate(retrieved_sources, start=1):
-            distance = src.get("distance", 0)
-            similarity = max(0.0, 1.0 - (distance / max_distance))
+            similarity = max(
+                0.0, src.get("cosine_similarity", src.get("distance", 0.0))
+            )
             text = src.get("text", "")
             citations.append(
                 {
@@ -709,7 +713,7 @@ def chat_htmx(request: HttpRequest) -> HttpResponse:
                     "text": text,
                     "preview": text[:100],
                     "score": round(similarity, 3),
-                    "distance": round(distance, 4),
+                    "distance": round(src.get("distance", 0), 4),
                     "source": src.get("source", "unknown"),
                     "page": src.get("page"),
                     "bbox": src.get("bbox"),
@@ -772,10 +776,12 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
 
     try:
         rag_config = _load_rag_config()
+        similarity_threshold = float(rag_config.get("similarity_threshold", 0.6))
         results = retrieve_with_faiss(
             query=query,
             top_k=top_k,
             source_filter=source_filter,
+            similarity_threshold=similarity_threshold,
             reranker_enabled=bool(rag_config.get("reranker_enabled", True)),
         )
     except LocalRAGError as exc:
@@ -784,14 +790,10 @@ def retrieve_chunks(request: HttpRequest) -> JsonResponse:
     if not results:
         return JsonResponse({"chunks": []})
 
-    distances = [r.get("distance", 0) for r in results]
-    max_distance = max(distances) if distances else 1.0
-    max_distance = max(max_distance, 0.001)
-
     chunks = []
     for r in results:
+        similarity = max(0.0, r.get("cosine_similarity", r.get("distance", 0.0)))
         distance = r.get("distance", 0)
-        similarity = max(0.0, 1.0 - (distance / max_distance))
 
         text = r.get("text", "")
         preview = text[:100] + ("..." if len(text) > 100 else "")

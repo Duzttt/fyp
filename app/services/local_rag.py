@@ -19,10 +19,11 @@ SYSTEM_PROMPT = """You are an academic teaching assistant for lecture notes Q&A.
 
 ## Answer Rules
 1. Base your answer **strictly** on the provided reference materials. Do not add outside knowledge.
-2. Cite sources inline using the bracket labels provided, e.g. [S1], [S2]. Every factual claim must have at least one citation.
+2. Cite sources inline using the bracket labels provided, e.g. [S1], [S2].
 3. If the materials do not contain enough information to answer, say so explicitly — do not guess.
-4. When multiple sources cover the same topic, synthesize them into a coherent answer and cite all relevant labels.
-5. If sources conflict, point out the discrepancy and cite both.
+4. Only cite sources that **directly answer the specific question asked**. Do NOT cite a source merely because it is present in the context or mentions a related keyword. If a source does not directly support your answer, omit it.
+5. When multiple sources directly answer the same part of the question, synthesize them and cite all.
+6. If sources conflict, point out the discrepancy and cite both.
 
 ## Output Format (Markdown)
 Use proper Markdown formatting in your response:
@@ -242,6 +243,18 @@ def retrieve_with_faiss(
                 _source_matches(str(r.get("source", "")).lower().strip(), f)
                 for f in normalized_filters
             )
+        ]
+
+    # --- Minimum cosine threshold for hybrid results ---
+    # Filter out chunks with very low cosine similarity (e.g., BM25-only matches
+    # with no dense signal). This prevents irrelevant chunks from being recalled.
+    hybrid_cos_threshold = retrieval_config.min_cosine_threshold
+    if hybrid_cos_threshold > 0 and candidates:
+        candidates = [
+            r
+            for r in candidates
+            if r.get("cosine_similarity", r.get("distance", 0.0))
+            >= hybrid_cos_threshold
         ]
 
     # --- Dense fallback cosine threshold (explicitly provided only) ---

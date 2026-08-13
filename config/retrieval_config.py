@@ -44,6 +44,10 @@ class RetrievalConfig:
         None  # Final-score cutoff (None = no filtering)
     )
 
+    # Minimum cosine similarity threshold for hybrid retrieval results.
+    # Chunks below this score are filtered out to prevent irrelevant召回.
+    min_cosine_threshold: float = 0.35
+
     # Diversity / deduplication settings
     diversity_lambda: float = (
         0.7  # MMR diversity weight (0 = pure relevance, 1 = pure diversity)

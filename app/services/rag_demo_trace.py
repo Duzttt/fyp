@@ -32,7 +32,7 @@ def retrieve_with_faiss(
             query=query,
             top_k=top_k,
             source_filter=source_filter,
-            similarity_threshold=0.0,
+            similarity_threshold=None,
             stage_timings=stage_timings,
             rerank_details=rerank_details,
         )
