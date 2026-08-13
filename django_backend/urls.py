@@ -148,6 +148,15 @@ urlpatterns = [
     path("api/suggestions/click/", views.record_suggestion_click),
     path("api/suggestions/history", views.get_suggestion_history),
     path("api/suggestions/history/", views.get_suggestion_history),
+    # Quiz endpoints
+    path("api/quiz/generate", views.generate_quiz),
+    path("api/quiz/generate/", views.generate_quiz),
+    path("api/quiz/submit", views.submit_quiz),
+    path("api/quiz/submit/", views.submit_quiz),
+    path("api/quiz/history", views.get_quiz_history),
+    path("api/quiz/history/", views.get_quiz_history),
+    path("api/quiz/<str:quiz_id>/delete", views.delete_quiz),
+    path("api/quiz/<str:quiz_id>/delete/", views.delete_quiz),
     # LLM Monitoring
     path("llm-logs", views.llm_logs_page, name="llm_logs_page"),
     path("llm-logs/", views.llm_logs_page, name="llm_logs_page_slash"),

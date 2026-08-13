@@ -97,6 +97,14 @@ from django_app.views.summaries import (
     regenerate_summary,
 )
 
+# Quiz
+from django_app.views.quiz import (
+    generate_quiz,
+    submit_quiz,
+    get_quiz_history,
+    delete_quiz,
+)
+
 # Suggestions
 from django_app.views.suggestions import (
     get_question_suggestions,
@@ -197,6 +205,11 @@ __all__ = [
     "get_summary_history",
     "delete_summary",
     "regenerate_summary",
+    # Quiz
+    "generate_quiz",
+    "submit_quiz",
+    "get_quiz_history",
+    "delete_quiz",
     # Suggestions
     "get_question_suggestions",
     "record_suggestion_click",
