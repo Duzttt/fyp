@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_backend.settings")
 
@@ -15,9 +16,12 @@ from app.services.topic_summarizer import (  # noqa: E402
     TopicSummarizerError,
     build_topic_summary_messages,
     detect_language,
+    generate_overview,
     load_document_chunks,
     parse_topic_summary_json,
     propose_topics,
+    render_markdown,
+    run_pipeline,
     sample_chunks_for_topics,
     summarize_topic,
 )
@@ -321,3 +325,159 @@ class TestSummarizeTopic:
                 llm_call=llm_bad,
             )
         assert exc_info.value.code == "malformed_json"
+
+
+class TestRenderMarkdown:
+    def test_renders_overview_sections_and_page_citations(self):
+        overview = "This document introduces machine learning."
+        sections = [
+            TopicSection(
+                title="Supervised learning",
+                points=[
+                    TopicPoint(text="Uses labeled examples.", pages=[3, 5]),
+                    TopicPoint(text="Trains on paired data.", pages=[]),
+                ],
+            )
+        ]
+        markdown = render_markdown(overview, sections)
+        assert overview in markdown
+        assert "## Supervised learning" in markdown
+        assert "- Uses labeled examples. [p.3, p.5]" in markdown
+        assert "- Trains on paired data." in markdown
+
+
+class TestGenerateOverview:
+    def test_overview_from_sections(self):
+        def llm(*_args, **_kwargs):
+            return "This document covers supervised learning and evaluation."
+
+        sections = [
+            TopicSection(
+                title="Supervised learning",
+                points=[TopicPoint(text="Uses labeled examples.", pages=[3])],
+            )
+        ]
+        overview = generate_overview(sections, "en", llm_call=llm)
+        assert overview == "This document covers supervised learning and evaluation."
+
+
+class TestRunPipeline:
+    def _llm(self, messages, response_format=None):
+        content = messages[-1]["content"] if messages else ""
+        if "Propose exactly" in content:
+            return json.dumps(
+                {
+                    "topics": [
+                        {
+                            "title": "ML basics",
+                            "query": "machine learning basics",
+                            "importance": 5,
+                        },
+                        {
+                            "title": "Evaluation",
+                            "query": "evaluation metrics",
+                            "importance": 4,
+                        },
+                    ]
+                }
+            )
+        if "Write a summary section" in content:
+            return json.dumps(
+                {
+                    "heading": "Section",
+                    "points": [{"text": "A key point.", "evidence_chunk": 1}],
+                }
+            )
+        if "overview" in content.lower():
+            return "Overview sentence."
+        raise AssertionError(f"unexpected prompt: {content[:80]}")
+
+    def _retrieve(self, query, top_k):
+        assert top_k in (4, 6, 8)
+        return [{"text": "Machine learning content.", "page": 2}]
+
+    def test_full_pipeline_result_structure(self):
+        chunks = [{"text": f"chunk {i}", "page": i + 1} for i in range(20)]
+        progress_events = []
+
+        result = run_pipeline(
+            document_id="lecture.pdf",
+            chunks=chunks,
+            length="medium",
+            retrieve_fn=self._retrieve,
+            llm_call=self._llm,
+            on_progress=lambda stage, progress, payload: progress_events.append(
+                (stage, progress)
+            ),
+        )
+
+        assert result["document_id"] == "lecture.pdf"
+        assert result["overview"] == "Overview sentence."
+        assert len(result["sections"]) == 2
+        assert result["sections"][0]["points"][0]["pages"] == [2]
+        assert result["markdown"].startswith("Overview sentence.")
+        stages = [stage for stage, _ in progress_events]
+        assert "topics" in stages
+        assert "partial" in stages
+        assert "render" in stages
+        assert progress_events[-1][1] >= 95
+
+    def test_skipped_topic_on_empty_retrieval(self):
+        def retrieve(query, top_k):
+            if "evaluation" in query:
+                return []
+            return [{"text": "content", "page": 1}]
+
+        result = run_pipeline(
+            document_id="doc.pdf",
+            chunks=[{"text": "c", "page": 1}],
+            length="short",
+            retrieve_fn=retrieve,
+            llm_call=self._llm,
+        )
+        assert len(result["sections"]) == 1
+        assert result["skipped_topics"] == ["Evaluation"]
+
+    def test_no_topics_summarized_raises(self):
+        def retrieve(_query, _top_k):
+            return []
+
+        with pytest.raises(TopicSummarizerError) as exc_info:
+            run_pipeline(
+                document_id="doc.pdf",
+                chunks=[{"text": "c", "page": 1}],
+                length="short",
+                retrieve_fn=retrieve,
+                llm_call=self._llm,
+            )
+        assert exc_info.value.code == "no_topics"
+
+    def test_topic_limit_override(self):
+        calls = {"topic_counts": []}
+
+        def llm_capture(messages, response_format=None):
+            content = messages[-1]["content"] if messages else ""
+            if "Propose exactly" in content:
+                match = re.search(r"Propose exactly (\d+)", content)
+                calls["topic_counts"].append(int(match.group(1)))
+                return json.dumps(
+                    {"topics": [{"title": "T", "query": "q", "importance": 3}]}
+                )
+            if "Write a summary section" in content:
+                return json.dumps(
+                    {
+                        "heading": "H",
+                        "points": [{"text": "p", "evidence_chunk": 1}],
+                    }
+                )
+            return "overview"
+
+        run_pipeline(
+            document_id="doc.pdf",
+            chunks=[{"text": "c", "page": 1}],
+            length="medium",
+            retrieve_fn=lambda _q, _k: [{"text": "c", "page": 1}],
+            llm_call=llm_capture,
+            topic_limit=3,
+        )
+        assert calls["topic_counts"] == [3]

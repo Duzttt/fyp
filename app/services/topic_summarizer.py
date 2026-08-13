@@ -7,6 +7,7 @@ callables so the pipeline is fully unit-testable.
 
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
@@ -247,3 +248,157 @@ def summarize_topic(
     raise TopicSummarizerError(
         f"Topic '{topic.title}' failed: {last_error}", code="malformed_json"
     )
+
+
+def generate_overview(
+    sections: List[TopicSection],
+    language: str,
+    llm_call: Callable[[List[Dict[str, str]], Optional[str]], str],
+) -> str:
+    """Write a 2-3 sentence overview from the topic sections."""
+    language_name = "Chinese" if language == "zh" else "English"
+    digest = "\n".join(
+        f"- {section.title}: " + "; ".join(point.text for point in section.points[:2])
+        for section in sections
+    )
+    system = "You are a document summarization assistant."
+    user = (
+        f"Output language: {language_name}.\n\n"
+        f"Topic sections of a document:\n{digest}\n\n"
+        "Write a 2-3 sentence overview of the whole document. "
+        "Output only the overview text."
+    )
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+    raw = llm_call(messages, None)
+    overview = str(raw).strip()
+    if not overview:
+        raise TopicSummarizerError(
+            "Overview generation returned empty output", code="malformed_json"
+        )
+    return overview
+
+
+def render_markdown(overview: str, sections: List[TopicSection]) -> str:
+    """Render canonical Markdown: overview + one section per topic."""
+    lines: List[str] = [overview.strip(), ""]
+    for section in sections:
+        lines.append(f"## {section.title}")
+        for point in section.points:
+            pages = ", ".join(f"p.{page}" for page in point.pages)
+            citation = f" [{pages}]" if pages else ""
+            lines.append(f"- {point.text}{citation}")
+        lines.append("")
+    return "\n".join(lines).strip() + "\n"
+
+
+def _resolve_topic_count(length: str, topic_limit: Optional[int]) -> int:
+    count = LENGTH_TOPIC_COUNTS.get(length, LENGTH_TOPIC_COUNTS["medium"])
+    if topic_limit is not None:
+        count = int(topic_limit)
+    return max(1, min(count, MAX_TOPICS))
+
+
+def run_pipeline(
+    document_id: str,
+    chunks: List[Dict[str, Any]],
+    length: str,
+    retrieve_fn: Callable[[str, int], List[Dict[str, Any]]],
+    llm_call: Callable[[List[Dict[str, str]], Optional[str]], str],
+    topic_limit: Optional[int] = None,
+    is_cancelled: Optional[Callable[[], bool]] = None,
+    on_progress: Optional[Callable[[str, int, Optional[Dict[str, Any]]], None]] = None,
+) -> Dict[str, Any]:
+    """Run the full retrieval-based topic summarization pipeline."""
+
+    def report(
+        stage: str, progress: int, payload: Optional[Dict[str, Any]] = None
+    ) -> None:
+        if on_progress is not None:
+            on_progress(stage, progress, payload)
+
+    language = detect_language([chunk.get("text", "") for chunk in chunks[:10]])
+    report("language", 5, {"language": language})
+
+    topic_count = _resolve_topic_count(length, topic_limit)
+    samples = sample_chunks_for_topics(chunks, max_samples=10)
+    topics = propose_topics(samples, language, topic_count, llm_call)
+    topic_meta = [
+        {"title": t.title, "query": t.query, "importance": t.importance} for t in topics
+    ]
+    report("topics", 15, {"topics": topic_meta, "language": language})
+
+    top_k = LENGTH_TOP_K.get(length, LENGTH_TOP_K["medium"])
+    topic_concurrency = max(1, int(getattr(settings, "SUMMARY_TOPIC_CONCURRENCY", 2)))
+    sections: List[TopicSection] = []
+    skipped_topics: List[str] = []
+    completed = 0
+    total = len(topics)
+
+    def run_one(topic: Topic) -> Optional[TopicSection]:
+        if is_cancelled is not None and is_cancelled():
+            raise TopicSummarizerError("Job cancelled", code="cancelled")
+        return summarize_topic(topic, top_k, language, retrieve_fn, llm_call)
+
+    with ThreadPoolExecutor(max_workers=topic_concurrency) as pool:
+        futures = {pool.submit(run_one, topic): topic for topic in topics}
+        for future in as_completed(futures):
+            topic = futures[future]
+            if is_cancelled is not None and is_cancelled():
+                raise TopicSummarizerError("Job cancelled", code="cancelled")
+            try:
+                section = future.result()
+            except TopicSummarizerError as exc:
+                if exc.code == "cancelled":
+                    raise
+                raise TopicSummarizerError(
+                    f"Topic '{topic.title}' failed: {exc}", code=exc.code
+                ) from exc
+            completed += 1
+            if section is not None:
+                sections.append(section)
+                progress = 15 + int(60 * completed / total)
+                report(
+                    "partial",
+                    progress,
+                    {
+                        "section": {
+                            "title": section.title,
+                            "points": [
+                                {"text": p.text, "pages": p.pages}
+                                for p in section.points
+                            ],
+                        }
+                    },
+                )
+            else:
+                skipped_topics.append(topic.title)
+
+    if not sections:
+        raise TopicSummarizerError("No topics could be summarized", code="no_topics")
+
+    report("overview", 85)
+    overview = generate_overview(sections, language, llm_call)
+    report("render", 95)
+    markdown = render_markdown(overview, sections)
+
+    return {
+        "document_id": document_id,
+        "language": language,
+        "overview": overview,
+        "topics": topic_meta,
+        "sections": [
+            {
+                "title": section.title,
+                "points": [
+                    {"text": point.text, "pages": point.pages}
+                    for point in section.points
+                ],
+            }
+            for section in sections
+        ],
+        "skipped_topics": skipped_topics,
+        "markdown": markdown,
+    }
