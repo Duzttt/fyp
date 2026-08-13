@@ -10,11 +10,16 @@ django.setup()
 import pytest  # noqa: E402
 from app.services.topic_summarizer import (  # noqa: E402
     Topic,
+    TopicPoint,
+    TopicSection,
     TopicSummarizerError,
+    build_topic_summary_messages,
     detect_language,
     load_document_chunks,
+    parse_topic_summary_json,
     propose_topics,
     sample_chunks_for_topics,
+    summarize_topic,
 )
 
 
@@ -174,4 +179,145 @@ class TestProposeTopics:
 
         with pytest.raises(TopicSummarizerError) as exc_info:
             propose_topics([{"text": "x"}], "en", 4, llm_call=llm_bad)
+        assert exc_info.value.code == "malformed_json"
+
+
+SAMPLE_TOPIC = Topic(
+    title="Supervised learning", query="supervised learning", importance=5
+)
+SAMPLE_CHUNKS = [
+    {"text": "Supervised learning uses labeled examples.", "page": 3},
+    {"text": "Models are trained on paired inputs and outputs.", "page": 4},
+]
+
+
+class TestBuildTopicSummaryMessages:
+    def test_includes_chunk_numbers_and_pages(self):
+        messages = build_topic_summary_messages(SAMPLE_TOPIC, SAMPLE_CHUNKS, "en")
+        user = messages[1]["content"]
+        assert "[1]" in user
+        assert "page 3" in user
+        assert "Supervised learning" in user
+
+
+class TestParseTopicSummaryJson:
+    def test_maps_evidence_chunks_to_pages(self):
+        raw = json.dumps(
+            {
+                "heading": "Supervised learning",
+                "points": [
+                    {"text": "Uses labeled examples.", "evidence_chunk": 1},
+                    {"text": "Trains on paired data.", "evidence_chunk": 2},
+                ],
+            }
+        )
+        section = parse_topic_summary_json(raw, SAMPLE_CHUNKS)
+        assert section == TopicSection(
+            title="Supervised learning",
+            points=[
+                TopicPoint(text="Uses labeled examples.", pages=[3]),
+                TopicPoint(text="Trains on paired data.", pages=[4]),
+            ],
+        )
+
+    def test_invalid_evidence_index_yields_empty_pages(self):
+        raw = json.dumps(
+            {
+                "heading": "H",
+                "points": [{"text": "point", "evidence_chunk": 99}],
+            }
+        )
+        section = parse_topic_summary_json(raw, SAMPLE_CHUNKS)
+        assert section.points[0].pages == []
+
+    def test_missing_points_raises(self):
+        raw = json.dumps({"heading": "H", "points": []})
+        with pytest.raises(TopicSummarizerError) as exc_info:
+            parse_topic_summary_json(raw, SAMPLE_CHUNKS)
+        assert exc_info.value.code == "malformed_json"
+
+
+class TestSummarizeTopic:
+    def _llm(self, *_args, **_kwargs):
+        return json.dumps(
+            {
+                "heading": "Supervised learning",
+                "points": [{"text": "Uses labeled examples.", "evidence_chunk": 1}],
+            }
+        )
+
+    def test_summarizes_retrieved_chunks(self):
+        def retrieve(query, top_k):
+            assert query == SAMPLE_TOPIC.query
+            assert top_k == 6
+            return SAMPLE_CHUNKS
+
+        section = summarize_topic(
+            SAMPLE_TOPIC,
+            top_k=6,
+            language="en",
+            retrieve_fn=retrieve,
+            llm_call=self._llm,
+        )
+        assert section is not None
+        assert section.title == "Supervised learning"
+        assert section.points[0].pages == [3]
+
+    def test_empty_retrieval_returns_none(self):
+        def retrieve(_query, _top_k):
+            return []
+
+        assert (
+            summarize_topic(
+                SAMPLE_TOPIC,
+                top_k=4,
+                language="en",
+                retrieve_fn=retrieve,
+                llm_call=self._llm,
+            )
+            is None
+        )
+
+    def test_retries_once_on_bad_json(self):
+        calls = {"count": 0}
+
+        def retrieve(_query, _top_k):
+            return SAMPLE_CHUNKS
+
+        def llm_bad_then_ok(*_args, **_kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return "garbage"
+            return json.dumps(
+                {
+                    "heading": "H",
+                    "points": [{"text": "p", "evidence_chunk": 1}],
+                }
+            )
+
+        section = summarize_topic(
+            SAMPLE_TOPIC,
+            top_k=4,
+            language="en",
+            retrieve_fn=retrieve,
+            llm_call=llm_bad_then_ok,
+        )
+        assert section is not None
+        assert calls["count"] == 2
+
+    def test_persistent_bad_json_raises(self):
+        def retrieve(_query, _top_k):
+            return SAMPLE_CHUNKS
+
+        def llm_bad(*_args, **_kwargs):
+            return "garbage"
+
+        with pytest.raises(TopicSummarizerError) as exc_info:
+            summarize_topic(
+                SAMPLE_TOPIC,
+                top_k=4,
+                language="en",
+                retrieve_fn=retrieve,
+                llm_call=llm_bad,
+            )
         assert exc_info.value.code == "malformed_json"

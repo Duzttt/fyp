@@ -151,3 +151,99 @@ def propose_topics(
     raise TopicSummarizerError(
         f"Topic discovery failed: {last_error}", code="malformed_json"
     )
+
+
+@dataclass
+class TopicPoint:
+    text: str
+    pages: List[int]
+
+
+@dataclass
+class TopicSection:
+    title: str
+    points: List[TopicPoint]
+
+
+def build_topic_summary_messages(
+    topic: Topic, chunks: List[Dict[str, Any]], language: str
+) -> List[Dict[str, str]]:
+    """Build prompt asking for a structured section summary with evidence refs."""
+    language_name = "Chinese" if language == "zh" else "English"
+    chunk_lines = []
+    for i, chunk in enumerate(chunks, start=1):
+        page = chunk.get("page")
+        page_label = f"page {page}" if page is not None else "unknown page"
+        chunk_lines.append(f"[{i}] ({page_label})\n{chunk.get('text', '')}")
+    context = "\n\n".join(chunk_lines)
+    system = (
+        "You summarize retrieved document passages into concise study notes. "
+        "Output language must match the requested language. "
+        "Never invent facts; only use the provided passages."
+    )
+    user = (
+        f"Topic: {topic.title}\n"
+        f"Output language: {language_name}.\n\n"
+        f"Retrieved passages:\n{context}\n\n"
+        f"Write a summary section for this topic.\n"
+        "Respond ONLY with JSON in this shape:\n"
+        '{"heading": "string", "points": [{"text": "string", "evidence_chunk": 1}]}\n'
+        "Include 3-8 points. evidence_chunk is the number of the passage "
+        "([1], [2], ...) that supports the point."
+    )
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def parse_topic_summary_json(raw: str, chunks: List[Dict[str, Any]]) -> TopicSection:
+    """Parse the topic summary JSON and map evidence refs to chunk pages."""
+    try:
+        data = json.loads(_extract_json(raw))
+        heading = str(data.get("heading", "")).strip()
+        points_raw = data.get("points")
+        if not heading or not isinstance(points_raw, list) or not points_raw:
+            raise ValueError("missing heading or points")
+        points: List[TopicPoint] = []
+        for item in points_raw:
+            if not isinstance(item, dict):
+                continue
+            text = str(item.get("text", "")).strip()
+            if not text:
+                continue
+            evidence = item.get("evidence_chunk")
+            pages: List[int] = []
+            if isinstance(evidence, int) and 1 <= evidence <= len(chunks):
+                page = chunks[evidence - 1].get("page")
+                if page is not None:
+                    pages = [int(page)]
+            points.append(TopicPoint(text=text, pages=pages))
+        if not points:
+            raise ValueError("no valid points")
+        return TopicSection(title=heading, points=points)
+    except (json.JSONDecodeError, ValueError, TypeError) as exc:
+        raise TopicSummarizerError(
+            f"Failed to parse topic summary: {exc}", code="malformed_json"
+        ) from exc
+
+
+def summarize_topic(
+    topic: Topic,
+    top_k: int,
+    language: str,
+    retrieve_fn: Callable[[str, int], List[Dict[str, Any]]],
+    llm_call: Callable[[List[Dict[str, str]], Optional[str]], str],
+) -> Optional[TopicSection]:
+    """Retrieve chunks for one topic and summarize them. None when no hits."""
+    chunks = retrieve_fn(topic.query, top_k)
+    if not chunks:
+        return None
+    messages = build_topic_summary_messages(topic, chunks, language)
+    last_error: Optional[Exception] = None
+    for _attempt in range(2):
+        try:
+            raw = llm_call(messages, "json")
+            return parse_topic_summary_json(raw, chunks)
+        except TopicSummarizerError as exc:
+            last_error = exc
+    raise TopicSummarizerError(
+        f"Topic '{topic.title}' failed: {last_error}", code="malformed_json"
+    )
