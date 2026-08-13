@@ -104,6 +104,15 @@ from django_app.views.suggestions import (
     get_suggestion_history,
 )
 
+# MCQ
+from django_app.views.mcq import (
+    generate_mcq,
+    get_mcq,
+    submit_mcq_attempt,
+    get_mcq_history,
+    delete_mcq,
+)
+
 # Conversations
 from django_app.views.conversations import (
     create_conversation,
@@ -201,6 +210,12 @@ __all__ = [
     "get_question_suggestions",
     "record_suggestion_click",
     "get_suggestion_history",
+    # MCQ
+    "generate_mcq",
+    "get_mcq",
+    "submit_mcq_attempt",
+    "get_mcq_history",
+    "delete_mcq",
     # LLM Logs
     "llm_logs_list",
     "llm_logs_stats",
