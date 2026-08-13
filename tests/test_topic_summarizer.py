@@ -1,3 +1,4 @@
+import json
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "django_backend.settings")
@@ -8,9 +9,12 @@ django.setup()
 
 import pytest  # noqa: E402
 from app.services.topic_summarizer import (  # noqa: E402
+    Topic,
     TopicSummarizerError,
     detect_language,
     load_document_chunks,
+    propose_topics,
+    sample_chunks_for_topics,
 )
 
 
@@ -82,3 +86,92 @@ class TestLoadDocumentChunks:
         with pytest.raises(TopicSummarizerError) as exc_info:
             load_document_chunks("missing.pdf")
         assert exc_info.value.code == "document_not_indexed"
+
+
+class TestSampleChunks:
+    def test_even_sampling_caps_at_max(self):
+        chunks = [{"text": f"chunk {i}", "page": i + 1} for i in range(50)]
+        sample = sample_chunks_for_topics(chunks, max_samples=10)
+        assert len(sample) == 10
+        assert sample[0]["page"] == 1
+        assert sample[-1]["page"] == 50
+
+    def test_fewer_chunks_than_max_returns_all(self):
+        chunks = [{"text": "a"}, {"text": "b"}]
+        assert len(sample_chunks_for_topics(chunks)) == 2
+
+
+class TestProposeTopics:
+    def _llm_ok(self, *_args, **_kwargs):
+        return json.dumps(
+            {
+                "topics": [
+                    {
+                        "title": "Supervised learning",
+                        "query": "supervised learning labeled data",
+                        "importance": 5,
+                    },
+                    {
+                        "title": "Evaluation",
+                        "query": "train test split evaluation",
+                        "importance": 4,
+                    },
+                ]
+            }
+        )
+
+    def test_parses_valid_json(self):
+        topics = propose_topics(
+            [{"text": "Machine learning basics."}],
+            language="en",
+            topic_count=4,
+            llm_call=self._llm_ok,
+        )
+        assert topics == [
+            Topic(
+                title="Supervised learning",
+                query="supervised learning labeled data",
+                importance=5,
+            ),
+            Topic(
+                title="Evaluation",
+                query="train test split evaluation",
+                importance=4,
+            ),
+        ]
+
+    def test_fenced_json_is_stripped(self):
+        def llm_fenced(*_args, **_kwargs):
+            return (
+                "```json\n"
+                + json.dumps(
+                    {"topics": [{"title": "T", "query": "q", "importance": 3}]}
+                )
+                + "\n```"
+            )
+
+        topics = propose_topics([{"text": "x"}], "en", 4, llm_call=llm_fenced)
+        assert topics[0].title == "T"
+
+    def test_malformed_json_retries_once_then_succeeds(self):
+        calls = {"count": 0}
+
+        def llm_bad_then_ok(*_args, **_kwargs):
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return "not json at all"
+            return json.dumps(
+                {"topics": [{"title": "T", "query": "q", "importance": 2}]}
+            )
+
+        topics = propose_topics([{"text": "x"}], "en", 4, llm_call=llm_bad_then_ok)
+        assert topics[0].title == "T"
+        assert calls["count"] == 2
+
+    def test_persistent_malformed_json_raises(self):
+        def llm_bad(*_args, **_kwargs):
+            return "still not json"
+
+        with pytest.raises(TopicSummarizerError) as exc_info:
+            propose_topics([{"text": "x"}], "en", 4, llm_call=llm_bad)
+        assert exc_info.value.code == "malformed_json"
