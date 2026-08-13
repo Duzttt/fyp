@@ -91,10 +91,15 @@ from django_app.views.embeddings import (
 
 # Summaries
 from django_app.views.summaries import (
-    generate_summary,
-    get_summary_history,
-    delete_summary,
-    regenerate_summary,
+    cancel_summary_job,
+    create_summary_job,
+    delete_summary_job,
+    get_summary_job,
+    list_summary_jobs,
+    retry_summary_job,
+    summary_job_detail,
+    summary_job_events,
+    summary_jobs,
 )
 
 # Quiz
@@ -201,10 +206,15 @@ __all__ = [
     "get_embedding_model_metrics",
     "clear_embedding_model_cache",
     # Summaries
-    "generate_summary",
-    "get_summary_history",
-    "delete_summary",
-    "regenerate_summary",
+    "create_summary_job",
+    "list_summary_jobs",
+    "get_summary_job",
+    "summary_job_events",
+    "cancel_summary_job",
+    "retry_summary_job",
+    "delete_summary_job",
+    "summary_jobs",
+    "summary_job_detail",
     # Quiz
     "generate_quiz",
     "submit_quiz",
