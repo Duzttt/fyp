@@ -172,13 +172,17 @@ def generate_quiz(request: HttpRequest) -> JsonResponse:
     except Exception as exc:
         return _error_response(f"Failed to generate quiz: {str(exc)}", status=500)
 
-    quiz_id = f"quiz_{int(time.time())}"
+    questions = result.get("questions") if isinstance(result, dict) else None
+    if not isinstance(questions, list):
+        return _error_response("Quiz generation returned invalid data", status=500)
+
+    quiz_id = f"quiz_{int(time.time() * 1000)}"
     entry = {
         "id": quiz_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "documents": [doc["name"] for doc in documents],
         "config": config,
-        "questions": result["questions"],
+        "questions": questions,
         "attempts": [],
     }
 
@@ -192,7 +196,7 @@ def generate_quiz(request: HttpRequest) -> JsonResponse:
         {
             "success": True,
             "quiz_id": quiz_id,
-            "questions": _strip_answers(result["questions"]),
+            "questions": _strip_answers(questions),
             "config": config,
             "document_count": len(documents),
         }
