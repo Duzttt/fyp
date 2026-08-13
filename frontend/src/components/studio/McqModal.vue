@@ -11,6 +11,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  error: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['update:show', 'close', 'generate'])
@@ -102,8 +106,8 @@ const handleGenerate = () => {
             </div>
           </div>
 
-          <div v-if="error" class="error-message">
-            {{ error }}
+          <div v-if="props.error || error" class="error-message">
+            {{ props.error || error }}
           </div>
         </div>
         <div class="modal-footer">

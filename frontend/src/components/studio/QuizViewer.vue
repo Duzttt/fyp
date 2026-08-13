@@ -60,6 +60,7 @@ const optionClass = (questionId, label) => {
     return { selected: answers[questionId] === label }
   }
   const r = resultMap.value[questionId]
+  if (!r) return {}
   if (label === r.correct_answer) return { correct: true }
   if (label === r.selected) return { incorrect: true }
   return {}

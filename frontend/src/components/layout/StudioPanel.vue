@@ -110,6 +110,7 @@ const openMcqModal = () => {
     return
   }
   showMcqModal.value = true
+  mcqStore.error = null
 }
 
 const handleMcqGenerate = async (config) => {
@@ -232,6 +233,7 @@ const closeQuizViewer = () => {
       v-model:show="showMcqModal"
       :selected-docs="selectedDocs"
       :loading="mcqStore.isGenerating"
+      :error="mcqStore.error"
       @generate="handleMcqGenerate"
       @close="showMcqModal = false"
     />
