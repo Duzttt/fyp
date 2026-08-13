@@ -31,8 +31,7 @@ DIFFICULTY_HINTS = {
     "and definitions.",
     "medium": "All questions should be medium: understanding and "
     "explanation of concepts.",
-    "hard": "All questions should be hard: analysis, comparison, and "
-    "application.",
+    "hard": "All questions should be hard: analysis, comparison, and " "application.",
 }
 
 
@@ -52,9 +51,7 @@ class MCQGeneratorService:
 
     def __init__(self, llm_provider: Optional[str] = None):
         runtime = load_runtime_llm_settings()
-        self.llm_provider = (
-            llm_provider or runtime["provider"] or settings.LLM_PROVIDER
-        )
+        self.llm_provider = llm_provider or runtime["provider"] or settings.LLM_PROVIDER
         self._runtime_model = runtime["model"]
         self._runtime_api_key = runtime["api_key"]
         self._runtime_base_url = runtime["base_url"]
@@ -68,9 +65,7 @@ class MCQGeneratorService:
     ) -> List[Dict[str, Any]]:
         """Generate validated MCQs from documents (LLM-first, retry)."""
         if not documents:
-            raise MCQGenerationError(
-                "No documents provided for MCQ generation"
-            )
+            raise MCQGenerationError("No documents provided for MCQ generation")
 
         num_questions = max(1, min(int(num_questions), MAX_QUESTIONS))
         if difficulty not in {"mixed", "easy", "medium", "hard"}:
@@ -80,9 +75,7 @@ class MCQGeneratorService:
         last_error: Optional[Exception] = None
         for attempt in range(MAX_RETRIES + 1):
             try:
-                response = self._call_llm_with_timeout(
-                    prompt, timeout_seconds
-                )
+                response = self._call_llm_with_timeout(prompt, timeout_seconds)
                 data = self._parse_json_response(response)
                 questions = self._validate_questions(data, num_questions)
                 logger.info(
@@ -95,18 +88,13 @@ class MCQGeneratorService:
                 raise MCQGenerationError(f"LLM call timed out: {exc}")
             except MCQGenerationError as exc:
                 last_error = exc
-                logger.warning(
-                    "MCQ generation attempt %d failed: %s", attempt + 1, exc
-                )
+                logger.warning("MCQ generation attempt %d failed: %s", attempt + 1, exc)
 
         raise MCQGenerationError(
-            f"MCQ generation failed after {MAX_RETRIES + 1} attempts: "
-            f"{last_error}"
+            f"MCQ generation failed after {MAX_RETRIES + 1} attempts: " f"{last_error}"
         )
 
-    def _call_llm_with_timeout(
-        self, prompt: str, timeout_seconds: int
-    ) -> str:
+    def _call_llm_with_timeout(self, prompt: str, timeout_seconds: int) -> str:
         """Call the LLM in a thread so a timeout can be enforced on Windows."""
         import threading
 
@@ -124,9 +112,7 @@ class MCQGeneratorService:
         thread.join(timeout=timeout_seconds)
 
         if thread.is_alive():
-            raise TimeoutError(
-                f"LLM call timed out after {timeout_seconds}s"
-            )
+            raise TimeoutError(f"LLM call timed out after {timeout_seconds}s")
         if exception[0]:
             raise exception[0]
         return result[0] or ""
@@ -174,18 +160,14 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
         if not text:
             raise MCQGenerationError("Empty LLM response")
 
-        fenced = re.search(
-            r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL
-        )
+        fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
         if fenced:
             text = fenced.group(1).strip()
 
         start = text.find("{")
         end = text.rfind("}")
         if start == -1 or end <= start:
-            raise MCQGenerationError(
-                "LLM response does not contain a JSON object"
-            )
+            raise MCQGenerationError("LLM response does not contain a JSON object")
 
         try:
             data = json.loads(text[start : end + 1])
@@ -211,15 +193,11 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
         questions: List[Dict[str, Any]] = []
         for idx, item in enumerate(raw[:num_questions]):
             if not isinstance(item, dict):
-                raise MCQGenerationError(
-                    f"Question {idx + 1} is not an object"
-                )
+                raise MCQGenerationError(f"Question {idx + 1} is not an object")
 
             stem = str(item.get("question", "") or "").strip()
             if not stem:
-                raise MCQGenerationError(
-                    f"Question {idx + 1} has empty stem"
-                )
+                raise MCQGenerationError(f"Question {idx + 1} has empty stem")
 
             options = item.get("options")
             if not isinstance(options, dict) or set(options.keys()) != {
@@ -241,24 +219,19 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
                     )
                 cleaned_options[label] = option_text
 
-            correct = str(
-                item.get("correct_answer", "") or ""
-            ).strip().upper()
+            correct = str(item.get("correct_answer", "") or "").strip().upper()
             if correct not in {"A", "B", "C", "D"}:
                 raise MCQGenerationError(
-                    f"Question {idx + 1} has invalid correct_answer: "
-                    f"{correct!r}"
+                    f"Question {idx + 1} has invalid correct_answer: " f"{correct!r}"
                 )
 
             explanation = str(item.get("explanation", "") or "").strip()
             if not explanation:
-                raise MCQGenerationError(
-                    f"Question {idx + 1} is missing explanation"
-                )
+                raise MCQGenerationError(f"Question {idx + 1} is missing explanation")
 
-            difficulty = str(
-                item.get("difficulty", "medium") or "medium"
-            ).strip().lower()
+            difficulty = (
+                str(item.get("difficulty", "medium") or "medium").strip().lower()
+            )
             if difficulty not in VALID_DIFFICULTIES:
                 difficulty = "medium"
 
@@ -298,8 +271,7 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
                 call_type="mcq",
                 messages=[{"role": "user", "content": prompt}],
                 query_text=prompt[:200],
-                base_url=self._runtime_base_url
-                or settings.LOCAL_LLM_BASE_URL,
+                base_url=self._runtime_base_url or settings.LOCAL_LLM_BASE_URL,
                 timeout=settings.LOCAL_LLM_TIMEOUT_SECONDS,
                 temperature=0.5,
                 num_predict=2048,
@@ -340,9 +312,7 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
 
             api_key = self._runtime_api_key or settings.OPENROUTER_API_KEY
             if not api_key:
-                raise MCQGenerationError(
-                    "OPENROUTER_API_KEY is not configured"
-                )
+                raise MCQGenerationError("OPENROUTER_API_KEY is not configured")
 
             return call_llm(
                 provider="openrouter",
@@ -351,8 +321,7 @@ Respond with ONLY a JSON object, no markdown fences or commentary, in this exact
                 messages=[{"role": "user", "content": prompt}],
                 query_text=prompt[:200],
                 api_key=api_key,
-                base_url=self._runtime_base_url
-                or settings.OPENROUTER_BASE_URL,
+                base_url=self._runtime_base_url or settings.OPENROUTER_BASE_URL,
                 temperature=0.5,
                 max_tokens=2048,
             )

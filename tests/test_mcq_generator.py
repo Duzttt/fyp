@@ -68,9 +68,7 @@ def test_build_prompt_mixed_difficulty():
 
 
 def test_parse_json_response_plain():
-    data = _service()._parse_json_response(
-        json.dumps({"questions": [VALID_ITEM]})
-    )
+    data = _service()._parse_json_response(json.dumps({"questions": [VALID_ITEM]}))
     assert data["questions"][0]["correct_answer"] == "A"
 
 
@@ -97,9 +95,7 @@ def test_parse_json_response_empty_raises():
 
 
 def test_validate_questions_valid_returns_normalized():
-    questions = _service()._validate_questions(
-        {"questions": [VALID_ITEM]}, 1
-    )
+    questions = _service()._validate_questions({"questions": [VALID_ITEM]}, 1)
     assert len(questions) == 1
     assert questions[0]["question"] == "What is RAG?"
     assert questions[0]["options"]["A"] == "Retrieval-augmented generation"
@@ -167,9 +163,7 @@ def test_generate_mcqs_success(monkeypatch):
 
 
 def test_generate_mcqs_retries_then_succeeds(monkeypatch):
-    mock = _mock_llm(
-        monkeypatch, ["not json at all", _json_response([VALID_ITEM])]
-    )
+    mock = _mock_llm(monkeypatch, ["not json at all", _json_response([VALID_ITEM])])
     questions = _service().generate_mcqs(_documents(), num_questions=1)
     assert len(questions) == 1
     assert mock.call_count == 2
@@ -191,9 +185,7 @@ def test_generate_mcqs_timeout_raises(monkeypatch):
 
     mock = _mock_llm(monkeypatch, slow_llm)
     with pytest.raises(MCQGenerationError, match="timed out"):
-        _service().generate_mcqs(
-            _documents(), num_questions=1, timeout_seconds=0.05
-        )
+        _service().generate_mcqs(_documents(), num_questions=1, timeout_seconds=0.05)
     assert mock.call_count == 1
 
 
@@ -218,9 +210,7 @@ def test_provider_gemini_routing(monkeypatch):
         GEMINI_BASE_URL = "https://example.invalid/v1beta"
         LLM_PROVIDER = "local_llm"
 
-    monkeypatch.setattr(
-        "app.services.mcq_generator.settings", FakeSettings
-    )
+    monkeypatch.setattr("app.services.mcq_generator.settings", FakeSettings)
     mock = _mock_llm(monkeypatch, [_json_response([VALID_ITEM])])
     service = MCQGeneratorService(llm_provider="gemini")
     questions = service.generate_mcqs(_documents(), num_questions=1)

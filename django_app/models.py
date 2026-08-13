@@ -518,11 +518,7 @@ class MCQQuiz(models.Model):
         """Get list of document names."""
         if not self.document_names:
             return []
-        return [
-            name.strip()
-            for name in self.document_names.split(",")
-            if name.strip()
-        ]
+        return [name.strip() for name in self.document_names.split(",") if name.strip()]
 
     def best_score(self) -> Optional[float]:
         """Return the highest attempt percentage, or None if no attempts."""
