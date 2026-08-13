@@ -47,7 +47,8 @@ watch(
   () => props.show,
   (visible) => {
     if (visible) summaryStore.loadHistory(20)
-  }
+  },
+  { immediate: true }
 )
 
 const openCitation = (page) => {

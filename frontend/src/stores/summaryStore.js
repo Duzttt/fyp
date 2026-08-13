@@ -64,6 +64,7 @@ export const useSummaryStore = defineStore('summary', () => {
     eventSource.onerror = () => {
       // EventSource auto-reconnects with Last-Event-ID; only hard-fail
       // if the job is unknown (e.g. deleted). Re-hydrate on terminal error.
+      clearTimeout(reloadTimeout)
       reloadTimeout = setTimeout(async () => {
         reloadTimeout = null
         if (!job.value?.id) return
