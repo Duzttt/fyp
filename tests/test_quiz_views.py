@@ -195,3 +195,113 @@ def test_generate_quiz_llm_error(client, mock_docs, monkeypatch, quiz_history_fi
         content_type="application/json",
     )
     assert resp.status_code == 500
+
+
+def test_submit_quiz_all_correct(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"quiz_id": "quiz_1", "answers": {"0": [0], "1": [0, 1]}}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["success"] is True
+    assert body["score"] == 2
+    assert body["total"] == 2
+    assert body["per_question"][0]["correct"] is True
+    assert body["per_question"][1]["correct"] is True
+    assert body["per_question"][0]["explanation"]
+    assert body["per_question"][1]["correct_answers"] == [0, 1]
+
+
+def test_submit_quiz_partial_multi_is_wrong(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"quiz_id": "quiz_1", "answers": {"0": [0], "1": [0]}}),
+        content_type="application/json",
+    )
+    body = resp.json()
+    assert body["score"] == 1
+    assert body["per_question"][1]["correct"] is False
+    assert body["per_question"][1]["your_answers"] == [0]
+
+
+def test_submit_quiz_records_attempt(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"quiz_id": "quiz_1", "answers": {"0": [0], "1": [0, 1]}}),
+        content_type="application/json",
+    )
+    history = json.loads(quiz_history_file.read_text(encoding="utf-8"))
+    assert len(history[0]["attempts"]) == 1
+    assert history[0]["attempts"][0]["score"] == 2
+
+
+def test_submit_quiz_unknown_quiz_id(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"quiz_id": "quiz_missing", "answers": {"0": [0]}}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 404
+
+
+def test_submit_quiz_requires_quiz_id(client, quiz_history_file):
+    resp = client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"answers": {"0": [0]}}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_submit_quiz_answers_must_be_object(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post(
+        "/api/quiz/submit",
+        data=json.dumps({"quiz_id": "quiz_1", "answers": [0]}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 400
+
+
+def test_get_quiz_history_strips_answers(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.get("/api/quiz/history")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 1
+    assert len(body["history"]) == 1
+    entry = body["history"][0]
+    assert entry["id"] == "quiz_1"
+    assert len(entry["questions"]) == 2
+    for question in entry["questions"]:
+        assert "answer" not in question
+        assert "explanation" not in question
+    assert entry["attempts"] == []
+
+
+def test_get_quiz_history_empty(client, quiz_history_file):
+    resp = client.get("/api/quiz/history")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body == {"history": [], "total": 0}
+
+
+def test_delete_quiz_success(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post("/api/quiz/quiz_1/delete")
+    assert resp.status_code == 200
+    assert resp.json()["success"] is True
+    history = json.loads(quiz_history_file.read_text(encoding="utf-8"))
+    assert history == []
+
+
+def test_delete_quiz_unknown(client, quiz_history_file):
+    _seed_quiz(quiz_history_file)
+    resp = client.post("/api/quiz/quiz_missing/delete")
+    assert resp.status_code == 404

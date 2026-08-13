@@ -201,3 +201,111 @@ def generate_quiz(request: HttpRequest) -> JsonResponse:
             "document_count": len(documents),
         }
     )
+
+
+def _grade_quiz(quiz: Dict[str, Any], answers: Dict[str, Any]) -> Dict[str, Any]:
+    questions = quiz.get("questions", [])
+    per_question = []
+    score = 0
+
+    for index, question in enumerate(questions):
+        correct_answers = sorted(int(a) for a in question.get("answer", []))
+        user_answers = answers.get(str(index), [])
+        if not isinstance(user_answers, list):
+            user_answers = [user_answers]
+        try:
+            normalized = sorted(int(a) for a in user_answers)
+        except (TypeError, ValueError):
+            normalized = []
+        correct = normalized == correct_answers
+        if correct:
+            score += 1
+        per_question.append(
+            {
+                "index": index,
+                "correct": correct,
+                "correct_answers": correct_answers,
+                "your_answers": normalized,
+                "explanation": question.get("explanation", ""),
+            }
+        )
+
+    return {
+        "score": score,
+        "total": len(questions),
+        "per_question": per_question,
+    }
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def submit_quiz(request: HttpRequest) -> JsonResponse:
+    try:
+        payload = _get_json_body(request)
+    except ValueError as exc:
+        return _error_response(str(exc), status=400)
+
+    quiz_id = str(payload.get("quiz_id", "")).strip()
+    answers = payload.get("answers")
+
+    if not quiz_id:
+        return _error_response("quiz_id is required", status=400)
+    if not isinstance(answers, dict):
+        return _error_response("answers must be an object", status=400)
+
+    history = _load_quiz_history()
+    quiz = None
+    for entry in history:
+        if entry.get("id") == quiz_id:
+            quiz = entry
+            break
+
+    if quiz is None:
+        return _error_response("Quiz not found", status=404)
+
+    result = _grade_quiz(quiz, answers)
+
+    attempt = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "answers": {str(key): value for key, value in answers.items()},
+        "score": result["score"],
+        "total": result["total"],
+    }
+    quiz.setdefault("attempts", []).append(attempt)
+    _save_quiz_history(history)
+
+    return JsonResponse({"success": True, **result})
+
+
+@require_http_methods(["GET"])
+def get_quiz_history(request: HttpRequest) -> JsonResponse:
+    try:
+        limit = int(request.GET.get("limit", 20))
+        limit = min(limit, 50)
+
+        history = _load_quiz_history()
+        result = []
+        for entry in history[:limit]:
+            item = {key: value for key, value in entry.items() if key != "questions"}
+            item["questions"] = _strip_answers(entry.get("questions", []))
+            result.append(item)
+
+        return JsonResponse({"history": result, "total": len(history)})
+    except Exception as exc:
+        return _error_response(f"Failed to load quiz history: {str(exc)}", status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_quiz(request: HttpRequest, quiz_id: str) -> JsonResponse:
+    try:
+        history = _load_quiz_history()
+        new_history = [entry for entry in history if entry.get("id") != quiz_id]
+
+        if len(new_history) == len(history):
+            return _error_response("Quiz not found", status=404)
+
+        _save_quiz_history(new_history)
+        return JsonResponse({"success": True, "message": "Quiz deleted"})
+    except Exception as exc:
+        return _error_response(f"Failed to delete quiz: {str(exc)}", status=500)
