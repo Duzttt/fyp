@@ -3,18 +3,18 @@ import { ref, computed } from 'vue'
 import { useDocumentStore } from '../../stores/documentStore'
 import { useSummaryStore } from '../../stores/summaryStore'
 import { useQuizStore } from '../../stores/quizStore'
-import { useMcqStore } from '../../stores/mcqStore'
+import { useFlashcardStore } from '../../stores/flashcardStore'
 import SummaryModal from '../studio/SummaryModal.vue'
 import SummaryViewer from '../studio/SummaryViewer.vue'
 import QuizModal from '../studio/QuizModal.vue'
-import McqModal from '../studio/McqModal.vue'
-import QuizViewer from '../studio/QuizViewer.vue'
 import QuizSessionViewer from '../studio/QuizSessionViewer.vue'
+import FlashcardModal from '../studio/FlashcardModal.vue'
+import FlashcardSessionViewer from '../studio/FlashcardSessionViewer.vue'
 
 const documentStore = useDocumentStore()
 const summaryStore = useSummaryStore()
 const quizStore = useQuizStore()
-const mcqStore = useMcqStore()
+const flashcardStore = useFlashcardStore()
 
 const studioTools = [
   {
@@ -23,13 +23,6 @@ const studioTools = [
     desc: 'Condense complex papers into high-level editorial abstracts.',
     icon: 'M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z',
     action: 'summary',
-  },
-  {
-    id: 'mcq',
-    title: 'Generate MCQ',
-    desc: 'Create multiple-choice questions from the selected documents.',
-    icon: 'M19 5v14H5V5h14m0-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9 8h6v2H10v-2zm0-4h6v2H10V7zm0 8h6v2H10v-2zM7 7h2v2H7V7zm0 4h2v2H7v-2zm0 4h2v2H7v-2z',
-    action: 'mcq',
   },
   {
     id: 'quiz',
@@ -43,7 +36,7 @@ const studioTools = [
     title: 'Flashcards',
     desc: 'Review key concepts with flip-style flashcards.',
     icon: 'M2.53 19.65l1.34.56v-9.03l-2.43 5.86c-.41 1.02.06 2.19 1.09 2.49zm19.5-3.7L17.07 3.98c-.31-.81-1.18-1.23-1.97-.91L2.96 7.58c-.81.31-1.23 1.18-.91 1.97l5.12 13.01c.31.81 1.18 1.23 1.97.91l12.87-4.87c.81-.31 1.24-1.17.92-1.97zM7.88 8.75c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-2 11c0 1.1.9 2 2 2h1.45l-3.45-8.77v6.77zm6 1.5c0 1.1.9 2 2 2h1.55l-3.55-9.02v7.02z',
-    comingSoon: true,
+    action: 'flashcard',
   },
   {
     id: 'datatable',
@@ -57,9 +50,9 @@ const studioTools = [
 const showSummaryModal = ref(false)
 const showSummaryViewer = ref(false)
 const showQuizModal = ref(false)
-const showMcqModal = ref(false)
-const showMcqViewer = ref(false)
 const showQuizSessionViewer = ref(false)
+const showFlashcardModal = ref(false)
+const showFlashcardSessionViewer = ref(false)
 
 const selectedDocs = computed(() => documentStore.selectedDocIds)
 const selectedCount = computed(() => selectedDocs.value.length)
@@ -76,8 +69,8 @@ const handleToolClick = (tool) => {
   if (tool.action === 'quiz') {
     openQuizModal()
   }
-  if (tool.action === 'mcq') {
-    openMcqModal()
+  if (tool.action === 'flashcard') {
+    openFlashcardModal()
   }
 }
 
@@ -95,6 +88,32 @@ const openQuizModal = () => {
     return
   }
   showQuizModal.value = true
+}
+
+const openFlashcardModal = () => {
+  if (selectedCount.value === 0) {
+    alert('Please select at least one document in the sidebar first')
+    return
+  }
+  showFlashcardModal.value = true
+}
+
+const handleFlashcardGenerate = async (config) => {
+  const deck = await flashcardStore.generate(selectedDocs.value, config)
+  if (deck) {
+    showFlashcardModal.value = false
+    showFlashcardSessionViewer.value = true
+  }
+}
+
+const handleFlashcardOpenFromHistory = () => {
+  showFlashcardModal.value = false
+  showFlashcardSessionViewer.value = true
+}
+
+const closeFlashcardSessionViewer = () => {
+  showFlashcardSessionViewer.value = false
+  flashcardStore.clearCurrent()
 }
 
 const handleQuizGenerate = async (config) => {
@@ -115,49 +134,14 @@ const closeQuizSessionViewer = () => {
   quizStore.clearCurrent()
 }
 
-const handleSummaryCreate = async ({ documentId, config }) => {
-  const created = await summaryStore.createJob(documentId, config)
-  if (created) {
-    showSummaryModal.value = false
-    showSummaryViewer.value = true
-  }
+const handleSummaryCreated = () => {
+  showSummaryModal.value = false
+  showSummaryViewer.value = true
 }
 
 const closeSummaryViewer = () => {
   showSummaryViewer.value = false
   summaryStore.reset()
-}
-
-const openMcqModal = () => {
-  if (selectedCount.value === 0) {
-    alert('Please select at least one document in the sidebar first')
-    return
-  }
-  showMcqModal.value = true
-  mcqStore.error = null
-}
-
-const handleMcqGenerate = async (config) => {
-  const quiz = await mcqStore.generate(selectedDocs.value, config)
-  if (quiz) {
-    showMcqModal.value = false
-    showMcqViewer.value = true
-  }
-}
-
-const handleQuizSubmit = async (answers) => {
-  if (mcqStore.currentQuiz?.quiz_id) {
-    await mcqStore.submit(mcqStore.currentQuiz.quiz_id, answers)
-  }
-}
-
-const handleQuizRetake = () => {
-  mcqStore.lastResult = null
-}
-
-const closeMcqViewer = () => {
-  showMcqViewer.value = false
-  mcqStore.clearCurrent()
 }
 </script>
 
@@ -186,7 +170,7 @@ const closeMcqViewer = () => {
             <span class="tool-desc">{{ tool.desc }}</span>
           </div>
           <span v-if="tool.comingSoon" class="tool-badge soon" aria-hidden="true">Soon</span>
-          <span v-else-if="['summary', 'quiz', 'mcq'].includes(tool.action) && selectedCount > 0" class="tool-badge" aria-hidden="true">
+          <span v-else-if="['summary', 'quiz', 'flashcard'].includes(tool.action) && selectedCount > 0" class="tool-badge" aria-hidden="true">
             {{ selectedCount }}
           </span>
         </button>
@@ -215,34 +199,6 @@ const closeMcqViewer = () => {
 
       <Teleport to="body">
         <Transition name="modal-fade">
-          <div v-if="showMcqViewer" class="summary-modal-overlay" @click.self="closeMcqViewer">
-            <div class="summary-modal">
-              <div class="modal-header">
-                <span class="modal-title">MCQ Quiz</span>
-                <button type="button" class="modal-close" aria-label="Close quiz" @click="closeMcqViewer">
-                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-                </button>
-              </div>
-              <div class="modal-body">
-                <div v-if="mcqStore.error && !mcqStore.currentQuiz" class="error-message">
-                  {{ mcqStore.error }}
-                </div>
-                <QuizViewer
-                  :quiz="mcqStore.currentQuiz"
-                  :result="mcqStore.lastResult"
-                  :loading="mcqStore.isGenerating"
-                  @submit="handleQuizSubmit"
-                  @retake="handleQuizRetake"
-                  @close="closeMcqViewer"
-                />
-              </div>
-            </div>
-          </div>
-        </Transition>
-      </Teleport>
-
-      <Teleport to="body">
-        <Transition name="modal-fade">
           <div v-if="showQuizSessionViewer" class="summary-modal-overlay" @click.self="closeQuizSessionViewer">
             <div class="summary-modal">
               <div class="modal-header">
@@ -262,12 +218,33 @@ const closeMcqViewer = () => {
         </Transition>
       </Teleport>
 
+      <Teleport to="body">
+        <Transition name="modal-fade">
+          <div v-if="showFlashcardSessionViewer" class="summary-modal-overlay" @click.self="closeFlashcardSessionViewer">
+            <div class="summary-modal">
+              <div class="modal-header">
+                <span class="modal-title">Flashcards</span>
+                <button type="button" class="modal-close" aria-label="Close flashcards" @click="closeFlashcardSessionViewer">
+                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+              </div>
+              <div class="modal-body">
+                <FlashcardSessionViewer
+                  v-model:show="showFlashcardSessionViewer"
+                  @close="closeFlashcardSessionViewer"
+                />
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
     </div>
 
     <SummaryModal
       v-model:show="showSummaryModal"
       :selected-docs="selectedDocs"
-      @create="handleSummaryCreate"
+      @created="handleSummaryCreated"
       @close="showSummaryModal = false"
     />
 
@@ -279,13 +256,12 @@ const closeMcqViewer = () => {
       @close="showQuizModal = false"
     />
 
-    <McqModal
-      v-model:show="showMcqModal"
+    <FlashcardModal
+      v-model:show="showFlashcardModal"
       :selected-docs="selectedDocs"
-      :loading="mcqStore.isGenerating"
-      :error="mcqStore.error"
-      @generate="handleMcqGenerate"
-      @close="showMcqModal = false"
+      @generate="handleFlashcardGenerate"
+      @view="handleFlashcardOpenFromHistory"
+      @close="showFlashcardModal = false"
     />
   </div>
 </template>

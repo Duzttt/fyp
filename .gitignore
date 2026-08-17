@@ -29,7 +29,11 @@ data/db.sqlite3
 data/alerts.json
 data/logs/
 data/reports.json
+data/*_history.json
 *.pdf
+
+# Compiled frontend build output (generated, hashed) — not source
+django_app/static/frontend/assets/
 .pytest_cache/
 .coverage
 htmlcov/

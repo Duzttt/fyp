@@ -51,11 +51,18 @@ watch(
   { immediate: true }
 )
 
+const clipboardStatus = ref('')
+
 const openCitation = (page) => {
   const docId = job.value?.document_id
   if (!docId || !page) return
+  // If docId already looks like a path/URL, use it as-is; otherwise treat it
+  // as a bare filename/id and encode it before joining the media base path.
+  const looksAbsolute = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(docId) || docId.startsWith('/')
+  const filename = docId.includes('/') ? docId.split('/').pop() : docId
+  const encoded = looksAbsolute ? docId : encodeURIComponent(filename)
   pdfState.value = {
-    url: '/media/data_source/' + encodeURIComponent(docId),
+    url: looksAbsolute ? encoded : '/media/data_source/' + encoded,
     page,
     highlight: '',
   }
@@ -65,10 +72,36 @@ const openCitation = (page) => {
 const copyMarkdown = async () => {
   const markdown = job.value?.result_markdown || ''
   if (!markdown) return
+  clipboardStatus.value = ''
   try {
-    await navigator.clipboard.writeText(markdown)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(markdown)
+    } else {
+      await fallbackCopy(markdown)
+    }
+    clipboardStatus.value = 'Copied!'
   } catch (err) {
     console.error('Failed to copy markdown:', err)
+    clipboardStatus.value = 'Copy failed'
+  }
+  setTimeout(() => {
+    clipboardStatus.value = ''
+  }, 2000)
+}
+
+const fallbackCopy = async (text) => {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  try {
+    const ok = document.execCommand('copy')
+    if (!ok) throw new Error('execCommand copy failed')
+  } finally {
+    document.body.removeChild(textarea)
   }
 }
 
@@ -161,7 +194,9 @@ const handleRemove = async (item) => {
             Topics with no matching content: {{ job.result_json.skipped_topics.join(', ') }}
           </p>
           <div class="viewer-actions">
-            <button class="viewer-btn" @click="copyMarkdown">Copy Markdown</button>
+            <button class="viewer-btn" @click="copyMarkdown">
+              {{ clipboardStatus || 'Copy Markdown' }}
+            </button>
           </div>
         </div>
 

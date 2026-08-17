@@ -46,7 +46,8 @@ watch(
     if (visible) {
       resetSession()
     }
-  }
+  },
+  { immediate: true }
 )
 
 function resetSession() {

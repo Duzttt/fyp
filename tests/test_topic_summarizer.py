@@ -424,7 +424,10 @@ class TestRunPipeline:
 
     def test_skipped_topic_on_empty_retrieval(self):
         def retrieve(query, top_k):
-            if "evaluation" in query:
+            # Case-insensitive: the topic heading "Evaluation" itself has no
+            # retrievable content, so both the discovery query and the relaxed
+            # heading fallback should miss.
+            if "evaluation" in query.lower():
                 return []
             return [{"text": "content", "page": 1}]
 
@@ -437,6 +440,29 @@ class TestRunPipeline:
         )
         assert len(result["sections"]) == 1
         assert result["skipped_topics"] == ["Evaluation"]
+
+    def test_heading_fallback_recovers_missed_topic(self):
+        calls = []
+
+        def retrieve(query, top_k):
+            calls.append((query, top_k))
+            # The discovery query "evaluation metrics" misses, but the relaxed
+            # heading "Evaluation" hits.
+            if query == "evaluation metrics":
+                return []
+            return [{"text": "content", "page": 2}]
+
+        result = run_pipeline(
+            document_id="doc.pdf",
+            chunks=[{"text": "c", "page": 1}],
+            length="short",
+            retrieve_fn=retrieve,
+            llm_call=self._llm,
+        )
+        assert len(result["sections"]) == 2
+        assert result["skipped_topics"] == []
+        # The fallback must have been attempted with a doubled top_k.
+        assert any(q == "Evaluation" for q, _ in calls)
 
     def test_no_topics_summarized_raises(self):
         def retrieve(_query, _top_k):

@@ -110,20 +110,18 @@ from django_app.views.quiz import (
     delete_quiz,
 )
 
+# Flashcards
+from django_app.views.flashcards import (
+    generate_flashcards,
+    get_flashcards_history,
+    delete_flashcards,
+)
+
 # Suggestions
 from django_app.views.suggestions import (
     get_question_suggestions,
     record_suggestion_click,
     get_suggestion_history,
-)
-
-# MCQ
-from django_app.views.mcq import (
-    generate_mcq,
-    get_mcq,
-    submit_mcq_attempt,
-    get_mcq_history,
-    delete_mcq,
 )
 
 # Conversations
@@ -229,16 +227,14 @@ __all__ = [
     "submit_quiz",
     "get_quiz_history",
     "delete_quiz",
+    # Flashcards
+    "generate_flashcards",
+    "get_flashcards_history",
+    "delete_flashcards",
     # Suggestions
     "get_question_suggestions",
     "record_suggestion_click",
     "get_suggestion_history",
-    # MCQ
-    "generate_mcq",
-    "get_mcq",
-    "submit_mcq_attempt",
-    "get_mcq_history",
-    "delete_mcq",
     # LLM Logs
     "llm_logs_list",
     "llm_logs_stats",

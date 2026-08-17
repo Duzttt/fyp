@@ -1,3 +1,4 @@
+import threading
 from typing import List
 
 import numpy as np
@@ -8,6 +9,13 @@ class EmbeddingError(Exception):
     pass
 
 
+# SentenceTransformer loads weights lazily during construction; concurrent
+# instantiation of the same model from multiple threads (e.g. the summary
+# pipeline's per-topic retrieval) trips a torch meta-tensor race. Serialize
+# construction with a process-wide lock.
+_MODEL_LOAD_LOCK = threading.Lock()
+
+
 class EmbeddingService:
     def __init__(self, model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):
         self.model_name = model_name
@@ -15,10 +23,12 @@ class EmbeddingService:
 
     def _get_model(self):
         if self.model is None:
-            try:
-                self.model = SentenceTransformer(self.model_name)
-            except Exception as e:
-                raise EmbeddingError(f"Failed to load embedding model: {str(e)}")
+            with _MODEL_LOAD_LOCK:
+                if self.model is None:
+                    try:
+                        self.model = SentenceTransformer(self.model_name)
+                    except Exception as e:
+                        raise EmbeddingError(f"Failed to load embedding model: {str(e)}")
         return self.model
 
     def embed_texts(self, texts: List[str]) -> np.ndarray:

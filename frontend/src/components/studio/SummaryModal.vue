@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useSummaryStore } from '../../stores/summaryStore'
 
 const props = defineProps({
   show: Boolean,
@@ -9,7 +10,9 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:show', 'close', 'create'])
+const emit = defineEmits(['update:show', 'close', 'created'])
+
+const summaryStore = useSummaryStore()
 
 const length = ref('medium')
 const error = ref('')
@@ -38,10 +41,14 @@ const handleGenerate = async () => {
   isSubmitting.value = true
   error.value = ''
   try {
-    emit('create', {
-      documentId: firstDoc.value,
-      config: { length: length.value },
-    })
+    const job = await summaryStore.createJob(firstDoc.value, { length: length.value })
+    if (job) {
+      emit('created')
+    } else {
+      error.value = summaryStore.error || 'Failed to start summary'
+    }
+  } catch (err) {
+    error.value = err?.message || 'Failed to start summary'
   } finally {
     isSubmitting.value = false
   }
@@ -68,8 +75,9 @@ const handleGenerate = async () => {
                 <span class="doc-name" :title="firstDoc">{{ firstDoc || 'No document selected' }}</span>
               </div>
             </div>
-            <p v-if="selectedCount > 1" class="doc-note">
-              The summary runs on the first selected document.
+            <p class="doc-note">
+              <strong>Summary target:</strong> {{ firstDoc || 'No document selected' }}
+              {{ selectedCount > 1 ? ' — only the first selected document is summarized.' : '' }}
             </p>
           </div>
 

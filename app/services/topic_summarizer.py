@@ -109,14 +109,21 @@ def _build_topic_proposal_messages(
     )
     system = (
         "You are a document analysis assistant. Propose distinct, "
-        "non-overlapping topics that cover the document's content."
+        "non-overlapping topics that cover the document's content. "
+        "The topic title MUST be the exact wording of a real heading, "
+        "section title, or slide title that actually appears in the "
+        "document. Do NOT merge separate headings into one title and do "
+        "NOT invent a title that is not present in the excerpts."
     )
     user = (
         f"Document language: {language_name}. Output language: {language_name}.\n\n"
         f"Sample excerpts from the document:\n{excerpts}\n\n"
         f"Propose exactly {topic_count} distinct topics covering the document.\n"
+        "Each topic title must match a real heading/slide title in the "
+        "document verbatim. Do not invent or combine headings.\n"
         "Each topic needs a short title and a retrieval query "
         "(a phrase that would find that topic's content in a search engine).\n"
+        "List topics in descending order of importance (most central first).\n"
         "Respond ONLY with JSON in this shape:\n"
         '{"topics": [{"title": "string", "query": "string", "importance": 1}]}\n'
         "importance is an integer from 1 (minor) to 5 (central)."
@@ -137,18 +144,27 @@ def propose_topics(
         try:
             raw = llm_call(messages, "json")
             data = json.loads(_extract_json(raw))
+            seen_titles = set()
             topics = []
             for item in data.get("topics", []):
                 title = str(item.get("title", "")).strip()
                 query = str(item.get("query", "")).strip()
-                importance = int(item.get("importance", 1))
-                if title and query:
-                    topics.append(
-                        Topic(title=title, query=query, importance=importance)
-                    )
+                try:
+                    importance = int(item.get("importance", 1))
+                except (TypeError, ValueError):
+                    importance = 1
+                if not title or not query:
+                    continue
+                if title.lower() in seen_titles:
+                    continue
+                seen_titles.add(title.lower())
+                topics.append(
+                    Topic(title=title, query=query, importance=importance)
+                )
             if not topics:
                 raise ValueError("no topics in response")
-            return topics
+            topics.sort(key=lambda t: t.importance, reverse=True)
+            return topics[:topic_count]
         except (json.JSONDecodeError, ValueError, TypeError) as exc:
             last_error = exc
     raise TopicSummarizerError(
@@ -197,6 +213,22 @@ def build_topic_summary_messages(
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _chunk_pages(chunks: List[Dict[str, Any]]) -> List[int]:
+    """Return the distinct page numbers of the given chunks, in order."""
+    pages: List[int] = []
+    for chunk in chunks:
+        page = chunk.get("page")
+        if page is None:
+            continue
+        try:
+            page_int = int(page)
+        except (TypeError, ValueError):
+            continue
+        if page_int not in pages:
+            pages.append(page_int)
+    return pages
+
+
 def parse_topic_summary_json(raw: str, chunks: List[Dict[str, Any]]) -> TopicSection:
     """Parse the topic summary JSON and map evidence refs to chunk pages."""
     try:
@@ -214,10 +246,9 @@ def parse_topic_summary_json(raw: str, chunks: List[Dict[str, Any]]) -> TopicSec
                 continue
             evidence = item.get("evidence_chunk")
             pages: List[int] = []
-            if isinstance(evidence, int) and 1 <= evidence <= len(chunks):
-                page = chunks[evidence - 1].get("page")
-                if page is not None:
-                    pages = [int(page)]
+            if isinstance(evidence, int) and not isinstance(evidence, bool):
+                if 1 <= evidence <= len(chunks):
+                    pages = _chunk_pages([chunks[evidence - 1]])
             points.append(TopicPoint(text=text, pages=pages))
         if not points:
             raise ValueError("no valid points")
@@ -228,6 +259,17 @@ def parse_topic_summary_json(raw: str, chunks: List[Dict[str, Any]]) -> TopicSec
         ) from exc
 
 
+def _page_key(chunk: Dict[str, Any]) -> int:
+    """Stable sort key by page (unknown pages sort last)."""
+    page = chunk.get("page")
+    if page is None:
+        return 10 ** 9
+    try:
+        return int(page)
+    except (TypeError, ValueError):
+        return 10 ** 9
+
+
 def summarize_topic(
     topic: Topic,
     top_k: int,
@@ -235,10 +277,20 @@ def summarize_topic(
     retrieve_fn: Callable[[str, int], List[Dict[str, Any]]],
     llm_call: Callable[[List[Dict[str, str]], Optional[str]], str],
 ) -> Optional[TopicSection]:
-    """Retrieve chunks for one topic and summarize them. None when no hits."""
+    """Retrieve chunks for one topic and summarize them. None when no hits.
+
+    Retrieved chunks are reordered by page before being numbered and shown to
+    the LLM, so the evidence_chunk index is a stable, document-ordered
+    reference rather than a hybrid/MMR ranking artifact.
+    """
     chunks = retrieve_fn(topic.query, top_k)
+    if not chunks and topic.title and topic.title.lower() != topic.query.lower():
+        # The discovery query missed; relax to the verbatim heading with a
+        # wider window so a real section is not silently dropped as "skipped".
+        chunks = retrieve_fn(topic.title, top_k * 2)
     if not chunks:
         return None
+    chunks = sorted(chunks, key=_page_key)
     messages = build_topic_summary_messages(topic, chunks, language)
     last_error: Optional[Exception] = None
     for _attempt in range(2):
